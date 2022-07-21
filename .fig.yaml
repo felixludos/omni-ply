@@ -1,0 +1,8 @@
+
+name: omni-data
+#name: Omni-data Versatile Data Management for Deep Learning
+
+version: 0.1
+license: MIT
+
+package: omnidata
