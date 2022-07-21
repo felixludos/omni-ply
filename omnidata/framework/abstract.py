@@ -1,7 +1,6 @@
 from omnibelt import agnosticmethod
 
 
-
 class Extractor:
 	@agnosticmethod
 	def extract(self, observation):

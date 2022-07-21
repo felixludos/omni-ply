@@ -25,9 +25,11 @@ def combine_dims(tensor, start=1, end=None):
 	return tensor.view(*combined_shape)
 
 
+
 def split_dim(tensor, *splits, dim=0):
 	split_shape = [*tensor.shape[:dim], *splits, *tensor.shape[dim+1:]]
 	return tensor.view(*split_shape)
+
 
 
 def swap_dim(tensor, d1=0, d2=1):
