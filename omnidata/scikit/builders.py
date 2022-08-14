@@ -1,5 +1,5 @@
-from .. import spaces
-from ..models import ModelBuilder
+from omnidata.framework import spaces
+from omnidata.framework.models import ModelBuilder
 from .estimators import JointEstimator, ScikitEstimatorWrapper, Regressor, Classifier, Periodized
 
 

@@ -285,53 +285,6 @@ class DevicedContainer(Device, Container):
 
 
 
-# class TensorContainer(Device):
-#
-# 	def _item_iterator(self):
-# 		raise NotImplementedError
-#
-#
-# 	def _update_payload(self, updates):
-# 		for key, content in updates.items():
-# 			self[key] = content
-#
-#
-# 	def _to(self, device, **kwargs):
-# 		updates = {key: content.to(device) for key, content in self._item_iterator()}
-# 		self._update_payload(updates)
-#
-#
-# 	def __str__(self):
-# 		return f'{self.__class__.__name__}({self._str_info()})'
-#
-#
-#
-# class TensorList(TensorContainer, list):
-# 	def _str_info(self):
-# 		num = len(self)
-# 		msg = 'item' if num == 1 else 'items'
-# 		return f'{num} {msg}'
-#
-#
-# 	def _item_iterator(self):
-# 		return enumerate(self)
-#
-#
-#
-# class TensorDict(TensorContainer, dict):
-# 	def _str_info(self):
-# 		msg = ', '.join(self.keys())
-# 		return msg
-#
-#
-# 	def _item_iterator(self):
-# 		return self.items()
-
-
-
-
-
-
 
 
 
