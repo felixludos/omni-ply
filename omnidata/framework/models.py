@@ -1,9 +1,9 @@
 
-
+from collections import OrderedDict
 import torch
 from torch import nn
 from omnibelt import agnosticmethod, unspecified_argument#, mix_into
-from . import util
+# from .. import util
 from . import abstract
 from .features import Seeded, Prepared
 from .hyperparameters import Parametrized, ModuleParametrized, hparam, inherit_hparams
@@ -16,28 +16,29 @@ from .base import Function, Container
 # 		raise NotImplementedError
 
 
-class ModelBuilder:
-	def __init__(self, **kwargs):
-		self.update(**kwargs)
 
-
-	def update(self, **kwargs):
-		self.__dict__.update(kwargs)
-
-
-	def __call__(self, **kwargs):
-		self.update(**kwargs)
-		return self.build()
-
-
-	class MissingKwargsError(KeyError):
-		def __init__(self, *keys):
-			super().__init__(', '.join(keys))
-			self.keys = keys
-
-
-	def build(self):
-		raise NotImplementedError
+# class ModelBuilder:
+# 	def __init__(self, **kwargs):
+# 		self.update(**kwargs)
+#
+#
+# 	def update(self, **kwargs):
+# 		self.__dict__.update(kwargs)
+#
+#
+# 	def __call__(self, **kwargs):
+# 		self.update(**kwargs)
+# 		return self.build()
+#
+#
+# 	class MissingKwargsError(KeyError):
+# 		def __init__(self, *keys):
+# 			super().__init__(', '.join(keys))
+# 			self.keys = keys
+#
+#
+# 	def build(self):
+# 		raise NotImplementedError
 
 
 
@@ -121,43 +122,43 @@ class Resultable:
 
 
 
-class Buildable(ModuleParametrized): # TODO: unify building and hparams - they should be shared
-	# def __init_subclass__(cls, builder=None, **kwargs):
-	# 	super().__init_subclass__(**kwargs)
-	# 	if builder is None:
-	# 		builder = cls.Builder(cls)
-	# 	cls.builder = builder
-
-	# _my_build_settings = {} # in a sub-class of Buildable
-
-
-	@agnosticmethod
-	def get_builder(self, cls=None, **kwargs):
-		if cls is None:
-			cls = self if isinstance(self, type) else self.__class__
-		return self.Builder(cls=cls, **kwargs)
-
-
-	class Builder(ModelBuilder):
-		def __init__(self, cls=None, **kwargs):
-			super().__init__(**kwargs)
-			if cls is None:
-				raise self.MissingSourceClassError
-			self.update(**{key:getattr(cls, key) for key in cls.iterate_hparams()})
-			self.cls = cls
-
-
-		class MissingSourceClassError(Exception):
-			def __init__(self):
-				super().__init__('You cannot instantiate a builder without a source class '
-				                 '(use cls.builder instead)')
-
-
-		def build(self, kwargs=None):
-			if kwargs is None:
-				kwargs = self.__dict__.copy()
-				del kwargs['cls']
-			return self.cls(**kwargs)
+# class Buildable(ModuleParametrized): # TODO: unify building and hparams - they should be shared
+# 	# def __init_subclass__(cls, builder=None, **kwargs):
+# 	# 	super().__init_subclass__(**kwargs)
+# 	# 	if builder is None:
+# 	# 		builder = cls.Builder(cls)
+# 	# 	cls.builder = builder
+#
+# 	# _my_build_settings = {} # in a sub-class of Buildable
+#
+#
+# 	@agnosticmethod
+# 	def get_builder(self, cls=None, **kwargs):
+# 		if cls is None:
+# 			cls = self if isinstance(self, type) else self.__class__
+# 		return self.Builder(cls=cls, **kwargs)
+#
+#
+# 	class Builder(ModelBuilder):
+# 		def __init__(self, cls=None, **kwargs):
+# 			super().__init__(**kwargs)
+# 			if cls is None:
+# 				raise self.MissingSourceClassError
+# 			self.update(**{key:getattr(cls, key) for key in cls.iterate_hparams()})
+# 			self.cls = cls
+#
+#
+# 		class MissingSourceClassError(Exception):
+# 			def __init__(self):
+# 				super().__init__('You cannot instantiate a builder without a source class '
+# 				                 '(use cls.builder instead)')
+#
+#
+# 		def build(self, kwargs=None):
+# 			if kwargs is None:
+# 				kwargs = self.__dict__.copy()
+# 				del kwargs['cls']
+# 			return self.cls(**kwargs)
 
 
 
@@ -196,7 +197,8 @@ class Fitable(Resultable):
 # 	pass
 
 
-class Model(Buildable, Fitable, Prepared):
+class Model(#Buildable,
+            Fitable, Prepared):
 	def _prepare(self, source=None, **kwargs):
 		pass
 
@@ -228,6 +230,8 @@ class Model(Buildable, Fitable, Prepared):
 	def _evaluate(info):
 		raise NotImplementedError
 
+
+# TODO: hparams that should be extracted from the config should be specified with a decorator
 
 
 class Trainer(ModuleParametrized, Fitable, Prepared):
@@ -319,6 +323,34 @@ class TrainableModel(Model):
 		return info
 
 
+class Loggable(Model):
+	def __init__(self, stats=None, **kwargs):
+		if stats is None:
+			stats = self.Statistics()
+		super().__init__(**kwargs)
+		self._stats = stats
+	
+	
+	class Statistics:
+		def mete(self, info, **kwargs):
+			raise NotImplementedError
+	
+	
+	# def register_stats(self, *stats):
+	# 	for stat in stats:
+	# 		self._stats.append(stat)
+	# 	# for name in names:
+	# 	# 	self._stats[name] = self.Statistic(name)
+	# 	# for name, stat in stats.items():
+	# 	# 	if not isinstance(stat, self.Statistic):
+	# 	# 		print(f'WARNING: stat {name} should subclass {self.Statistic.__name__}')
+	# 	# 	self._stats[name] = stat
+	
+	
+	def log(self, info, **kwargs):
+		self._stats.mete(info, **kwargs)
+
+
 
 class PytorchModel(TrainableModel, nn.Module):
 	@agnosticmethod
@@ -337,10 +369,10 @@ class PytorchModel(TrainableModel, nn.Module):
 
 
 
-class SimplePytorchModel(PytorchModel):
+class SimplePytorchModel(Loggable, PytorchModel):
 	_loss_key = 'loss'
 
-	optimizer = hparam('optimizer', None)
+	optimizer = hparam(None)
 
 
 	def _prepare(self, source=None, **kwargs):

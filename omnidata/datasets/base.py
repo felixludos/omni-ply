@@ -9,7 +9,8 @@ from omnibelt import unspecified_argument, duplicate_instance, md5, agnosticmeth
 import h5py as hf
 
 from ..framework.features import Prepared, Fingerprinted
-from ..framework import base, Rooted, Named, util, Seeded, Sampler, abstract
+# from .. import util
+from ..framework import base, Rooted, Named, Seeded, Sampler, abstract
 from .buffers import AbstractFixedBuffer, Buffer, BufferView, HDFBuffer, \
 	AbstractCountableData, AbstractCountableDataView, ReplacementBuffer
 

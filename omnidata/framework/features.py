@@ -170,7 +170,7 @@ class Prepared: # TODO: add autoprepare using __certify__
 
 
 class Rooted:
-	_DEFAULT_MASTER_ROOT = os.getenv('PLETHORA_PATH', 'local_data/')
+	_DEFAULT_MASTER_ROOT = os.getenv('OMNIDATA_PATH', 'local_data/')
 
 	_root = None
 	def __init__(self, root=unspecified_argument, **kwargs):

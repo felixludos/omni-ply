@@ -1,7 +1,7 @@
 import inspect
 
 import logging
-from omnibelt import unspecified_argument, agnosticmethod, classdescriptor, ClassDescriptable
+from omnibelt import unspecified_argument, agnosticmethod, classdescriptor, ClassDescriptable, OrderedSet
 
 from . import spaces
 
@@ -16,8 +16,33 @@ prt.addHandler(ch)
 
 
 class Hyperparameter(property, classdescriptor):
-	def __init__(self, name=None, fget=None, default=unspecified_argument, required=False,
-	             strict=False, cache=False, fixed=False, space=None, **kwargs):
+	def __init__(self, name=None, fget=None, default=unspecified_argument, required=None,
+	             strict=None, cache=None, fixed=None, space=None, ref=None, **kwargs):
+		if ref is not None:
+			if name is None:
+				name = ref.name
+			if fget is None:
+				fget = ref.fget
+			if default is unspecified_argument:
+				default = ref.default
+			if required is None:
+				required = ref.required
+			if strict is None:
+				strict = ref.strict
+			if cache is None:
+				cache = ref.cache
+			if fixed is None:
+				fixed = ref.fixed
+			if space is None:
+				space = ref.space
+		if required is None:
+			required = False
+		if strict is None:
+			strict = False
+		if cache is None:
+			cache = False
+		if fixed is None:
+			fixed = False
 		super().__init__(fget=fget, **kwargs)
 		if name is None:
 			assert fget is not None, 'No name provided'
@@ -184,13 +209,19 @@ class Hyperparameter(property, classdescriptor):
 
 
 class Parametrized(metaclass=ClassDescriptable):
-	_inherited_hparams = set()
-
+	_registered_hparams = OrderedSet()
+	
+	
+	def __init_subclass__(cls, **kwargs):
+		super().__init_subclass__(**kwargs)
+		cls._registered_hparams = OrderedSet()
+	
+	
 	def __init__(self, *args, **kwargs):
-		self._inherited_hparams = self._inherited_hparams.copy()
+		self._registered_hparams = self._registered_hparams.copy()
 		super().__init__(*args, **self._extract_hparams(kwargs))
-
-
+	
+	
 	def _extract_hparams(self, kwargs):
 		for key, val in self.iterate_hparams(items=True):
 			if key in kwargs:
@@ -201,69 +232,85 @@ class Parametrized(metaclass=ClassDescriptable):
 				setattr(self, key, kwargs[key])
 				del kwargs[key]
 		return kwargs
+	
 	# id(newval), id(val), id(inspect.getattr_static(self, 'encoder')), id(inspect.getattr_static(self.__class__, 'encoder'))
-
-
+	
+	
 	Hyperparameter = Hyperparameter
+	
+	
 	@agnosticmethod
-	def register_hparam(self, name=None, fget=None, default=unspecified_argument, required=False, **kwargs):
-		return self.Hyperparameter(fget=fget, required=required, default=default, name=name, **kwargs)
-
-
+	def register_hparam(self, name=None, fget=None, default=unspecified_argument, ref=None, **kwargs):
+		if ref is not None and name is None:
+			name = ref.name
+		assert name is not None
+		self._registered_hparams.add(name)
+		return self.Hyperparameter(fget=fget, default=default, name=name, **kwargs)
+	
+	
 	RequiredHyperparameter = Hyperparameter.MissingHyperparameter
-
-
+	
+	
 	@agnosticmethod
 	def reset_hparams(self):
 		for key, param in self.iterate_hparams(True):
 			param.reset()
-
-
+	
+	
+	def get_hparam(self, key, default=unspecified_argument):
+		val = inspect.getattr_static(self, key, default)
+		if default is unspecified_argument and val is default:
+			raise AttributeError(f'{self.__class__.__name__} has no attribute {key}')
+		return val
+	
+	
 	@agnosticmethod
 	def iterate_hparams(self, items=False, **kwargs):
-		cls = self if isinstance(self, type) else self.__class__
+		# cls = self if isinstance(self, type) else self.__class__
 		done = set()
-		for key, val in cls.__dict__.items():
-			if key not in done and isinstance(val, Hyperparameter):
-				done.add(key)
-				yield (key, val) if items else key
-		for key in self._inherited_hparams:
+		# for key, val in cls.__dict__.items():
+		# 	if key not in done and isinstance(val, Hyperparameter):
+		# 		done.add(key)
+		# 		yield (key, val) if items else key
+		for key in self._registered_hparams:
 			# val = getattr(self, key, unspecified_argument) if getvalue else
 			val = inspect.getattr_static(self, key, unspecified_argument)
 			# val = getattr(self, key, None)
 			if key not in done and isinstance(val, Hyperparameter):
 				done.add(key)
 				yield (key, val) if items else key
-
-		# if not isinstance(self, type):
-		# 	yield from self.__class__.iterate_hparams(items=items, **kwargs)
-
-
+	
+	# if not isinstance(self, type):
+	# 	yield from self.__class__.iterate_hparams(items=items, **kwargs)
+	
+	
 	@agnosticmethod
 	def inherit_hparams(self, *names):
-		self._inherited_hparams.update(names)
-		# for name in names:
-		# 	hparam = inspect.getattr_static(self, name, unspecified_argument)
-		# 	if hparam is unspecified_argument:
-		# 		if strict:
-		# 			raise self.Hyperparameter.MissingHyperparameter(name)
-		# 	else:
-		# 		if copy:
-		# 			hparam = hparam.copy()
-		# 		self.__dict__[name] = hparam
-				# setattr(self, name, hparam)
+		self._registered_hparams.update(names)
+# for name in names:
+# 	hparam = inspect.getattr_static(self, name, unspecified_argument)
+# 	if hparam is unspecified_argument:
+# 		if strict:
+# 			raise self.Hyperparameter.MissingHyperparameter(name)
+# 	else:
+# 		if copy:
+# 			hparam = hparam.copy()
+# 		self.__dict__[name] = hparam
+# setattr(self, name, hparam)
 
 
 
 class ModuleParametrized(Parametrized):
 	class Hyperparameter(Parametrized.Hyperparameter):
-		def __init__(self, default=unspecified_argument, required=True, module=None, cache=None, **kwargs):
+		def __init__(self, default=unspecified_argument, required=True, module=None, cache=None, ref=None, **kwargs):
+			if ref is not None and module is None:
+				module = ref.module
 			if cache is None:
 				cache = module is not None
-			super().__init__(default=default, required=required, cache=cache, **kwargs)
+			super().__init__(default=default, required=required, cache=cache, ref=ref, **kwargs)
 			self.module = module
-
-
+		
+		
 		class InvalidInstance(Hyperparameter.InvalidValue):
 			def __init__(self, name, value, base, msg=None):
 				if msg is None:
@@ -271,8 +318,8 @@ class ModuleParametrized(Parametrized):
 					msg = f'{name}: {value} (expecting an instance of {base})'
 				super().__init__(name, value, msg=msg)
 				self.base = base
-
-
+		
+		
 		def validate_value(self, value):
 			if self.module is not None and not isinstance(value, self.module):
 				raise self.InvalidInstance(self.name, value, self.module)
@@ -301,12 +348,13 @@ class inherit_hparams:
 
 
 class hparam:
-	def __init__(self, default=unspecified_argument, space=None, name=None, **kwargs):
+	def __init__(self, default=unspecified_argument, space=None, name=None, ref=None, **kwargs):
 		self.default = default
 		assert name is None, 'Cannot specify a different name with hparam'
 		self.name = None
 		self.space = space
 		self.kwargs = kwargs
+		self.ref = ref
 		self.fget = None
 		self.fset = None
 		self.fdel = None
@@ -342,6 +390,7 @@ class hparam:
 		self.kwargs['fget'] = getattr(self, 'fget', None)
 		self.kwargs['fset'] = getattr(self, 'fset', None)
 		self.kwargs['fdel'] = getattr(self, 'fdel', None)
+		self.kwargs['ref'] = self.ref
 		self.name = name
 		try:
 			reg_fn = obj.register_hparam

@@ -2,7 +2,8 @@
 import math
 import torch
 import h5py as hf
-from ..framework import base, Rooted, DeviceContainer, util
+from ..framework import base, Rooted, DeviceContainer
+from .. import util
 
 
 class TransformableBuffer(base.AbstractBuffer):

@@ -8,7 +8,8 @@ import subprocess
 import wget
 import h5py as hf
 
-from ..framework import spaces, util
+from ..framework import spaces
+from .. import util
 from .base import ImageDataset, SyntheticDataset, SupervisedDataset
 from .buffers import TransformedBuffer, HDFBuffer
 # from .mnist import ImageBuffer

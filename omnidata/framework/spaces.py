@@ -147,6 +147,16 @@ class Dim(Packable, Metric, Sampler, Fingerprinted):
 
 
 
+# class Range(Dim):
+# 	def __init__(self, min=None, max=None, shape=(), dtype=None, **kwargs):
+# 		super().__init__(min=min, max=max, shape=shape, dtype=dtype, **kwargs)
+#
+#
+# 	def _sample(self, shape, gen):
+# 		return torch.randint(self.min, self.max, shape, generator=gen)
+
+
+
 class Continuous(Dim):
 	def _sample(self, shape, gen):
 		return self.unstandardize(self._sample_prior(torch.Size([*shape, *self.shape]), gen))
@@ -258,6 +268,17 @@ class Bound(Continuous):
 
 	# def difference(self, x, y, standardize=None):
 	# 	return super().difference(x, y, standardize=standardize)# * (self.range.unsqueeze(0) ** float(not standardize))
+
+
+
+class Logspace(Bound):
+	def standardize(self, vals):
+		return super().standardize(vals.log())
+	
+	
+	def unstandardize(self, vals):
+		return super().unstandardize(vals).exp()
+
 
 
 class Unbound(Continuous):
