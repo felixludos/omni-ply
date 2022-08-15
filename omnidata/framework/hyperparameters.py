@@ -222,15 +222,17 @@ class Parametrized(metaclass=ClassDescriptable):
 		super().__init__(*args, **self._extract_hparams(kwargs))
 	
 	
-	def _extract_hparams(self, kwargs):
+	def _extract_hparams(self, kwargs, remove_found=True):
 		for key, val in self.iterate_hparams(items=True):
 			if key in kwargs:
 				setattr(self, key, kwargs[key])
-				del kwargs[key]
+				if remove_found:
+					del kwargs[key]
 		for key, val in self.__class__.iterate_hparams(items=True):
 			if key in kwargs:
 				setattr(self, key, kwargs[key])
-				del kwargs[key]
+				if remove_found:
+					del kwargs[key]
 		return kwargs
 	
 	# id(newval), id(val), id(inspect.getattr_static(self, 'encoder')), id(inspect.getattr_static(self.__class__, 'encoder'))
