@@ -1,9 +1,19 @@
 import inspect
-from omnibelt import agnosticmethod, unspecified_argument, Class_Registry
+from omnibelt import agnosticmethod, unspecified_argument, Class_Registry, extract_function_signature
 from .hyperparameters import Parametrized, ModuleParametrized, hparam, inherit_hparams
 
 
 class Builder(ModuleParametrized):
+	
+	def _extract_(self, fn, args, kwargs):
+		def defaults(n):
+			if n in self._registered_hparams:
+				return getattr(self, n)
+			raise KeyError(n)
+		
+		return extract_function_signature(fn, args, kwargs, defaults)
+		
+		
 	@agnosticmethod
 	def build(self, *args, **kwargs):
 		params = inspect.signature(self._build).parameters
@@ -52,6 +62,13 @@ builder_registry = BuilderRegistry()
 register_builder = builder_registry.get_decorator()
 get_builder = builder_registry.get_builder
 
+
+
+class ClassBuilder(Builder, Class_Registry):
+	
+	
+	
+	pass
 
 
 
