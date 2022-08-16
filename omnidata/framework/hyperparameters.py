@@ -303,6 +303,11 @@ class Parametrized(metaclass=ClassDescriptable):
 
 
 class ModuleParametrized(Parametrized):
+
+	class SubModule(Parametrized.Hyperparameter):
+
+		pass
+
 	class Hyperparameter(Parametrized.Hyperparameter):
 		def __init__(self, default=unspecified_argument, required=True, module=None, cache=None, ref=None, **kwargs):
 			if ref is not None and module is None:
@@ -384,6 +389,7 @@ class hparam:
 	class OwnerNotParametrized(Exception):
 		pass
 
+	_registration_fn_name = 'register_hparam'
 
 	def __set_name__(self, obj, name):
 		if self.default is not unspecified_argument:
@@ -395,7 +401,7 @@ class hparam:
 		self.kwargs['ref'] = self.ref
 		self.name = name
 		try:
-			reg_fn = obj.register_hparam
+			reg_fn = getattr(obj, self._registration_fn_name)
 		except AttributeError:
 			raise self.OwnerNotParametrized(f'{obj} must be a subclass of {Parametrized}')
 		else:
@@ -403,5 +409,8 @@ class hparam:
 
 
 
-
+class machine(hparam):
+	_registration_fn_name = 'register_machine'
+	# def __init__(self, module, **kwargs):
+	# 	super().__init__(module=module, **kwargs)
 
