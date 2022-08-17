@@ -668,6 +668,11 @@ class Categorical(Dim):
 		self.n = n
 		self.values = values
 
+	
+	def update(self, values):
+		self.n = len(values)
+		self.values = values
+
 
 	def validate(self, value):
 		if value in self.values:

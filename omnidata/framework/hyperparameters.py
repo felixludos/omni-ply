@@ -1,7 +1,8 @@
 import inspect
 
 import logging
-from omnibelt import unspecified_argument, agnosticmethod, classdescriptor, ClassDescriptable, OrderedSet
+from collections import OrderedDict
+from omnibelt import split_dict, unspecified_argument, agnosticmethod, classdescriptor, ClassDescriptable, OrderedSet
 
 from . import spaces
 
@@ -222,20 +223,11 @@ class Parametrized(metaclass=ClassDescriptable):
 		super().__init__(*args, **self._extract_hparams(kwargs))
 	
 	
-	def _extract_hparams(self, kwargs, remove_found=True):
-		for key, val in self.iterate_hparams(items=True):
-			if key in kwargs:
-				setattr(self, key, kwargs[key])
-				if remove_found:
-					del kwargs[key]
-		for key, val in self.__class__.iterate_hparams(items=True):
-			if key in kwargs:
-				setattr(self, key, kwargs[key])
-				if remove_found:
-					del kwargs[key]
-		return kwargs
-	
-	# id(newval), id(val), id(inspect.getattr_static(self, 'encoder')), id(inspect.getattr_static(self.__class__, 'encoder'))
+	def _extract_hparams(self, kwargs):
+		found, remaining = split_dict(kwargs, self._registered_hparams)
+		for key, val in found.items():
+			setattr(self, key, val)
+		return remaining
 	
 	
 	Hyperparameter = Hyperparameter
@@ -255,7 +247,7 @@ class Parametrized(metaclass=ClassDescriptable):
 	
 	@agnosticmethod
 	def reset_hparams(self):
-		for key, param in self.iterate_hparams(True):
+		for key, param in self.named_hyperparameters():
 			param.reset()
 	
 	
@@ -267,48 +259,85 @@ class Parametrized(metaclass=ClassDescriptable):
 	
 	
 	@agnosticmethod
-	def iterate_hparams(self, items=False, **kwargs):
-		# cls = self if isinstance(self, type) else self.__class__
+	def hyperparameters(self):
+		for key, val in self.named_hyperparameters():
+			yield val
+	
+	
+	@agnosticmethod
+	def named_hyperparameters(self):
 		done = set()
-		# for key, val in cls.__dict__.items():
-		# 	if key not in done and isinstance(val, Hyperparameter):
-		# 		done.add(key)
-		# 		yield (key, val) if items else key
 		for key in self._registered_hparams:
-			# val = getattr(self, key, unspecified_argument) if getvalue else
 			val = inspect.getattr_static(self, key, unspecified_argument)
-			# val = getattr(self, key, None)
 			if key not in done and isinstance(val, Hyperparameter):
 				done.add(key)
-				yield (key, val) if items else key
-	
-	# if not isinstance(self, type):
-	# 	yield from self.__class__.iterate_hparams(items=items, **kwargs)
+				yield (key, val)
 	
 	
 	@agnosticmethod
 	def inherit_hparams(self, *names):
 		self._registered_hparams.update(names)
-# for name in names:
-# 	hparam = inspect.getattr_static(self, name, unspecified_argument)
-# 	if hparam is unspecified_argument:
-# 		if strict:
-# 			raise self.Hyperparameter.MissingHyperparameter(name)
-# 	else:
-# 		if copy:
-# 			hparam = hparam.copy()
-# 		self.__dict__[name] = hparam
-# setattr(self, name, hparam)
 
 
 
-class ModuleParametrized(Parametrized):
 
-	class SubModule(Parametrized.Hyperparameter):
+# class Machine(Parametrized):
+# 	pass
 
-		pass
 
-	class Hyperparameter(Parametrized.Hyperparameter):
+# class ModuleParametrized(Parametrized):
+
+
+class MachineParametrized(Parametrized):
+	
+	def __init_subclass__(cls, **kwargs):
+		super().__init_subclass__(**kwargs)
+		cls._registered_machines = OrderedSet()
+	
+	
+	def __init__(self, *args, **kwargs):
+		self._registered_machines = self._registered_machines.copy()
+		super().__init__(*args, **self._extract_machines(kwargs))
+		
+		
+	def _extract_machines(self, kwargs):
+		found, remaining = split_dict(kwargs, self._registered_hparams)
+		for key, val in found.items():
+			setattr(self, key, val)
+		return remaining
+	
+	
+	@agnosticmethod
+	def register_machine(self, name=None, fget=None, default=unspecified_argument, ref=None, **kwargs):
+		if ref is not None and name is None:
+			name = ref.name
+		assert name is not None
+		self._registered_machines.add(name)
+		return self.Machine(fget=fget, default=default, name=name, **kwargs)
+	
+	
+	@agnosticmethod
+	def machines(self):
+		for key, val in self.named_machines():
+			yield val
+	
+	
+	@agnosticmethod
+	def named_machines(self):
+		done = set()
+		for key in self._registered_machines:
+			val = inspect.getattr_static(self, key, unspecified_argument)
+			if key not in done and isinstance(val, MachineParametrized.Machine):
+				done.add(key)
+				yield (key, val)
+	
+	
+	@agnosticmethod
+	def inherit_machines(self, *names):
+		self._registered_machines.update(names)
+	
+	
+	class Machine(Parametrized.Hyperparameter):
 		def __init__(self, default=unspecified_argument, required=True, module=None, cache=None, ref=None, **kwargs):
 			if ref is not None and module is None:
 				module = ref.module
@@ -341,16 +370,22 @@ class inherit_hparams:
 
 	class OwnerNotParametrized(Exception):
 		pass
-
+	
+	_inherit_fn_name = 'inherit_hparams'
 
 	def __call__(self, cls):
 		try:
-			inherit_fn = cls.inherit_hparams
+			inherit_fn = getattr(cls, self._inherit_fn_name)
 		except AttributeError:
 			raise self.OwnerNotParametrized(f'{cls} must be a subclass of {Parametrized}')
 		else:
 			inherit_fn(*self.names, **self.kwargs)
 		return cls
+
+
+
+class inherit_machines:
+	_inherit_fn_name = 'inherit_machines'
 
 
 

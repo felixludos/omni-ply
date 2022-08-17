@@ -7,7 +7,8 @@ from .math import angle_diff, round_sigfigs, sigfig_noise, mixing_score, Metric,
 from . import spaces
 from . import base
 from .base import Function
-from .hyperparameters import Hyperparameter, Parametrized, ModuleParametrized, hparam, inherit_hparams
+from .hyperparameters import Hyperparameter, Parametrized, MachineParametrized, \
+	hparam, inherit_hparams, machine, inherit_machines
 from .building import Builder, get_builder, register_builder
 # from .util import data_args
 # from .hyperparameters import Hyperparameter, Parametrized, hparam, inherit_hparams
