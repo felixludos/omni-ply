@@ -1,7 +1,7 @@
 # import random
 import numpy as np
 from omnibelt import agnosticmethod
-from plethora.framework import abstract
+from ..framework import abstract
 
 
 def angle_diff(angle1, angle2, period=2*np.pi):

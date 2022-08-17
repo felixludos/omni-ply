@@ -668,11 +668,6 @@ class Categorical(Dim):
 		self.n = n
 		self.values = values
 
-	
-	def update(self, values):
-		self.n = len(values)
-		self.values = values
-
 
 	def validate(self, value):
 		if value in self.values:
@@ -721,6 +716,57 @@ class Categorical(Dim):
 	def distance(self, x, y, standardize=None):
 		N = len(x) if len(x.shape) > 1 else 1
 		return self.difference(x, y).view(N, -1).sum(-1).bool().float()
+
+
+
+class Selection(Categorical):
+	def __init__(self, values=None, **kwargs):
+		if values is None:
+			values = []
+		super().__init__(values, **kwargs)
+
+
+	def __str__(self):
+		return f'{self.__class__.__name__}({", ".join(map(str,self.values))})'
+
+	@property
+	def n(self):
+		return len(self.values)
+	@n.setter
+	def n(self, val):
+		pass
+
+	def replace(self, values):
+		self.values = values
+
+	def append(self, value):
+		self.values.append(value)
+
+	def extend(self, values):
+		self.values.extend(values)
+
+	def remove(self, value):
+		self.values.remove(value)
+
+	def clear(self):
+		self.values.clear()
+
+
+
+class ImplicitSelection(Selection):
+	def __init__(self, value_fn=None, **kwargs):
+		super().__init__(None, **kwargs)
+		self.value_fn = value_fn
+
+	@property
+	def values(self):
+		if self.value_fn is None:
+			return []
+		return self.value_fn()
+	@values.setter
+	def values(self, val):
+		pass
+
 
 
 

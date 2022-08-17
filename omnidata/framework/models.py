@@ -6,7 +6,7 @@ from omnibelt import agnosticmethod, unspecified_argument#, mix_into
 # from .. import util
 from . import abstract
 from .features import Seeded, Prepared
-from .hyperparameters import Parametrized, MachineParametrized, hparam, inherit_hparams
+from .hyperparameters import Parametrized, MachineParametrized, hparam, inherit_hparams, machine, inherit_machines
 from .base import Function, Container
 
 
@@ -235,7 +235,8 @@ class Model(#Buildable,
 
 
 class Trainer(MachineParametrized, Fitable, Prepared):
-	model = hparam(module=Model)
+	# model = hparam(None)
+	model = machine(module=Model)
 
 	def __init__(self, model, source=None, **kwargs):
 		super().__init__(**kwargs)
@@ -372,7 +373,7 @@ class PytorchModel(TrainableModel, nn.Module):
 class SimplePytorchModel(Loggable, PytorchModel):
 	_loss_key = 'loss'
 
-	optimizer = hparam(None)
+	optimizer = machine(None)
 
 
 	def _prepare(self, source=None, **kwargs):
@@ -403,119 +404,119 @@ class SimplePytorchModel(Loggable, PytorchModel):
 
 
 
-class Extractor(Function, abstract.Extractor):
-	@agnosticmethod
-	def extract(self, observation):
-		return self(observation)
-
-
-
-class Encoder(Extractor, abstract.Encoder):
-	@agnosticmethod
-	def encode(self, observation):
-		return self(observation)
-
-
-
-class Decoder(Function, abstract.Decoder):
-	@agnosticmethod
-	def decode(self, latent):
-		return self(latent)
-
-
-
-class Generator(Function, abstract.Generator): # TODO update
-	@agnosticmethod
-	def sample(self, *shape, gen=None):
-		raise NotImplementedError
-
-
-
-class Discriminator(Function, abstract.Discriminator):
-	@agnosticmethod
-	def judge(self, observation):
-		return self(observation)
-
-
-
-class Augmentation(Function, abstract.Augmentation):
-	@agnosticmethod
-	def augment(self, observation):
-		return self(observation)
-
-
-
-class Criterion(Function, abstract.Criterion):
-	@agnosticmethod
-	def compare(self, observation1, observation2):
-		return self(observation1, observation2)
-
-
-
-class Metric(Criterion, abstract.Metric): # obeys triangle inequality
-	@agnosticmethod
-	def distance(self, observation1, observation2):
-		return self(observation1, observation2)
-
-
-
-class PathCriterion(Criterion, abstract.PathCriterion):
-	@agnosticmethod
-	def compare_path(self, path1, path2):
-		return self(path1, path2)
-
-
-
-class Interpolator(Function, abstract.Interpolator):
-	# returns N steps to get from start to finish ("evenly spaces", by default)
-	@staticmethod
-	def interpolate(start, end, N):
-		start, end = start.unsqueeze(1), end.unsqueeze(1)
-		progress = torch.linspace(0., 1., steps=N+2, device=start.device).view(1, N+2, *[1] * len(start.shape[2:]))
-		return start + (end - start) * progress
-
-
-
-class Estimator(Function, abstract.Estimator):
-	@agnosticmethod
-	def predict(self, observation):
-		return self(observation)
-
-
-
-class Invertible(Function, abstract.Invertible):
-	@agnosticmethod
-	def forward(self, observation):
-		return self(observation)
-
-
-	@agnosticmethod
-	def inverse(self, observation):
-		raise NotImplementedError
-
-
-
-class Compressor(Function, abstract.Compressor):
-	@staticmethod
-	def compress(observation):
-		return self(observation)
-
-
-	@staticmethod
-	def decompress(data):
-		raise NotImplementedError
-
-
-
-class Quantizer(Function, abstract.Quantizer):
-	@staticmethod
-	def quantize(observation): # generally "removes" noise
-		return self(observation)
-
-
-	@staticmethod
-	def dequantize(observation): # generally adds noise
-		raise NotImplementedError
+# class Extractor(Function, abstract.Extractor):
+# 	@agnosticmethod
+# 	def extract(self, observation):
+# 		return self(observation)
+#
+#
+#
+# class Encoder(Extractor, abstract.Encoder):
+# 	@agnosticmethod
+# 	def encode(self, observation):
+# 		return self(observation)
+#
+#
+#
+# class Decoder(Function, abstract.Decoder):
+# 	@agnosticmethod
+# 	def decode(self, latent):
+# 		return self(latent)
+#
+#
+#
+# class Generator(Function, abstract.Generator): # TODO update
+# 	@agnosticmethod
+# 	def sample(self, *shape, gen=None):
+# 		raise NotImplementedError
+#
+#
+#
+# class Discriminator(Function, abstract.Discriminator):
+# 	@agnosticmethod
+# 	def judge(self, observation):
+# 		return self(observation)
+#
+#
+#
+# class Augmentation(Function, abstract.Augmentation):
+# 	@agnosticmethod
+# 	def augment(self, observation):
+# 		return self(observation)
+#
+#
+#
+# class Criterion(Function, abstract.Criterion):
+# 	@agnosticmethod
+# 	def compare(self, observation1, observation2):
+# 		return self(observation1, observation2)
+#
+#
+#
+# class Metric(Criterion, abstract.Metric): # obeys triangle inequality
+# 	@agnosticmethod
+# 	def distance(self, observation1, observation2):
+# 		return self(observation1, observation2)
+#
+#
+#
+# class PathCriterion(Criterion, abstract.PathCriterion):
+# 	@agnosticmethod
+# 	def compare_path(self, path1, path2):
+# 		return self(path1, path2)
+#
+#
+#
+# class Interpolator(Function, abstract.Interpolator):
+# 	# returns N steps to get from start to finish ("evenly spaces", by default)
+# 	@staticmethod
+# 	def interpolate(start, end, N):
+# 		start, end = start.unsqueeze(1), end.unsqueeze(1)
+# 		progress = torch.linspace(0., 1., steps=N+2, device=start.device).view(1, N+2, *[1] * len(start.shape[2:]))
+# 		return start + (end - start) * progress
+#
+#
+#
+# class Estimator(Function, abstract.Estimator):
+# 	@agnosticmethod
+# 	def predict(self, observation):
+# 		return self(observation)
+#
+#
+#
+# class Invertible(Function, abstract.Invertible):
+# 	@agnosticmethod
+# 	def forward(self, observation):
+# 		return self(observation)
+#
+#
+# 	@agnosticmethod
+# 	def inverse(self, observation):
+# 		raise NotImplementedError
+#
+#
+#
+# class Compressor(Function, abstract.Compressor):
+# 	@staticmethod
+# 	def compress(observation):
+# 		return self(observation)
+#
+#
+# 	@staticmethod
+# 	def decompress(data):
+# 		raise NotImplementedError
+#
+#
+#
+# class Quantizer(Function, abstract.Quantizer):
+# 	@staticmethod
+# 	def quantize(observation): # generally "removes" noise
+# 		return self(observation)
+#
+#
+# 	@staticmethod
+# 	def dequantize(observation): # generally adds noise
+# 		raise NotImplementedError
 
 
 

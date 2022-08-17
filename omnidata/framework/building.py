@@ -6,16 +6,6 @@ from .hyperparameters import Parametrized, MachineParametrized, spaces, \
 
 class Builder(Parametrized):
 
-	@agnosticmethod
-	def _fillin_hparam_args(self, fn, args, kwargs):
-		def defaults(n):
-			if n in self._registered_hparams:
-				return getattr(self, n)
-			raise KeyError(n)
-		
-		return extract_function_signature(fn, args, kwargs, defaults)
-
-
 	class NoProductFound(NotImplementedError):
 		pass
 
@@ -55,36 +45,42 @@ class Builder(Parametrized):
 
 
 
-class BuilderRegistry(Class_Registry):
-	def get_builder(self, name):
-		return self.find(name).cls
-builder_registry = BuilderRegistry()
+builder_registry = Class_Registry()
 register_builder = builder_registry.get_decorator()
-get_builder = builder_registry.get_builder
+get_builder = builder_registry.get_class
 
 
 
 class ClassBuilder(Builder):
-	ident = hparam(required=True)
+	ident = hparam(required=True, space=spaces.Selection())
 	
 	
-	def __init_subclass__(cls, **kwargs):
+	def __init_subclass__(cls, inherit_ident=True, default_ident=None, **kwargs):
 		super().__init_subclass__(**kwargs)
+		if inherit_ident:
+			inherit_hparams('ident')(cls)
+		if default_ident is not None:
+			cls._set_default_ident(default_ident)
 		cls._update_ident_space()
 	
 	
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self._update_ident_space()
-	
-	
+
+
 	@agnosticmethod
 	def _update_ident_space(self):
-		ident_space = self.product_registry().get_hparam('ident').space
-		if isinstance(ident_space, spaces.Categorical):
-			ident_space.update(list(self.product_registry().keys()))
+		ident_space = self.get_hparam('ident').space
+		if isinstance(ident_space, spaces.Selection):
+			ident_space.replace(list(self.product_registry().keys()))
 	
-	
+
+	@agnosticmethod
+	def _set_default_ident(self, default):
+		self.get_hparam('ident').default = default
+
+
 	@agnosticmethod
 	def product_registry(self):
 		return {}
@@ -109,7 +105,7 @@ class ClassBuilder(Builder):
 			if product is me:
 				yield from super()._plan(ident=ident, **kwargs)
 			elif isinstance(product, Parametrized):
-				yield from product.hyperparameters()
+				yield from product.named_hyperparameters()
 
 
 	@agnosticmethod
@@ -121,10 +117,47 @@ class ClassBuilder(Builder):
 
 class AutoClassBuilder(ClassBuilder):
 	'''Automatically register subclasses and add them to the product_registry.'''
-	
-	
-	
-	pass
+
+	Class_Registry = Class_Registry
+	_product_registry: Class_Registry = None
+	_registration_node = None
+
+	def __init_subclass__(cls, ident=None, create_registry=False, default=False,
+	                      inherit_ident=False, default_ident=None, **kwargs):
+		super().__init_subclass__(inherit_ident=inherit_ident, default_ident=default_ident, **kwargs)
+
+		node = cls._registration_node
+		if node is None or create_registry:
+			registry = cls.Class_Registry()
+			cls._product_registry = registry
+			cls._registration_node = cls
+
+		if ident is not None:
+			cls.register_product(ident, cls, default=default)
+			cls.ident = ident
+
+
+	@agnosticmethod
+	def product_registry(self):
+		if self._product_registry is None:
+			return {}
+		return self._product_registry
+
+
+	@agnosticmethod
+	def register_product(self, ident, product, default=False):
+		self._registration_node.get_hparam('ident').space.append(ident)
+		if default:
+			self._set_default_ident(ident)
+		self._product_registry.new(ident, product)
+
+
+
+
+
+
+
+
 
 
 

@@ -2,7 +2,7 @@ import inspect
 
 import logging
 from collections import OrderedDict
-from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, extract_function_signature
+from omnibelt import split_dict, unspecified_argument, agnosticmethod, classdescriptor, ClassDescriptable, OrderedSet
 
 from . import spaces
 
@@ -16,8 +16,8 @@ from . import spaces
 
 
 
-class Hyperparameter(property):
-	def __init__(self, name=None, default=unspecified_argument, *, required=None, fget=None,
+class Hyperparameter(property, classdescriptor):
+	def __init__(self, name=None, fget=None, default=unspecified_argument, required=None,
 	             strict=None, cache=None, fixed=None, space=None, ref=None, **kwargs):
 		if ref is not None:
 			if name is None:
@@ -58,7 +58,6 @@ class Hyperparameter(property):
 		self.required = required
 		self.fixed = fixed
 		self.strict = strict # raises and error if an invalid value is set
-
 
 
 	def getter(self, fn):
@@ -209,111 +208,21 @@ class Hyperparameter(property):
 		return value
 
 
-class RefHyperparameter(Hyperparameter):
 
-	_default_init_args = {'default': unspecified_argument}
-
-	def __init__(self, name=None, default=unspecified_argument, *, ref=None, **kwargs):
-		if ref is not None:
-			kwargs = self._check_ref(ref, {'name': name, 'default': default, **kwargs}, self._default_init_args)
-			name = kwargs['name']
-			default = kwargs['default']
-		super().__init__(name=name, default=default, **kwargs)
-
-
-	def _check_ref(self, ref, kwargs, defaults):
-		'''replaces any kwargs that are defaults with the ref value'''
-
-		if ref is not None:
-			fix = {}
-			for k, v in kwargs.items():
-				if v is defaults.get(k):
-					fix[k] = getattr(ref, k)
-			kwargs.update(fix)
-		return kwargs
-
-
-class hparam:
-	def __init__(self, default=unspecified_argument, *, space=None, name=None, **kwargs):
-		self.default = default
-		assert name is None, 'Cannot specify a different name with hparam'
-		self.name = None
-		self.space = space
-		self.kwargs = kwargs
-		self.fget = None
-		self.fset = None
-		self.fdel = None
-
-
-	def setter(self, fn):
-		self.fset = fn
-		return self
-
-
-	def deleter(self, fn):
-		self.fdel = fn
-		return self
-
-
-	def __call__(self, fn):
-		self.fget = fn
-		return self
-
-
-	def __get__(self, instance, owner): # TODO: this is just for linting, right?
-		return getattr(instance, self.name)
-
-
-	class OwnerNotParametrized(Exception):
-		pass
-
-	# _registration_fn_name = 'register_hparam'
-	#
-	# def __set_name__(self, obj, name):
-	# 	if self.default is not unspecified_argument:
-	# 		self.kwargs['default'] = self.default
-	# 	self.kwargs['space'] = self.space
-	# 	self.kwargs['fget'] = getattr(self, 'fget', None)
-	# 	self.kwargs['fset'] = getattr(self, 'fset', None)
-	# 	self.kwargs['fdel'] = getattr(self, 'fdel', None)
-	# 	self.name = name
-	# 	try:
-	# 		reg_fn = getattr(obj, self._registration_fn_name)
-	# 	except AttributeError:
-	# 		raise self.OwnerNotParametrized(f'{obj} must be a subclass of {Parametrized}')
-	# 	else:
-	# 		setattr(obj, name, reg_fn(name, **self.kwargs))
-
-
-
-class Parametrized:
+class Parametrized(metaclass=ClassDescriptable):
 	_registered_hparams = None
 	
 	
 	def __init_subclass__(cls, **kwargs):
 		super().__init_subclass__(**kwargs)
 		cls._registered_hparams = OrderedSet()
-		for key, val in cls.__dict__.items():
-			if isinstance(val, hparam):
-				cls.register_hparam(key, val)
 	
 	
 	def __init__(self, *args, **kwargs):
 		self._registered_hparams = self._registered_hparams.copy()
 		super().__init__(*args, **self._extract_hparams(kwargs))
 
-
-	@agnosticmethod
-	def _fillin_hparam_args(self, fn, args, kwargs):
-		def defaults(n):
-			if n in self._registered_hparams:
-				return getattr(self, n)
-			raise KeyError(n)
-
-		return extract_function_signature(fn, args, kwargs, defaults)
-
-
-	@agnosticmethod
+	
 	def _extract_hparams(self, kwargs):
 		found, remaining = split_dict(kwargs, self._registered_hparams)
 		for key, val in found.items():
