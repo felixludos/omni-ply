@@ -18,24 +18,7 @@ from . import spaces
 
 class Hyperparameter(property):
 	def __init__(self, name=None, default=unspecified_argument, *, required=None, fget=None,
-	             strict=None, cache=None, fixed=None, space=None, ref=None, **kwargs):
-		if ref is not None:
-			if name is None:
-				name = ref.name
-			if fget is None:
-				fget = ref.fget
-			if default is unspecified_argument:
-				default = ref.default
-			if required is None:
-				required = ref.required
-			if strict is None:
-				strict = ref.strict
-			if cache is None:
-				cache = ref.cache
-			if fixed is None:
-				fixed = ref.fixed
-			if space is None:
-				space = ref.space
+	             strict=None, cache=None, fixed=None, space=None, **kwargs):
 		if required is None:
 			required = False
 		if strict is None:
@@ -49,7 +32,7 @@ class Hyperparameter(property):
 			assert fget is not None, 'No name provided'
 			name = fget.__name__
 		self.name = name
-		self.cls_value = self._missing
+		self.cached_value = self._missing
 		self.default = default
 		self.cache = cache
 		if space is not None and isinstance(space, (list, tuple, set)):
@@ -58,7 +41,6 @@ class Hyperparameter(property):
 		self.required = required
 		self.fixed = fixed
 		self.strict = strict # raises and error if an invalid value is set
-
 
 
 	def getter(self, fn):
@@ -121,7 +103,7 @@ class Hyperparameter(property):
 
 	def reset(self, obj=None):
 		if obj is None:
-			self.cls_value = self._missing
+			self.cached_value = self._missing
 		elif self.fdel is not None:
 			super().__delete__(obj)
 		elif not isinstance(obj, type) and self.name in obj.__dict__:
@@ -166,12 +148,12 @@ class Hyperparameter(property):
 				if self.cache:
 					obj.__dict__[self.name] = value
 				return value
-		elif self.cls_value is not self._missing:
-			return self.cls_value
+		elif self.cached_value is not self._missing:
+			return self.cached_value
 		elif self.fget is not None:
 			value = self._custom_getter(cls, cls) # "class property"
 			if self.cache:
-				self.cls_value = value
+				self.cached_value = value
 			return value
 		if self.required or self.default is unspecified_argument:
 			raise self.MissingHyperparameter(self.name)
@@ -201,7 +183,7 @@ class Hyperparameter(property):
 				raise e
 			prt.warning(f'{type(e).__name__}: {e}')
 		if isinstance(obj, type): # "updating" the class variable
-			self.cls_value = value
+			self.cached_value = value
 		else:
 			if self.fset is not None: # use user-defined setter
 				return super().__set__(obj, value)
@@ -295,6 +277,8 @@ class Parametrized:
 		cls._registered_hparams = OrderedSet()
 		for key, val in cls.__dict__.items():
 			if isinstance(val, hparam):
+				cls._registered_hparams.add(key)
+			if isinstance(val, Hyperparameter):
 				cls.register_hparam(key, val)
 	
 	
@@ -333,7 +317,9 @@ class Parametrized:
 		return self.Hyperparameter(fget=fget, default=default, name=name, **kwargs)
 	
 	
-	RequiredHyperparameter = Hyperparameter.MissingHyperparameter
+	@property
+	def RequiredHyperparameterError(self):
+		return self.Hyperparameter.MissingHyperparameter
 	
 	
 	@agnosticmethod
@@ -363,7 +349,7 @@ class Parametrized:
 			val = inspect.getattr_static(self, key, unspecified_argument)
 			if key not in done and isinstance(val, Hyperparameter):
 				done.add(key)
-				yield (key, val)
+				yield key, val
 	
 	
 	@agnosticmethod
