@@ -1,10 +1,9 @@
 import inspect
 from omnibelt import agnosticmethod, unspecified_argument, Class_Registry, extract_function_signature
-from .hyperparameters import Parametrized, MachineParametrized, spaces, \
-	hparam, inherit_hparams, machine, inherit_machines
+from .hyperparameters import Parameterized, MachineParametrized, spaces, hparam, inherit_hparams, with_hparams
 
 
-class Builder(Parametrized):
+class Builder(Parameterized):
 
 	class NoProductFound(NotImplementedError):
 		pass
@@ -12,7 +11,7 @@ class Builder(Parametrized):
 
 	@agnosticmethod
 	def product(self, *args, **kwargs):
-		fixed_args, fixed_kwargs = self._fillin_hparam_args(self._product, args, kwargs)
+		fixed_args, fixed_kwargs = self.fill_hparams(self._product, args, kwargs)
 		return self._product(*fixed_args, **fixed_kwargs)
 
 		
@@ -23,7 +22,7 @@ class Builder(Parametrized):
 	
 	@agnosticmethod
 	def plan(self, *args, **kwargs):
-		fixed_args, fixed_kwargs = self._fillin_hparam_args(self._plan, args, kwargs)
+		fixed_args, fixed_kwargs = self.fill_hparams(self._plan, args, kwargs)
 		return self._plan(*fixed_args, **fixed_kwargs)
 		
 
@@ -34,7 +33,7 @@ class Builder(Parametrized):
 
 	@agnosticmethod
 	def build(self, *args, **kwargs):
-		fixed_args, fixed_kwargs = self._fillin_hparam_args(self._build, args, kwargs)
+		fixed_args, fixed_kwargs = self.fill_hparams(self._build, args, kwargs)
 		return self._build(*fixed_args, **fixed_kwargs)
 	
 	
@@ -58,7 +57,7 @@ class ClassBuilder(Builder):
 	def __init_subclass__(cls, inherit_ident=True, default_ident=None, **kwargs):
 		super().__init_subclass__(**kwargs)
 		if inherit_ident:
-			inherit_hparams('ident')(cls)
+			cls.inherit_hparams('ident')
 		if default_ident is not None:
 			cls._set_default_ident(default_ident)
 		cls._update_ident_space()
@@ -102,9 +101,9 @@ class ClassBuilder(Builder):
 			pass
 		else:
 			me = self if type(self) == type else self.__class__
-			if product is me:
+			if product is me or not isinstance(product, Parameterized):
 				yield from super()._plan(ident=ident, **kwargs)
-			elif isinstance(product, Parametrized):
+			elif isinstance(product, Parameterized):
 				yield from product.named_hyperparameters()
 
 

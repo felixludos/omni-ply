@@ -6,7 +6,7 @@ from omnibelt import agnosticmethod, unspecified_argument#, mix_into
 # from .. import util
 from . import abstract
 from .features import Seeded, Prepared
-from .hyperparameters import Parametrized, MachineParametrized, hparam, inherit_hparams, machine, inherit_machines
+from .hyperparameters import Parameterized, MachineParametrized, hparam, inherit_hparams, machine
 from .base import Function, Container
 
 
@@ -324,7 +324,7 @@ class TrainableModel(Model):
 		return info
 
 
-class Loggable(Model):
+class Loggable(Model): # TODO: this should be in the trainer! the Model just has a function
 	def __init__(self, stats=None, **kwargs):
 		if stats is None:
 			stats = self.Statistics()

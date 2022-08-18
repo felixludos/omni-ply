@@ -2,17 +2,18 @@ import inspect
 
 import logging
 from collections import OrderedDict
-from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, extract_function_signature
+from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, \
+	extract_function_signature, method_wrapper
 
 from . import spaces
 
 # prt = get_printer(__file__, format='%(levelname)s: %(msg)s')
 
-# prt = logging.Logger('Hyperparameters')
-# ch = logging.StreamHandler()
-# ch.setFormatter(logging.Formatter('%(levelname)s: %(msg)s'))
-# ch.setLevel(0)
-# prt.addHandler(ch)
+prt = logging.Logger('Hyperparameters')
+ch = logging.StreamHandler()
+ch.setFormatter(logging.Formatter('%(levelname)s: %(msg)s'))
+ch.setLevel(0)
+prt.addHandler(ch)
 
 
 
@@ -191,8 +192,8 @@ class Hyperparameter(property):
 		return value
 
 
-class RefHyperparameter(Hyperparameter):
 
+class RefHyperparameter(Hyperparameter):
 	_default_init_args = {'default': unspecified_argument}
 
 	def __init__(self, name=None, default=unspecified_argument, *, ref=None, **kwargs):
@@ -213,6 +214,27 @@ class RefHyperparameter(Hyperparameter):
 					fix[k] = getattr(ref, k)
 			kwargs.update(fix)
 		return kwargs
+
+
+
+class Machine(Hyperparameter):
+		def __init__(self, default=unspecified_argument, required=True, module=None, cache=None, ref=None, **kwargs):
+			if ref is not None and module is None:
+				module = ref.module
+			if cache is None:
+				cache = module is not None
+			super().__init__(default=default, required=required, cache=cache, ref=ref, **kwargs)
+			self.module = module
+
+
+		class InvalidValue(Hyperparameter.InvalidValue):
+			def __init__(self, name, value, base, msg=None):
+				if msg is None:
+					value = type(value) if isinstance(value, type) else str(value)
+					msg = f'{name}: {value} (expecting an instance of {base})'
+				super().__init__(name, value, msg=msg)
+				self.base = base
+
 
 
 class hparam:
@@ -249,37 +271,47 @@ class hparam:
 	class OwnerNotParametrized(Exception):
 		pass
 
-	# _registration_fn_name = 'register_hparam'
-	#
-	# def __set_name__(self, obj, name):
-	# 	if self.default is not unspecified_argument:
-	# 		self.kwargs['default'] = self.default
-	# 	self.kwargs['space'] = self.space
-	# 	self.kwargs['fget'] = getattr(self, 'fget', None)
-	# 	self.kwargs['fset'] = getattr(self, 'fset', None)
-	# 	self.kwargs['fdel'] = getattr(self, 'fdel', None)
-	# 	self.name = name
-	# 	try:
-	# 		reg_fn = getattr(obj, self._registration_fn_name)
-	# 	except AttributeError:
-	# 		raise self.OwnerNotParametrized(f'{obj} must be a subclass of {Parametrized}')
-	# 	else:
-	# 		setattr(obj, name, reg_fn(name, **self.kwargs))
+	_registration_fn_name = 'register_hparam'
+
+	def register_with(self, obj):
+		reg_fn = getattr(obj, self._registration_fn_name)
+
+		kwargs = self.kwargs.copy()
+		if self.default is not unspecified_argument:
+			kwargs['default'] = self.default
+		kwargs['space'] = self.space
+		kwargs['fget'] = getattr(self, 'fget', None)
+		kwargs['fset'] = getattr(self, 'fset', None)
+		kwargs['fdel'] = getattr(self, 'fdel', None)
+
+		assert self.name is not None, 'Cannot register hparam without a name'
+		reg_fn(self.name, **kwargs)
+
+	def __set_name__(self, obj, name):
+		self.name = name
+		setattr(obj, name, self)
+		# return self
 
 
 
-class Parametrized:
+class machine(hparam):
+	_registration_fn_name = 'register_machine'
+
+
+
+class Parameterized:
 	_registered_hparams = None
 	
-	
-	def __init_subclass__(cls, **kwargs):
+
+	def __init_subclass__(cls, skip_auto_registration=False, **kwargs):
 		super().__init_subclass__(**kwargs)
 		cls._registered_hparams = OrderedSet()
-		for key, val in cls.__dict__.items():
-			if isinstance(val, hparam):
-				cls._registered_hparams.add(key)
-			if isinstance(val, Hyperparameter):
-				cls.register_hparam(key, val)
+		if not skip_auto_registration:
+			for key, val in cls.__dict__.items():
+				if isinstance(val, hparam):
+					val.register_with(cls)
+				elif isinstance(val, Hyperparameter):
+					cls.register_hparam(key, val)
 	
 	
 	def __init__(self, *args, **kwargs):
@@ -288,12 +320,11 @@ class Parametrized:
 
 
 	@agnosticmethod
-	def _fillin_hparam_args(self, fn, args, kwargs):
+	def fill_hparams(self, fn, args=(), kwargs={}):
 		def defaults(n):
 			if n in self._registered_hparams:
 				return getattr(self, n)
 			raise KeyError(n)
-
 		return extract_function_signature(fn, args, kwargs, defaults)
 
 
@@ -305,16 +336,20 @@ class Parametrized:
 		return remaining
 
 
-	Hyperparameter = Hyperparameter
+	Hyperparameter = RefHyperparameter
 	
 	
 	@agnosticmethod
-	def register_hparam(self, name=None, fget=None, default=unspecified_argument, ref=None, **kwargs):
-		if ref is not None and name is None:
-			name = ref.name
+	def register_hparam(self, name=None, _instance=None, default=unspecified_argument, fget=None, ref=None, **kwargs):
+		if _instance is None:
+			if ref is not None and name is None:
+				name = ref.name
+			_instance = self.Hyperparameter(fget=fget, default=default, name=name, **kwargs)
+		if name is None:
+			name = _instance.name
 		assert name is not None
 		self._registered_hparams.add(name)
-		return self.Hyperparameter(fget=fget, default=default, name=name, **kwargs)
+		setattr(self, name, _instance)
 	
 	
 	@property
@@ -324,7 +359,7 @@ class Parametrized:
 	
 	@agnosticmethod
 	def reset_hparams(self):
-		for key, param in self.named_hyperparameters():
+		for param in self.hyperparameters():
 			param.reset()
 	
 
@@ -344,11 +379,9 @@ class Parametrized:
 	
 	@agnosticmethod
 	def named_hyperparameters(self):
-		done = set()
 		for key in self._registered_hparams:
-			val = inspect.getattr_static(self, key, unspecified_argument)
-			if key not in done and isinstance(val, Hyperparameter):
-				done.add(key)
+			val = self.get_hparam(key, None)
+			if isinstance(val, Hyperparameter):
 				yield key, val
 	
 	
@@ -358,89 +391,27 @@ class Parametrized:
 
 
 
+class MachineParametrized(Parameterized):
+	Machine = Machine
 
-# class Machine(Parametrized):
-# 	pass
-
-
-# class ModuleParametrized(Parametrized):
-
-
-class MachineParametrized(Parametrized):
-	_registered_machines = None
-
-
-	def __init_subclass__(cls, **kwargs):
-		super().__init_subclass__(**kwargs)
-		cls._registered_machines = OrderedSet()
-
-
-	def __init__(self, *args, **kwargs):
-		if self._registered_machines is None:
-			self._registered_machines = OrderedSet()
-		self._registered_machines = self._registered_machines.copy()
-		super().__init__(*args, **self._extract_machines(kwargs))
-
-		
-	def _extract_machines(self, kwargs):
-		found, remaining = split_dict(kwargs, self._registered_machines)
-		for key, val in found.items():
-			setattr(self, key, val)
-		return remaining
-	
-	
 	@agnosticmethod
-	def register_machine(self, name=None, fget=None, default=unspecified_argument, ref=None, **kwargs):
-		if ref is not None and name is None:
-			name = ref.name
-		assert name is not None
-		self._registered_machines.add(name)
-		return self.Machine(fget=fget, default=default, name=name, **kwargs)
-	
-	
+	def register_machine(self, name=None, _instance=None, **kwargs):
+		if _instance is None:
+			_instance = self.Machine(name=name, **kwargs)
+		return self.register_hparam(name, _instance)
+
+
 	@agnosticmethod
 	def machines(self):
 		for key, val in self.named_machines():
 			yield val
-	
-	
+
+
 	@agnosticmethod
 	def named_machines(self):
-		done = set()
-		for key in self._registered_machines:
-			val = inspect.getattr_static(self, key, unspecified_argument)
-			if key not in done and isinstance(val, MachineParametrized.Machine):
-				done.add(key)
-				yield (key, val)
-	
-	
-	@agnosticmethod
-	def inherit_machines(self, *names):
-		self._registered_machines.update(names)
-	
-	
-	class Machine(Parametrized.Hyperparameter):
-		def __init__(self, default=unspecified_argument, required=True, module=None, cache=None, ref=None, **kwargs):
-			if ref is not None and module is None:
-				module = ref.module
-			if cache is None:
-				cache = module is not None
-			super().__init__(default=default, required=required, cache=cache, ref=ref, **kwargs)
-			self.module = module
-		
-		
-		class InvalidInstance(Hyperparameter.InvalidValue):
-			def __init__(self, name, value, base, msg=None):
-				if msg is None:
-					value = type(value) if isinstance(value, type) else str(value)
-					msg = f'{name}: {value} (expecting an instance of {base})'
-				super().__init__(name, value, msg=msg)
-				self.base = base
-		
-		
-		def validate_value(self, value):
-			if self.module is not None and not isinstance(value, self.module):
-				raise self.InvalidInstance(self.name, value, self.module)
+		for key, val in self.named_hyperparameters():
+			if isinstance(val, Machine):
+				yield key, val
 
 
 
@@ -449,85 +420,34 @@ class inherit_hparams:
 		self.names = names
 		self.kwargs = kwargs
 
-
 	class OwnerNotParametrized(Exception):
 		pass
-	
+
 	_inherit_fn_name = 'inherit_hparams'
 
 	def __call__(self, cls):
 		try:
 			inherit_fn = getattr(cls, self._inherit_fn_name)
 		except AttributeError:
-			raise self.OwnerNotParametrized(f'{cls} must be a subclass of {Parametrized}')
+			raise self.OwnerNotParametrized(f'{cls} must be a subclass of {Parameterized}')
 		else:
 			inherit_fn(*self.names, **self.kwargs)
 		return cls
 
 
 
-class inherit_machines:
-	_inherit_fn_name = 'inherit_machines'
+class with_hparams(method_wrapper):
+	def __init__(self, fn=None, *, static=False):
+		super().__init__(fn)
+		self.static = static
 
 
+	def process_args(self, args, kwargs):
+		args, kwargs = self.obj.fill_hparams(self.fn, args, kwargs)
 
-class hparam:
-	def __init__(self, default=unspecified_argument, space=None, name=None, ref=None, **kwargs):
-		self.default = default
-		assert name is None, 'Cannot specify a different name with hparam'
-		self.name = None
-		self.space = space
-		self.kwargs = kwargs
-		self.ref = ref
-		self.fget = None
-		self.fset = None
-		self.fdel = None
+		if not self.static:
+			args = (self.obj, *args)
+		return args, kwargs
 
 
-	def setter(self, fn):
-		self.fset = fn
-		return self
-
-
-	def deleter(self, fn):
-		self.fdel = fn
-		return self
-
-
-	def __call__(self, fn):
-		self.fget = fn
-		return self
-
-
-	def __get__(self, instance, owner): # TODO: this is just for linting, right?
-		return getattr(instance, self.name)
-
-
-	class OwnerNotParametrized(Exception):
-		pass
-
-	_registration_fn_name = 'register_hparam'
-
-	def __set_name__(self, obj, name):
-		if self.default is not unspecified_argument:
-			self.kwargs['default'] = self.default
-		self.kwargs['space'] = self.space
-		self.kwargs['fget'] = getattr(self, 'fget', None)
-		self.kwargs['fset'] = getattr(self, 'fset', None)
-		self.kwargs['fdel'] = getattr(self, 'fdel', None)
-		self.kwargs['ref'] = self.ref
-		self.name = name
-		try:
-			reg_fn = getattr(obj, self._registration_fn_name)
-		except AttributeError:
-			raise self.OwnerNotParametrized(f'{obj} must be a subclass of {Parametrized}')
-		else:
-			setattr(obj, name, reg_fn(name, **self.kwargs))
-
-
-
-class machine(hparam):
-	_registration_fn_name = 'register_machine'
-	# def __init__(self, module, **kwargs):
-	# 	super().__init__(module=module, **kwargs)
 
