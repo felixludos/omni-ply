@@ -17,7 +17,7 @@ prt.addHandler(ch)
 
 
 
-class Hyperparameter(property):
+class SimpleHyperparameter(property):
 	def __init__(self, name=None, default=unspecified_argument, *, required=None, fget=None,
 	             strict=None, cache=None, fixed=None, space=None, **kwargs):
 		if required is None:
@@ -193,7 +193,7 @@ class Hyperparameter(property):
 
 
 
-class RefHyperparameter(Hyperparameter):
+class Hyperparameter(SimpleHyperparameter):
 	_default_init_args = {'default': unspecified_argument}
 
 	def __init__(self, name=None, default=unspecified_argument, *, ref=None, **kwargs):
@@ -310,7 +310,7 @@ class Parameterized:
 			for key, val in cls.__dict__.items():
 				if isinstance(val, hparam):
 					val.register_with(cls)
-				elif isinstance(val, Hyperparameter):
+				elif isinstance(val, SimpleHyperparameter):
 					cls.register_hparam(key, val)
 	
 	
@@ -336,7 +336,7 @@ class Parameterized:
 		return remaining
 
 
-	Hyperparameter = RefHyperparameter
+	Hyperparameter = Hyperparameter
 	
 	
 	@agnosticmethod
@@ -386,8 +386,13 @@ class Parameterized:
 	
 	
 	@agnosticmethod
-	def inherit_hparams(self, *names):
-		self._registered_hparams.update(names)
+	def inherit_hparams(self, *names, prepend=True):
+		if prepend:
+			for name in reversed(names):
+				self._registered_hparams.discard(name)
+				self._registered_hparams.insert(0, name)
+		else:
+			self._registered_hparams.update(names)
 
 
 
