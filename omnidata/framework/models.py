@@ -325,78 +325,33 @@ class TrainableModel(Model):
 
 
 class Loggable(Model): # TODO: this should be in the trainer! the Model just has a function
-	def __init__(self, stats=None, **kwargs):
-		if stats is None:
-			stats = self.Statistics()
-		super().__init__(**kwargs)
-		self._stats = stats
-	
-	
-	class Statistics:
-		def mete(self, info, **kwargs):
-			raise NotImplementedError
-	
-	
-	# def register_stats(self, *stats):
-	# 	for stat in stats:
-	# 		self._stats.append(stat)
-	# 	# for name in names:
-	# 	# 	self._stats[name] = self.Statistic(name)
-	# 	# for name, stat in stats.items():
-	# 	# 	if not isinstance(stat, self.Statistic):
-	# 	# 		print(f'WARNING: stat {name} should subclass {self.Statistic.__name__}')
-	# 	# 	self._stats[name] = stat
-	
-	
+# 	def __init__(self, stats=None, **kwargs):
+# 		if stats is None:
+# 			stats = self.Statistics()
+# 		super().__init__(**kwargs)
+# 		self._stats = stats
+#
+#
+# 	class Statistics:
+# 		def mete(self, info, **kwargs):
+# 			raise NotImplementedError
+#
+#
+# 	# def register_stats(self, *stats):
+# 	# 	for stat in stats:
+# 	# 		self._stats.append(stat)
+# 	# 	# for name in names:
+# 	# 	# 	self._stats[name] = self.Statistic(name)
+# 	# 	# for name, stat in stats.items():
+# 	# 	# 	if not isinstance(stat, self.Statistic):
+# 	# 	# 		print(f'WARNING: stat {name} should subclass {self.Statistic.__name__}')
+# 	# 	# 	self._stats[name] = stat
+#
+#
 	def log(self, info, **kwargs):
-		self._stats.mete(info, **kwargs)
+		pass
+		# self._stats.mete(info, **kwargs)
 
-
-
-class PytorchModel(TrainableModel, nn.Module):
-	@agnosticmethod
-	def step(self, info, **kwargs):
-		if not self.training:
-			self.train()
-		return super().step(info, **kwargs)
-
-
-	@agnosticmethod
-	def eval_step(self, info, **kwargs):
-		if self.training:
-			self.eval()
-		with torch.no_grad():
-			return super().eval_step(info, **kwargs)
-
-
-
-class SimplePytorchModel(Loggable, PytorchModel):
-	_loss_key = 'loss'
-
-	optimizer = machine(None)
-
-
-	def _prepare(self, source=None, **kwargs):
-		out = super()._prepare(source=source, **kwargs)
-		self.optimizer.prepare(self.parameters())
-		return out
-
-
-	def _compute_loss(self, info):
-		return info
-
-
-	def _step(self, info):
-		self._compute_loss(info)
-
-		if self.training:
-			loss = info[self._loss_key]
-
-			self.optimizer.zero_grad()
-			loss.backward()
-			self.optimizer.step()
-
-		return info
 
 
 

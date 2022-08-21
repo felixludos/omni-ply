@@ -73,7 +73,8 @@ class ClassBuilder(Builder):
 
 	@agnosticmethod
 	def _update_ident_space(self):
-		ident_space = self.get_hparam('ident').space
+		hparam = self.get_hparam('ident')
+		ident_space = hparam.space
 		if isinstance(ident_space, spaces.Selection):
 			ident_space.replace(list(self.product_registry().keys()))
 	
@@ -126,7 +127,8 @@ class AutoClassBuilder(ClassBuilder):
 
 	def __init_subclass__(cls, ident=None, create_registry=False, default=False,
 	                      inherit_ident=False, default_ident=None, **kwargs):
-		super().__init_subclass__(inherit_ident=create_registry, default_ident=None, **kwargs)
+		super().__init_subclass__(inherit_ident=create_registry,
+		                          default_ident=None, **kwargs)
 
 		node = cls._registration_node
 		if node is None or create_registry:
@@ -137,7 +139,8 @@ class AutoClassBuilder(ClassBuilder):
 
 		if ident is not None:
 			cls.register_product(ident, cls, default=default)
-			cls.ident = ident
+			cls.inherit_hparams('ident')
+			cls.register_hparam('ident', ref=cls.get_hparam('ident'), default=ident)
 
 
 	@agnosticmethod

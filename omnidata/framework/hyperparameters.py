@@ -202,6 +202,7 @@ class Hyperparameter(SimpleHyperparameter):
 			name = kwargs['name']
 			default = kwargs['default']
 		super().__init__(name=name, default=default, **kwargs)
+		self.ref = ref
 
 
 	def _check_ref(self, ref, kwargs, defaults):
@@ -239,7 +240,6 @@ class Machine(Hyperparameter):
 
 class hparam:
 	def __init__(self, default=unspecified_argument, *, space=None, name=None, **kwargs):
-		self.default = default
 		assert name is None, 'Cannot specify a different name with hparam'
 		self.name = None
 		self.space = space
@@ -247,7 +247,13 @@ class hparam:
 		self.fget = None
 		self.fset = None
 		self.fdel = None
+		self.default = self._fix_default_value(default)
 
+	def _fix_default_value(self, default=unspecified_argument):
+		if callable(default) and not isinstance(default, type) and default.__qualname__ != default.__name__:
+			self.fget = default
+			default = unspecified_argument
+		return default
 
 	def setter(self, fn):
 		self.fset = fn
