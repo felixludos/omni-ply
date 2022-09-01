@@ -1,6 +1,6 @@
 import inspect
 from omnibelt import agnosticmethod, unspecified_argument, Class_Registry, extract_function_signature
-from .hyperparameters import Parameterized, MachineParametrized, spaces, hparam, inherit_hparams, with_hparams
+from .hyperparameters import Parameterized, spaces, hparam, inherit_hparams, with_hparams
 
 
 class Builder(Parameterized):
@@ -127,8 +127,7 @@ class AutoClassBuilder(ClassBuilder):
 
 	def __init_subclass__(cls, ident=None, create_registry=False, default=False,
 	                      inherit_ident=False, default_ident=None, **kwargs):
-		super().__init_subclass__(inherit_ident=create_registry,
-		                          default_ident=None, **kwargs)
+		super().__init_subclass__(inherit_ident=create_registry, default_ident=None, **kwargs)
 
 		node = cls._registration_node
 		if node is None or create_registry:

@@ -218,26 +218,6 @@ class Hyperparameter(SimpleHyperparameter):
 
 
 
-class Machine(Hyperparameter):
-		def __init__(self, default=unspecified_argument, required=True, module=None, cache=None, ref=None, **kwargs):
-			if ref is not None and module is None:
-				module = ref.module
-			if cache is None:
-				cache = module is not None
-			super().__init__(default=default, required=required, cache=cache, ref=ref, **kwargs)
-			self.module = module
-
-
-		class InvalidValue(Hyperparameter.InvalidValue):
-			def __init__(self, name, value, base, msg=None):
-				if msg is None:
-					value = type(value) if isinstance(value, type) else str(value)
-					msg = f'{name}: {value} (expecting an instance of {base})'
-				super().__init__(name, value, msg=msg)
-				self.base = base
-
-
-
 class hparam:
 	def __init__(self, default=unspecified_argument, *, space=None, name=None, **kwargs):
 		assert name is None, 'Cannot specify a different name with hparam'
@@ -297,11 +277,6 @@ class hparam:
 		self.name = name
 		setattr(obj, name, self)
 		# return self
-
-
-
-class machine(hparam):
-	_registration_fn_name = 'register_machine'
 
 
 
@@ -389,7 +364,13 @@ class Parameterized:
 			val = self.get_hparam(key, None)
 			if isinstance(val, Hyperparameter):
 				yield key, val
-	
+
+
+	@agnosticmethod
+	def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}'):
+		for key, val in self.named_hyperparameters():
+			yield fmt.format(key), val
+
 	
 	@agnosticmethod
 	def inherit_hparams(self, *names, prepend=True):
@@ -399,30 +380,6 @@ class Parameterized:
 				self._registered_hparams.insert(0, name)
 		else:
 			self._registered_hparams.update(names)
-
-
-
-class MachineParametrized(Parameterized):
-	Machine = Machine
-
-	@agnosticmethod
-	def register_machine(self, name=None, _instance=None, **kwargs):
-		if _instance is None:
-			_instance = self.Machine(name=name, **kwargs)
-		return self.register_hparam(name, _instance)
-
-
-	@agnosticmethod
-	def machines(self):
-		for key, val in self.named_machines():
-			yield val
-
-
-	@agnosticmethod
-	def named_machines(self):
-		for key, val in self.named_hyperparameters():
-			if isinstance(val, Machine):
-				yield key, val
 
 
 

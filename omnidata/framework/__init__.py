@@ -7,13 +7,13 @@ from .math import angle_diff, round_sigfigs, sigfig_noise, mixing_score, Metric,
 from . import spaces
 from . import base
 from .base import Function
-from .hyperparameters import Hyperparameter, Parameterized, MachineParametrized, \
-	hparam, inherit_hparams, machine, with_hparams
+from .hyperparameters import Hyperparameter, Parameterized, hparam, inherit_hparams, with_hparams
+from .machines import Machine, MachineParametrized, machine
 from .building import Builder, get_builder, register_builder
 # from .util import data_args
 # from .hyperparameters import Hyperparameter, Parametrized, hparam, inherit_hparams
 from .exporting import Exporter, export, load_export
-from .models import Trainer, Model, TrainableModel, SimplePytorchModel#, \
+from .models import Trainer, Model, TrainableModel#, SimplePytorchModel#, \
 	# Encoder, Decoder, Generator, Discriminator, Criterion, Metric, Extractor, Interpolator, \
 	# Estimator, Quantizer, Compressor, PathCriterion
 # from .distributions import Distribution, DistributionTensor

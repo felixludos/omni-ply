@@ -6,7 +6,8 @@ from omnibelt import agnosticmethod, unspecified_argument#, mix_into
 # from .. import util
 from . import abstract
 from .features import Seeded, Prepared
-from .hyperparameters import Parameterized, MachineParametrized, hparam, inherit_hparams, machine
+from .hyperparameters import Parameterized, hparam, inherit_hparams
+from .machines import machine, MachineParametrized
 from .base import Function, Container
 
 
@@ -236,7 +237,7 @@ class Model(#Buildable,
 
 class Trainer(MachineParametrized, Fitable, Prepared):
 	# model = hparam(None)
-	model = machine(module=Model)
+	model = machine(type=Model)
 
 	def __init__(self, model, source=None, **kwargs):
 		super().__init__(**kwargs)
@@ -322,6 +323,7 @@ class TrainableModel(Model):
 	def eval_step(self, info, **kwargs):
 		self._step(info, **kwargs)
 		return info
+
 
 
 class Loggable(Model): # TODO: this should be in the trainer! the Model just has a function
