@@ -1,6 +1,15 @@
 import inspect
+from collections import UserDict
 from omnibelt import agnosticmethod, unspecified_argument, Class_Registry, extract_function_signature
 from .hyperparameters import Parameterized, spaces, hparam, inherit_hparams, with_hparams
+
+
+class Buildable:
+	@agnosticmethod
+	def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}', include_machines=True):
+		raise NotImplementedError
+
+	pass
 
 
 class Builder(Parameterized):
@@ -28,7 +37,9 @@ class Builder(Parameterized):
 
 	@agnosticmethod
 	def _plan(self, *args, **kwargs):
-		yield from self.named_hyperparameters()
+		product = self.product(*args, **kwargs)
+		if issubclass(product, Parameterized):
+			yield from product.full_spec()
 
 
 	@agnosticmethod
@@ -41,6 +52,14 @@ class Builder(Parameterized):
 	def _build(self, *args, **kwargs):
 		product = self.product(*args, **kwargs)
 		return product(*args, **kwargs)
+
+
+	# class Specification:
+	# 	def find(self, key):
+	# 		raise NotImplementedError
+	#
+	# 	def has(self, key):
+	# 		raise NotImplementedError
 
 
 
@@ -97,24 +116,24 @@ class ClassBuilder(Builder):
 		return product
 
 
-	@agnosticmethod
-	def _plan(self, ident=None, **kwargs):
-		try:
-			product = self.product(ident, **kwargs)
-		except self.NoProductFound:
-			pass
-		else:
-			me = self if type(self) == type else self.__class__
-			if product is me or not issubclass(product, Parameterized):
-				yield from super()._plan(ident=ident, **kwargs)
-			elif issubclass(product, Parameterized):
-				yield from product.named_hyperparameters()
+	# @agnosticmethod
+	# def _plan(self, ident=None, **kwargs):
+	# 	try:
+	# 		product = self.product(ident, **kwargs)
+	# 	except self.NoProductFound:
+	# 		pass
+	# 	else:
+	# 		me = self if type(self) == type else self.__class__
+	# 		if product is me or not issubclass(product, Parameterized):
+	# 			yield from super()._plan(ident=ident, **kwargs)
+	# 		elif issubclass(product, Parameterized):
+	# 			yield from product.named_hyperparameters()
 
 
-	@agnosticmethod
-	def _build(self, ident=None, *args, **kwargs):
-		product = self.product(ident, **kwargs)
-		return product(*args, **kwargs)
+	# @agnosticmethod
+	# def _build(self, ident=None, *args, **kwargs):
+	# 	product = self.product(ident, **kwargs)
+	# 	return product(*args, **kwargs)
 	
 
 
@@ -166,8 +185,34 @@ class AutoClassBuilder(ClassBuilder):
 		self._product_registry.new(ident, product)
 
 
+class BuilderSpecification:
+	def find(self, key):
+		raise NotImplementedError
+
+	def has(self, key):
+		raise NotImplementedError
 
 
+class MachineBuilder(Builder):
+	class Specification(BuilderSpecification, UserDict):
+		def find(self, key):
+			return self[key]
+
+		def has(self, key):
+			return key in self
+
+
+	def create_spec(self, *args, **kwargs):
+		raise NotImplementedError
+
+	def plan_from_spec(self, spec: BuilderSpecification):
+		pass
+
+	def build_from_spec(self, spec: BuilderSpecification):
+		pass
+
+	def product_from_spec(self, spec: BuilderSpecification):
+		pass
 
 
 

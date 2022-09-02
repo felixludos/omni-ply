@@ -30,7 +30,7 @@ class Machine(Hyperparameter):
 			self.base = base
 
 
-	def get_builder(self):
+	def get_builder(self) -> Builder:
 		if self.builder is not None:
 			return get_builder(self.builder) if isinstance(self.builder, str) else self.builder
 		if self.type is not None and isinstance(self.type, Builder):
@@ -40,6 +40,24 @@ class Machine(Hyperparameter):
 
 class MachineParametrized(Parameterized):
 	Machine = Machine
+
+
+	@agnosticmethod
+	def fill_hparams(self, fn, args=(), kwargs={}):
+		def defaults(n):
+			if n in self._registered_hparams:
+				return getattr(self, n)
+			raise KeyError(n)
+		return extract_function_signature(fn, args, kwargs, defaults)
+
+
+	@agnosticmethod
+	def _extract_hparams(self, kwargs):
+		found, remaining = split_dict(kwargs, self._registered_hparams)
+		for key, val in found.items():
+			setattr(self, key, val)
+		return remaining
+
 
 	@agnosticmethod
 	def register_machine(self, name=None, _instance=None, **kwargs):
@@ -62,12 +80,19 @@ class MachineParametrized(Parameterized):
 
 
 	@agnosticmethod
-	def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}'):
+	def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}', include_machines=True):
 		for key, val in self.named_hyperparameters():
 			ident = fmt.format(key)
 			if isinstance(val, Machine):
 				builder = val.get_builder()
-				yield from builder.full_spec(fmt=fmt_rule.format(parent=ident, child='{}'), fmt_rule=fmt_rule)
+				if include_machines or builder is None:
+					yield ident, val
+				if builder is not None:
+					if isinstance(builder, MachineParametrized):
+						yield from builder.full_spec(fmt=fmt_rule.format(parent=ident, child='{}'), fmt_rule=fmt_rule)
+					else:
+						for k, v in builder.plan():
+							yield fmt_rule.format(parent=ident, child=k), v
 			else:
 				yield ident, val
 
@@ -75,7 +100,6 @@ class MachineParametrized(Parameterized):
 
 class machine(hparam):
 	_registration_fn_name = 'register_machine'
-
 
 
 
