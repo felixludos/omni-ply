@@ -185,12 +185,6 @@ class AutoClassBuilder(ClassBuilder):
 		self._product_registry.new(ident, product)
 
 
-class BuilderSpecification:
-	def find(self, key):
-		raise NotImplementedError
-
-	def has(self, key):
-		raise NotImplementedError
 
 
 class MachineBuilder(Builder):
