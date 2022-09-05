@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from omnibelt import unspecified_argument, agnosticmethod
-from omnibelt.nodes import SubNode
+from omnibelt.nodes import TreeNode
 
 
 class Specification:
@@ -10,35 +10,8 @@ class Specification:
 		raise NotImplementedError
 
 
-class PowerSpec(Specification, SubNode):
-	def __init__(self, payload=unspecified_argument, *, parent=unspecified_argument, **kwargs):
-		super().__init__(**kwargs)
-		self._payload = payload
-		self._parent = parent
 
-
-	@property
-	def payload(self):
-		return OrderedDict([(key, value.payload) for key, value in self._sub.items()]) \
-			if self._payload is unspecified_argument else self._payload
-	@payload.setter
-	def payload(self, value):
-		self._payload = value
-
-
-	@property
-	def parent(self):
-		return None if self._parent is unspecified_argument else self._parent
-
-
-	pass
-
-
-
-
-
-
-class TreeSpec(Specification, SubNode):
+class TreeSpec(Specification, TreeNode):
 	def find(self, key):
 		return self.sub(key)
 
