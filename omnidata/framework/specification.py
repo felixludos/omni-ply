@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from omnibelt import unspecified_argument, agnosticmethod
-from omnibelt.nodes import TreeNode
+from omnibelt.nodes import TreeNode, AutoTreeNode
 
 
 class Specification:
@@ -11,30 +11,17 @@ class Specification:
 
 
 
-class TreeSpec(Specification, TreeNode):
+class TreeSpec(AutoTreeNode, Specification):
 	def find(self, key):
-		return self.sub(key)
+		return self.get(key)
 
 
-	def has(self, key):
-		return key in self._sub
 
+class Specced:
 
 	@classmethod
-	def from_python(cls, data, *, parent=unspecified_argument):
-		node = cls(parent=parent)
-		if isinstance(data, dict):
-			return DictSpec({key: TreeSpec.from_python(value, parent=parent) for key, value in data.items()}, parent=parent)
-		elif isinstance(data, list):
-			return ListSpec([TreeSpec.from_python(value, parent=parent) for value in data], parent=parent)
-		else:
-			return TreeSpec(data, parent=parent)
-
-
-
-class TreeSpecification:
-
-	pass
+	def build_from_spec(cls, spec, **kwargs):
+		pass
 
 
 

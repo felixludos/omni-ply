@@ -16,6 +16,7 @@ ch.setLevel(0)
 prt.addHandler(ch)
 
 
+# TODO: add property "hidden" to avoid registering certain parameters
 
 class SimpleHyperparameter(property):
 	def __init__(self, name=None, default=unspecified_argument, *, required=None, fget=None,

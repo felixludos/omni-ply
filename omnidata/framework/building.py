@@ -1,7 +1,9 @@
+from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, Callable, Type, \
+	Iterable, Iterator
 import inspect
 from collections import UserDict
 from omnibelt import agnosticmethod, unspecified_argument, Class_Registry, extract_function_signature
-from .hyperparameters import Parameterized, spaces, hparam, inherit_hparams, with_hparams
+from .hyperparameters import Parameterized, spaces, hparam, inherit_hparams, with_hparams, Hyperparameter
 
 
 class Buildable:
@@ -19,37 +21,37 @@ class Builder(Parameterized):
 
 
 	@agnosticmethod
-	def product(self, *args, **kwargs):
+	def product(self, *args, **kwargs) -> Type:
 		fixed_args, fixed_kwargs = self.fill_hparams(self._product, args, kwargs)
 		return self._product(*fixed_args, **fixed_kwargs)
 
 		
 	@agnosticmethod
-	def _product(self, *args, **kwargs):
+	def _product(self, *args, **kwargs) -> Type:
 		return self if type(self) == type else self.__class__
 
 	
 	@agnosticmethod
-	def plan(self, *args, **kwargs):
+	def plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
 		fixed_args, fixed_kwargs = self.fill_hparams(self._plan, args, kwargs)
 		return self._plan(*fixed_args, **fixed_kwargs)
 		
 
 	@agnosticmethod
-	def _plan(self, *args, **kwargs):
+	def _plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
 		product = self.product(*args, **kwargs)
 		if issubclass(product, Parameterized):
-			yield from product.full_spec()
+			yield from product.named_hyperparameters()
 
 
 	@agnosticmethod
-	def build(self, *args, **kwargs):
+	def build(self, *args, **kwargs) -> Any:
 		fixed_args, fixed_kwargs = self.fill_hparams(self._build, args, kwargs)
 		return self._build(*fixed_args, **fixed_kwargs)
 	
 	
 	@agnosticmethod
-	def _build(self, *args, **kwargs):
+	def _build(self, *args, **kwargs) -> Any:
 		product = self.product(*args, **kwargs)
 		return product(*args, **kwargs)
 
@@ -184,29 +186,6 @@ class AutoClassBuilder(ClassBuilder):
 			self._set_default_ident(ident)
 		self._product_registry.new(ident, product)
 
-
-
-
-class MachineBuilder(Builder):
-	class Specification(BuilderSpecification, UserDict):
-		def find(self, key):
-			return self[key]
-
-		def has(self, key):
-			return key in self
-
-
-	def create_spec(self, *args, **kwargs):
-		raise NotImplementedError
-
-	def plan_from_spec(self, spec: BuilderSpecification):
-		pass
-
-	def build_from_spec(self, spec: BuilderSpecification):
-		pass
-
-	def product_from_spec(self, spec: BuilderSpecification):
-		pass
 
 
 
