@@ -20,7 +20,7 @@ prt.addHandler(ch)
 
 class SimpleHyperparameter(property):
 	def __init__(self, name=None, default=unspecified_argument, *, required=None, fget=None,
-	             strict=None, cache=None, fixed=None, space=None, **kwargs):
+	             strict=None, cache=None, fixed=None, space=None, hidden=None, **kwargs):
 		if required is None:
 			required = False
 		if strict is None:
@@ -29,6 +29,8 @@ class SimpleHyperparameter(property):
 			cache = False
 		if fixed is None:
 			fixed = False
+		if hidden is None:
+			hidden = False
 		super().__init__(fget=fget, **kwargs)
 		if name is None:
 			assert fget is not None, 'No name provided'
@@ -37,6 +39,7 @@ class SimpleHyperparameter(property):
 		self.cached_value = self._missing
 		self.default = default
 		self.cache = cache
+		self.hidden = hidden
 		if space is not None and isinstance(space, (list, tuple, set)):
 			space = spaces.Categorical(space)
 		self.space = space
@@ -304,6 +307,10 @@ class Parameterized:
 	@agnosticmethod
 	def fill_hparams(self, fn, args=(), kwargs={}):
 		def defaults(n):
+			try:
+				return getattr(self, n)
+			except AttributeError:
+				raise KeyError(n)
 			if n in self._registered_hparams:
 				return getattr(self, n)
 			raise KeyError(n)
@@ -330,7 +337,8 @@ class Parameterized:
 		if name is None:
 			name = _instance.name
 		assert name is not None
-		self._registered_hparams.add(name)
+		if not _instance.hidden:
+			self._registered_hparams.add(name)
 		setattr(self, name, _instance)
 	
 	

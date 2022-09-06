@@ -8,8 +8,9 @@ from . import spaces
 from . import base
 from .base import Function
 from .hyperparameters import Hyperparameter, Parameterized, hparam, inherit_hparams, with_hparams
-from .machines import Machine, MachineParametrized, machine
 from .building import Builder, get_builder, register_builder
+from .machines import Machine, MachineParametrized, machine
+from .architects import Architect, ClassArchitect, AutoClassArchitect
 # from .util import data_args
 # from .hyperparameters import Hyperparameter, Parametrized, hparam, inherit_hparams
 from .exporting import Exporter, export, load_export
