@@ -4,8 +4,7 @@ from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSe
 	extract_function_signature, method_wrapper
 
 from .hyperparameters import Hyperparameter, Parameterized, hparam
-from .building import get_builder, Builder
-
+from .building import get_builder, Builder, ClassBuilder, AutoClassBuilder
 
 from omnibelt.nodes import AutoTreeNode
 
@@ -172,16 +171,19 @@ class Architect(Builder, MachineParametrized):
 		data = data or {}
 		return cls.Specification.from_raw(data)
 
+	@agnosticmethod
 	def _fill_spec(self, fn, spec: Optional[Specification] = None) -> Dict[str, Any]:
 		if spec is None:
 			return {}
 		return extract_function_signature(fn, default_fn=lambda n: spec.get(n, self._missing_spec),
 		                                          allow_positional=False)
 
+	@agnosticmethod
 	def plan_from_spec(self, spec: Optional[Specification] = None) -> Iterator[Tuple[str, Hyperparameter]]:
 		# TODO: recurse on machine specs
 		return self._plan(**self._fill_spec(self._plan, spec))
 
+	@agnosticmethod
 	def build_from_spec(self, spec: Specification) -> Any:
 		# TODO: recurse on machine specs
 
@@ -206,7 +208,14 @@ class Architect(Builder, MachineParametrized):
 
 
 
+class ClassArchitect(ClassBuilder, Architect):
+	@agnosticmethod
+	def build_from_spec(self, spec: Architect.Specification) -> Any:
+		if spec.is_leaf:
+			return self.build(spec.payload)
+		return super().build_from_spec(spec)
 
 
 
-
+class AutoClassArchitect(ClassArchitect, AutoClassBuilder):
+	pass
