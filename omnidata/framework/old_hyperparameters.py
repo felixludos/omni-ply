@@ -25,7 +25,7 @@ class Hyperparameter(property, classdescriptor):
 			if fget is None:
 				fget = ref.fget
 			if default is unspecified_argument:
-				default = ref.default
+				default = ref.default_profile
 			if required is None:
 				required = ref.required
 			if strict is None:

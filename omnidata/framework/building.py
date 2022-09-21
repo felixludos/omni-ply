@@ -102,7 +102,7 @@ class ClassBuilder(Builder):
 
 	@agnosticmethod
 	def _set_default_ident(self, default):
-		self.get_hparam('ident').default = default
+		self.get_hparam('ident').default_profile = default
 
 
 	@agnosticmethod

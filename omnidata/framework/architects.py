@@ -96,7 +96,7 @@ class Architect(Builder, MachineParametrized):
 			builder = get_architect(param)
 			if not val.has_payload:
 
-				val.payload = param.default if param.default is not unspecified_argument else getattr(self, key)
+				val.payload = param.default_profile if param.default_profile is not unspecified_argument else getattr(self, key)
 			if builder is not None:
 				val = builder.build_from_spec(val)
 			if val.has_payload:
