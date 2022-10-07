@@ -1,3 +1,6 @@
+
+from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, Callable, Generator, Type, Iterable, \
+	Iterator, NamedTuple, ContextManager
 import inspect
 
 import logging
@@ -393,7 +396,7 @@ class Parameterized:
 
 
 class inherit_hparams:
-	def __init__(self, *names, **kwargs):
+	def __init__(self, *names: Union[str, Parameterized], **kwargs):
 		self.names = names
 		self.kwargs = kwargs
 

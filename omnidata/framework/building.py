@@ -3,6 +3,7 @@ from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, 
 import inspect
 from collections import UserDict
 from omnibelt import agnosticmethod, unspecified_argument, Class_Registry, extract_function_signature
+from omnibelt.tricks import auto_methods
 from .hyperparameters import Parameterized, spaces, hparam, inherit_hparams, with_hparams, Hyperparameter
 
 
@@ -15,6 +16,33 @@ class Buildable:
 
 
 class Builder(Parameterized):
+	@classmethod
+	def product(cls, *args, **kwargs) -> Type:
+		raise NotImplementedError
+
+	@classmethod
+	def build(cls, *args, **kwargs):
+		raise NotImplementedError
+
+	@classmethod
+	def plan(cls, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
+		raise NotImplementedError
+
+
+	def my_build(self, *args, **kwargs):
+		return self.build(*args, **kwargs)
+
+	def my_plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
+		return self.plan(*args, **kwargs)
+
+
+
+class AutoBuilder(Builder, auto_methods, inheritable_auto_methods=['build', 'plan', 'product']):
+
+	pass
+
+
+class OldBuilder(Parameterized):
 
 	class NoProductFound(NotImplementedError):
 		pass

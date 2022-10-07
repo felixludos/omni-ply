@@ -1,12 +1,12 @@
 from omnibelt import agnosticmethod
-from omnibelt import Exporter as _Old_Exporter#, export, load_export
+from omnibelt import ExportManager as _Old_ExportManager, Exporter#, export, load_export
 from omnibelt import exporting_common as _common
 
 from .features import Rooted
 
 # TODO: separate Exportable (custom export function) and Exporter (maybe?)
 
-class Exporter(_Old_Exporter, Rooted, create_table=True):
+class ExportManager(_Old_ExportManager, Rooted, set_as_current=True):
 	@agnosticmethod
 	def create_export_path(self, name, root=None, ext=None):
 		if root is None:
@@ -35,24 +35,24 @@ def load_export(name=None, root=None, fmt=None, path=None, **kwargs):
 # TODO: describe this section: replacing the default functionality (which requires manually including the root),
 #  to automatically "infer" the root. This involves replacing the old classes with modified children.
 
-_update_fmts = {}
-for fmt in _Old_Exporter._export_fmts_head:
-	if fmt not in _update_fmts:
-		_update_fmts[fmt] = type(fmt.__name__, (fmt, Exporter), {})
-for fmt in _Old_Exporter._export_fmts_tail:
-	if fmt not in _update_fmts:
-		_update_fmts[fmt] = type(fmt.__name__, (fmt, Exporter), {})
-for typ, fmt in _Old_Exporter._export_fmt_types.items():
-	if fmt not in _update_fmts:
-		_update_fmts[fmt] = type(fmt.__name__, (fmt, Exporter), {})
-for ext, fmt in _Old_Exporter._export_fmt_exts.items():
-	if fmt not in _update_fmts:
-		_update_fmts[fmt] = type(fmt.__name__, (fmt, Exporter), {})
-Exporter._export_fmts_head = [_update_fmts[fmt] for fmt in _Old_Exporter._export_fmts_head]
-Exporter._export_fmts_tail = [_update_fmts[fmt] for fmt in _Old_Exporter._export_fmts_tail]
-Exporter._export_fmt_types = {typ: _update_fmts[fmt] for typ, fmt in _Old_Exporter._export_fmt_types.items()}
-Exporter._export_fmt_exts = {ext: _update_fmts[fmt] for ext, fmt in _Old_Exporter._export_fmt_exts.items()}
-del _update_fmts
+# _update_fmts = {}
+# for fmt in _Old_Exporter._export_fmts_head:
+# 	if fmt not in _update_fmts:
+# 		_update_fmts[fmt] = type(fmt.__name__, (fmt, Exporter), {})
+# for fmt in _Old_Exporter._export_fmts_tail:
+# 	if fmt not in _update_fmts:
+# 		_update_fmts[fmt] = type(fmt.__name__, (fmt, Exporter), {})
+# for typ, fmt in _Old_Exporter._export_fmt_types.items():
+# 	if fmt not in _update_fmts:
+# 		_update_fmts[fmt] = type(fmt.__name__, (fmt, Exporter), {})
+# for ext, fmt in _Old_Exporter._export_fmt_exts.items():
+# 	if fmt not in _update_fmts:
+# 		_update_fmts[fmt] = type(fmt.__name__, (fmt, Exporter), {})
+# Exporter._export_fmts_head = [_update_fmts[fmt] for fmt in _Old_Exporter._export_fmts_head]
+# Exporter._export_fmts_tail = [_update_fmts[fmt] for fmt in _Old_Exporter._export_fmts_tail]
+# Exporter._export_fmt_types = {typ: _update_fmts[fmt] for typ, fmt in _Old_Exporter._export_fmt_types.items()}
+# Exporter._export_fmt_exts = {ext: _update_fmts[fmt] for ext, fmt in _Old_Exporter._export_fmt_exts.items()}
+# del _update_fmts
 
 
 
@@ -63,6 +63,8 @@ import torch
 from PIL import Image
 
 
+
+# TODO
 
 class NumpyExport(Exporter, extensions='.npy'):
 	@staticmethod
@@ -183,8 +185,8 @@ class PytorchExport(Exporter, extensions=['.pt', '.pth.tar']):
 	@staticmethod
 	def _export_self(self, path, src=None, **kwargs):
 		return torch.save(self, path, **kwargs)
-Exporter._export_fmts_tail.remove(PytorchExport)
-Exporter._export_fmts_tail.insert(1, PytorchExport)
+# Exporter._export_fmts_tail.remove(PytorchExport)
+# Exporter._export_fmts_tail.insert(1, PytorchExport)
 
 
 
