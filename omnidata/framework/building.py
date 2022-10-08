@@ -2,7 +2,7 @@ from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, 
 	Iterable, Iterator
 import inspect
 from collections import UserDict
-from omnibelt import agnosticmethod, unspecified_argument, Class_Registry, extract_function_signature
+from omnibelt import unspecified_argument, Class_Registry, extract_function_signature, agnostic, agnosticproperty
 from omnibelt.tricks import auto_methods
 from .hyperparameters import Parameterized, spaces, hparam, inherit_hparams, with_hparams, Hyperparameter
 
@@ -42,18 +42,24 @@ class Builder(Parameterized):
 class AutoBuilder(Builder, auto_methods,
                   inheritable_auto_methods=['__init__', 'build', 'product', 'plan', 'my_build', 'my_plan']):
 
-	class _auto_method_arg_fixer(auto_methods._auto_method_arg_fixer):
-		def __init__(self, method, src, owner, obj, **kwargs):
-			super().__init__(method, src, owner, obj, **kwargs)
-			self.base = self.owner if self.obj is None else self.obj
+	class MissingArgumentsError(TypeError):
+		def __init__(self, src, method, missing, *, msg=None):
+			if msg is None:
+				msg = f'{src.__name__}.{method.__name__}() missing {len(missing)} ' \
+				      f'required arguments: {", ".join(missing)}'
+			super().__init__(msg)
+			self.missing = missing
+			self.src = src
+			self.method = method
 
-		def __call__(self, key: str, default: Optional[Any] = inspect.Parameter.empty) -> Any:
-			
-			pass
-		
-		pass
+	@classmethod
+	def _auto_method_call(cls, self, src: Type, method: Callable, args: Tuple, kwargs: Dict[str, Any]):
+		base = cls if self is None else self
+		fixed_args, fixed_kwargs, missing = base.fill_hparams(method, args=args, kwargs=kwargs, include_missing=True)
+		if len(missing):
+			raise base.MissingArgumentsError(src, method, missing)
+		return method(*fixed_args, **fixed_kwargs)
 
-	pass
 
 
 class OldBuilder(Parameterized):
@@ -62,37 +68,37 @@ class OldBuilder(Parameterized):
 		pass
 
 
-	@agnosticmethod
+	@agnostic
 	def product(self, *args, **kwargs) -> Type:
 		fixed_args, fixed_kwargs = self.fill_hparams(self._product, args, kwargs)
 		return self._product(*fixed_args, **fixed_kwargs)
 
 		
-	@agnosticmethod
+	@agnostic
 	def _product(self, *args, **kwargs) -> Type:
 		return self if type(self) == type else self.__class__
 
 	
-	@agnosticmethod
+	@agnostic
 	def plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
 		fixed_args, fixed_kwargs = self.fill_hparams(self._plan, args, kwargs)
 		return self._plan(*fixed_args, **fixed_kwargs)
 		
 
-	@agnosticmethod
+	@agnostic
 	def _plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
 		product = self.product(*args, **kwargs)
 		if issubclass(product, Parameterized):
 			yield from product.named_hyperparameters()
 
 
-	@agnosticmethod
+	@agnostic
 	def build(self, *args, **kwargs) -> Any:
 		fixed_args, fixed_kwargs = self.fill_hparams(self._build, args, kwargs)
 		return self._build(*fixed_args, **fixed_kwargs)
 	
 	
-	@agnosticmethod
+	@agnostic
 	def _build(self, *args, **kwargs) -> Any:
 		product = self.product(*args, **kwargs)
 		return product(*args, **kwargs)
@@ -112,19 +118,16 @@ register_builder = builder_registry.get_decorator()
 get_builder = builder_registry.get_class
 
 
-
 class ClassBuilder(Builder):
 	ident = hparam(required=True)
-
-
+	
 	class IdentSpace(spaces.Selection):
 		pass
 
 	
-	def __init_subclass__(cls, default_ident=unspecified_argument, inherit_ident=True, **kwargs):
+	def __init_subclass__(cls, default_ident=unspecified_argument, register_ident=True, **kwargs):
 		super().__init_subclass__(**kwargs)
-		if inherit_ident:
-			cls.inherit_hparams('ident')
+		if register_ident:
 			cls.register_hparam('ident', ref=cls.get_hparam('ident'), space=cls.IdentSpace(), default=default_ident)
 		cls._update_ident_space()
 	
@@ -134,7 +137,7 @@ class ClassBuilder(Builder):
 		self._update_ident_space()
 
 
-	@agnosticmethod
+	@agnostic
 	def _update_ident_space(self):
 		hparam = self.get_hparam('ident')
 		ident_space = hparam.space
@@ -142,60 +145,60 @@ class ClassBuilder(Builder):
 			ident_space.replace(list(self.product_registry().keys()))
 	
 
-	@agnosticmethod
+	@agnostic
 	def _set_default_ident(self, default):
 		self.get_hparam('ident').default_profile = default
 
 
-	@agnosticmethod
+	@agnostic
 	def product_registry(self):
 		return {}
 
+	class NoProductFound(KeyError):
+		pass
 
-	@agnosticmethod
-	def _product(self, ident):
+	@agnostic
+	def product(self, ident):
 		product = self.product_registry().get(ident, unspecified_argument)
 		if product is unspecified_argument:
 			raise self.NoProductFound(ident)
 		return product
 
+	# @agnostic
+	# def plan(self, ident):
+	# 	product = self.product(ident)
+	# 	yield from product.named_hyperparameters()
 
-	# @agnosticmethod
-	# def _plan(self, ident=None, **kwargs):
-	# 	try:
-	# 		product = self.product(ident, **kwargs)
-	# 	except self.NoProductFound:
-	# 		pass
-	# 	else:
-	# 		me = self if type(self) == type else self.__class__
-	# 		if product is me or not issubclass(product, Parameterized):
-	# 			yield from super()._plan(ident=ident, **kwargs)
-	# 		elif issubclass(product, Parameterized):
-	# 			yield from product.named_hyperparameters()
+	@agnostic
+	def build(self, ident, *args, **kwargs):
+		product = self.product(ident)
+		return product(*args, **kwargs)
 
 
-	# @agnosticmethod
-	# def _build(self, ident=None, *args, **kwargs):
-	# 	product = self.product(ident, **kwargs)
-	# 	return product(*args, **kwargs)
+class RegistryBuilder(ClassBuilder):
+	Product_Registry = Class_Registry
+	_product_registry: Product_Registry = None
+	_registration_node = None
 	
+	def __init_subclass__(cls, create_registry=True, register_ident=True,
+	                      default_ident=unspecified_argument, **kwargs):
+		super().__init_subclass__(register_ident=create_registry, default_ident=default_ident, **kwargs)
 
 
 class AutoClassBuilder(ClassBuilder):
 	'''Automatically register subclasses and add them to the product_registry.'''
 
-	Class_Registry = Class_Registry
+	Product_Registry = Class_Registry
 	_product_registry: Class_Registry = None
 	_registration_node = None
 
 	def __init_subclass__(cls, ident=None, create_registry=False, default=False,
-	                      inherit_ident=False, default_ident=None, **kwargs):
-		super().__init_subclass__(inherit_ident=create_registry, default_ident=None, **kwargs)
+	                      inherit_ident=False, default_ident=unspecified_argument, **kwargs):
+		super().__init_subclass__(inherit_ident=create_registry, default_ident=default_ident, **kwargs)
 
 		node = cls._registration_node
 		if node is None or create_registry:
-			registry = cls.Class_Registry()
-			# cls.get_hparam('ident').space =
+			registry = cls.Product_Registry()
 			cls._product_registry = registry
 			cls._registration_node = cls
 
@@ -205,7 +208,7 @@ class AutoClassBuilder(ClassBuilder):
 			cls.register_hparam('ident', ref=cls.get_hparam('ident'), default=ident)
 
 
-	@agnosticmethod
+	@agnostic
 	def _product(self, ident):
 		product = super()._product(ident)
 		if isinstance(product, self._product_registry.entry_cls):
@@ -213,20 +216,20 @@ class AutoClassBuilder(ClassBuilder):
 		return product
 
 
-	@agnosticmethod
+	@agnostic
 	def product_registry(self):
 		if self._product_registry is None:
 			return {}
 		return self._product_registry
 
 
-	@agnosticmethod
-	def register_product(self, ident, product, default=False):
+	@agnostic
+	def register_product(self, ident, product, default=False, **kwargs):
 		ident_hparam = self._registration_node.get_hparam('ident')
 		ident_hparam.space.append(ident)
 		if default:
 			self._set_default_ident(ident)
-		self._product_registry.new(ident, product)
+		self._product_registry.new(ident, product, **kwargs)
 
 
 
