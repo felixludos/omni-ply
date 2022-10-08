@@ -21,7 +21,7 @@ prt.addHandler(ch)
 
 # TODO: add property "hidden" to avoid registering certain parameters
 
-class SimpleHyperparameter(property):
+class SimpleHyperparameter(agnosticproperty):
 	def __init__(self, name=None, default=unspecified_argument, *, required=None, fget=None,
 	             strict=None, cache=None, fixed=None, space=None, hidden=None, **kwargs):
 		if required is None:
@@ -127,8 +127,8 @@ class SimpleHyperparameter(property):
 		return f'{self.__class__.__name__}({value})'#<{hex(id(self))[2:]}>' # TODO: testing
 
 
-	def __get__(self, obj, cls=None):
-		return self.get_value(obj, cls=cls)
+	def __get__(self, instance, owner=None):
+		return self.get_value(instance, owner)
 
 
 	def __delete__(self, obj): # TODO: test this
@@ -140,26 +140,26 @@ class SimpleHyperparameter(property):
 		# return self.cls_value
 
 
-	def _custom_getter(self, obj, cls):
+	def _custom_getter(self, instance, owner=None):
 		try:
-			return super().__get__(obj, cls)
+			return super().__get__(instance, owner)
 		except Hyperparameter.MissingHyperparameter:
 			raise self.MissingHyperparameter(self.name)
 
 
-	def get_value(self, obj=None, cls=None):
-		if obj is not None:
-			if self.name in obj.__dict__:
-				return obj.__dict__[self.name]
+	def get_value(self, instance=None, owner=None):
+		if instance is not None:
+			if self.name in instance.__dict__:
+				return instance.__dict__[self.name]
 			if self.fget is not None:
-				value = self._custom_getter(obj, cls)
+				value = self._custom_getter(instance, owner)
 				if self.cache:
-					obj.__dict__[self.name] = value
+					instance.__dict__[self.name] = value
 				return value
 		elif self.cached_value is not self._missing:
 			return self.cached_value
 		elif self.fget is not None:
-			value = self._custom_getter(cls, cls) # "class property"
+			value = self._custom_getter(owner, owner) # "class property"
 			if self.cache:
 				self.cached_value = value
 			return value
@@ -321,9 +321,9 @@ class Parameterized:
 				raise KeyError(name)
 
 	@agnostic
-	def fill_hparams(self, fn, args=None, kwargs=None, by_hparam=False) -> Tuple[Tuple, Dict[str, Any]]:
+	def fill_hparams(self, fn, args=None, kwargs=None, *, by_hparam=False, **other) -> Tuple[Tuple, Dict[str, Any]]:
 		return extract_function_signature(fn, args, kwargs,
-		                                  default_fn=self._hparam_finder(self, by_hparam=by_hparam))
+		                                  default_fn=self._hparam_finder(self, by_hparam=by_hparam), **other)
 
 
 	@agnostic
