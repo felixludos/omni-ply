@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, Callable, Type, Iterable, Iterator
 from collections import OrderedDict
 from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, \
-	extract_function_signature, method_wrapper
+	extract_function_signature, method_wrapper, agnostic
 
 from .hyperparameters import Hyperparameter, Parameterized, hparam
 from .building import get_builder, Builder, ClassBuilder, AutoClassBuilder
@@ -46,21 +46,12 @@ class MachineParametrized(Parameterized):
 	Machine = Machine
 
 
-	@agnosticmethod
-	def fill_hparams(self, fn, args=(), kwargs={}):
-		def defaults(n):
-			if n in self._registered_hparams:
-				return getattr(self, n)
-			raise KeyError(n)
-		return extract_function_signature(fn, args, kwargs, defaults)
-
-
-	@agnosticmethod
-	def _extract_hparams(self, kwargs):
-		found, remaining = split_dict(kwargs, self._registered_hparams)
-		for key, val in found.items():
-			setattr(self, key, val)
-		return remaining
+	# @agnostic
+	# def _extract_hparams(self, kwargs):
+	# 	found, remaining = split_dict(kwargs, self._registered_hparams)
+	# 	for key, val in found.items():
+	# 		setattr(self, key, val)
+	# 	return remaining
 
 
 	@agnosticmethod

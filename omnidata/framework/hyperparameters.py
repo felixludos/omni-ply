@@ -6,7 +6,7 @@ import inspect
 import logging
 from collections import OrderedDict
 from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, \
-	extract_function_signature, method_wrapper
+	extract_function_signature, method_wrapper, agnostic, agnosticproperty
 
 from . import spaces
 
@@ -306,21 +306,27 @@ class Parameterized:
 		self._registered_hparams = self._registered_hparams.copy()
 		super().__init__(*args, **self._extract_hparams(kwargs))
 
-
-	@agnosticmethod
-	def fill_hparams(self, fn, args=(), kwargs={}):
-		def defaults(n):
+	class _hparam_finder:
+		def __init__(self, base, by_hparam=False, **kwargs):
+			super().__init__(**kwargs)
+			self.base = base
+			self.by_hparam = by_hparam
+			
+		def __call__(self, name, default=inspect.Parameter.empty):
 			try:
-				return getattr(self, n)
+				return self.base.get_hparam(name) if self.by_hparam else getattr(self.base, name)
 			except AttributeError:
-				raise KeyError(n)
-			if n in self._registered_hparams:
-				return getattr(self, n)
-			raise KeyError(n)
-		return extract_function_signature(fn, args, kwargs, defaults)
+				if default is not inspect.Parameter.empty:
+					return default
+				raise KeyError(name)
+
+	@agnostic
+	def fill_hparams(self, fn, args=None, kwargs=None, by_hparam=False) -> Tuple[Tuple, Dict[str, Any]]:
+		return extract_function_signature(fn, args, kwargs,
+		                                  default_fn=self._hparam_finder(self, by_hparam=by_hparam))
 
 
-	@agnosticmethod
+	@agnostic
 	def _extract_hparams(self, kwargs):
 		found, remaining = split_dict(kwargs, self._registered_hparams)
 		for key, val in found.items():
@@ -331,7 +337,7 @@ class Parameterized:
 	Hyperparameter = Hyperparameter
 	
 	
-	@agnosticmethod
+	@agnostic
 	def register_hparam(self, name=None, _instance=None, default=unspecified_argument, fget=None, ref=None, **kwargs):
 		if _instance is None:
 			if ref is not None and name is None:
@@ -345,18 +351,19 @@ class Parameterized:
 		setattr(self, name, _instance)
 	
 	
+	@agnostic
 	@property
 	def RequiredHyperparameterError(self):
 		return self.Hyperparameter.MissingHyperparameter
 	
 	
-	@agnosticmethod
+	@agnostic
 	def reset_hparams(self):
 		for param in self.hyperparameters():
 			param.reset()
 	
 
-	@agnosticmethod
+	@agnostic
 	def get_hparam(self, key, default=unspecified_argument):
 		val = inspect.getattr_static(self, key, unspecified_argument)
 		if val is unspecified_argument:
@@ -366,13 +373,13 @@ class Parameterized:
 		return val
 	
 	
-	@agnosticmethod
+	@agnostic
 	def hyperparameters(self):
 		for key, val in self.named_hyperparameters():
 			yield val
 	
 	
-	@agnosticmethod
+	@agnostic
 	def named_hyperparameters(self):
 		for key in self._registered_hparams:
 			val = self.get_hparam(key, None)
@@ -380,13 +387,13 @@ class Parameterized:
 				yield key, val
 
 
-	@agnosticmethod
-	def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}'):
+	@agnostic
+	def full_spec(self, *, fmt='{}', fmt_rule='{parent}.{child}'):
 		for key, val in self.named_hyperparameters():
 			yield fmt.format(key), val
 
 	
-	@agnosticmethod
+	@agnostic
 	def inherit_hparams(self, *names, prepend=True):
 		if prepend:
 			for name in reversed(names):
@@ -419,17 +426,9 @@ class inherit_hparams:
 
 
 class with_hparams(method_wrapper):
-	def __init__(self, fn=None, *, static=False):
-		super().__init__(fn)
-		self.static = static
-
-
-	def process_args(self, args, kwargs):
-		args, kwargs = self.obj.fill_hparams(self.fn, args, kwargs)
-
-		if not self.static:
-			args = (self.obj, *args)
-		return args, kwargs
+	def process_args(self, args, kwargs, owner, instance, fn):
+		base = owner if instance is None else instance
+		return base.fill_hparams(fn, args, kwargs)
 
 
 
