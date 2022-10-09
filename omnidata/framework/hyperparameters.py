@@ -358,9 +358,11 @@ class Parameterized:
 
 	@agnosticmethod
 	def get_hparam(self, key, default=unspecified_argument):
-		val = inspect.getattr_static(self, key, default)
-		if default is unspecified_argument and val is default:
-			raise AttributeError(f'{self.__class__.__name__} has no attribute {key}')
+		val = inspect.getattr_static(self, key, unspecified_argument)
+		if val is unspecified_argument:
+			if default is unspecified_argument:
+				raise AttributeError(f'{self.__class__.__name__} has no attribute {key}')
+			return default
 		return val
 	
 	

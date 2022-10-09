@@ -16,28 +16,42 @@ class Buildable:
 
 
 class Builder(Parameterized):
-	@classmethod
-	def product(cls, *args, **kwargs) -> Type:
+	@staticmethod
+	def product(*args, **kwargs) -> Type:
 		raise NotImplementedError
 
-	@classmethod
-	def build(cls, *args, **kwargs):
+	@staticmethod
+	def build(*args, **kwargs):
 		raise NotImplementedError
 
-	@classmethod
-	def plan(cls, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
+	@staticmethod
+	def plan(*args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
 		raise NotImplementedError
 
 
 	def my_build(self, *args, **kwargs):
-		return self.build(*args, **kwargs)
+		fixed_args, fixed_kwargs = self.fill_hparams(self.build, args=args, kwargs=kwargs)
+		return self.build(*fixed_args, **fixed_kwargs)
 
 	def my_plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
-		return self.plan(*args, **kwargs)
+		fixed_args, fixed_kwargs = self.fill_hparams(self.plan, args=args, kwargs=kwargs)
+		return self.plan(*fixed_args, **fixed_kwargs)
 
 
 
-class AutoBuilder(Builder, auto_methods, inheritable_auto_methods=['build', 'plan', 'product']):
+class AutoBuilder(Builder, auto_methods,
+                  inheritable_auto_methods=['__init__', 'build', 'product', 'plan', 'my_build', 'my_plan']):
+
+	class _auto_method_arg_fixer(auto_methods._auto_method_arg_fixer):
+		def __init__(self, method, src, owner, obj, **kwargs):
+			super().__init__(method, src, owner, obj, **kwargs)
+			self.base = self.owner if self.obj is None else self.obj
+
+		def __call__(self, key: str, default: Optional[Any] = inspect.Parameter.empty) -> Any:
+			
+			pass
+		
+		pass
 
 	pass
 
