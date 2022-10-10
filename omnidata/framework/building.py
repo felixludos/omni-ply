@@ -183,9 +183,28 @@ class RegistryBuilder(ClassBuilder):
 	def __init_subclass__(cls, create_registry=True, register_ident=True,
 	                      default_ident=unspecified_argument, **kwargs):
 		super().__init_subclass__(register_ident=create_registry, default_ident=default_ident, **kwargs)
+		if create_registry:
+			cls._product_registry = cls.Product_Registry()
+			cls._registration_node = cls
+		if default_ident is not unspecified_argument:
+			cls._set_default_ident(default_ident)
 
 
-class AutoClassBuilder(ClassBuilder):
+	def find_product(self, ident, default=unspecified_argument):
+		return self.product_registry().find(ident, None)
+
+
+	@agnostic
+	def product(self, ident):
+		entry = self.find_product(ident)
+		return entry.cls
+		product = super().product(ident)
+		if isinstance(product, self._product_registry.entry_cls):
+			return product.cls
+		return product
+
+
+class AutoClassBuilder(RegistryBuilder):
 	'''Automatically register subclasses and add them to the product_registry.'''
 
 	Product_Registry = Class_Registry
