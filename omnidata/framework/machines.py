@@ -1,7 +1,6 @@
 from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, Callable, Type, Iterable, Iterator
 from collections import OrderedDict
-from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, \
-	extract_function_signature, method_wrapper, agnostic
+from omnibelt import split_dict, unspecified_argument, OrderedSet, extract_function_signature, method_wrapper, agnostic
 
 from .hyperparameters import Hyperparameter, Parameterized, hparam
 from .building import get_builder, Builder, ClassBuilder, AutoClassBuilder
@@ -11,27 +10,18 @@ from omnibelt.nodes import AutoTreeNode
 
 
 class Machine(Hyperparameter):
-	def __init__(self, default=unspecified_argument, required=True, type=None, builder=None,
-	             cache=None, ref=None, **kwargs):
-		if ref is not None:
-			if type is None:
-				type = ref.type
-			if builder is None:
-				builder = ref.builder
-		if cache is None:
-			cache = type is not None or builder is not None
-		super().__init__(default=default, required=required, cache=cache, ref=ref, **kwargs)
+	def __init__(self, default=unspecified_argument, *, required=True, type=None, builder=None, cache=True, **kwargs):
+		super().__init__(default=default, required=required, cache=cache, **kwargs)
 		self.type = type
 		self.builder = builder
 
 
-	class InvalidValue(Hyperparameter.InvalidValue):
-		def __init__(self, name, value, base, msg=None):
-			if msg is None:
-				value = type(value) if isinstance(value, type) else str(value)
-				msg = f'{name}: {value} (expecting an instance of {base})'
-			super().__init__(name, value, msg=msg)
-			self.base = base
+	def copy(self, *, type=unspecified_argument, builder=unspecified_argument, **kwargs):
+		if type is unspecified_argument:
+			type = self.type
+		if builder is unspecified_argument:
+			builder = self.builder
+		return super().copy(type=type, builder=builder, **kwargs)
 
 
 	def get_builder(self) -> Builder:
@@ -46,35 +36,27 @@ class MachineParametrized(Parameterized):
 	Machine = Machine
 
 
-	# @agnostic
-	# def _extract_hparams(self, kwargs):
-	# 	found, remaining = split_dict(kwargs, self._registered_hparams)
-	# 	for key, val in found.items():
-	# 		setattr(self, key, val)
-	# 	return remaining
-
-
-	@agnosticmethod
+	@agnostic
 	def register_machine(self, name=None, _instance=None, **kwargs):
 		if _instance is None:
 			_instance = self.Machine(name=name, **kwargs)
-		return self.register_hparam(name, _instance)
+		return self.register_hparam(name, _instance, **kwargs)
 
 
-	@agnosticmethod
+	@agnostic
 	def machines(self):
 		for key, val in self.named_machines():
 			yield val
 
 
-	@agnosticmethod
+	@agnostic
 	def named_machines(self):
 		for key, val in self.named_hyperparameters():
 			if isinstance(val, Machine):
 				yield key, val
 
 
-	@agnosticmethod
+	@agnostic
 	def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}', include_machines=True):
 		for key, val in self.named_hyperparameters():
 			ident = fmt.format(key)
