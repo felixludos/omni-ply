@@ -140,24 +140,33 @@ class Parameterized:
 		self._registered_hparams = self._registered_hparams.copy()
 		super().__init__(*args, **self._extract_hparams(kwargs))
 
-	class _hparam_finder:
-		def __init__(self, base, by_hparam=False, **kwargs):
-			super().__init__(**kwargs)
-			self.base = base
-			self.by_hparam = by_hparam
+	# class _hparam_finder:
+	# 	def __init__(self, base, by_hparam=False, **kwargs):
+	# 		super().__init__(**kwargs)
+	# 		self.base = base
+	# 		self.by_hparam = by_hparam
+	#
+	# 	def __call__(self, name, default=inspect.Parameter.empty):
+	# 		try:
+	# 			return self.base.get_hparam(name) if self.by_hparam else getattr(self.base, name)
+	# 		except AttributeError:
+	# 			if default is not inspect.Parameter.empty:
+	# 				return default
+	# 			raise KeyError(name)
 
-		def __call__(self, name, default=inspect.Parameter.empty):
-			try:
-				return self.base.get_hparam(name) if self.by_hparam else getattr(self.base, name)
-			except AttributeError:
-				if default is not inspect.Parameter.empty:
-					return default
-				raise KeyError(name)
+	class _missing_hparam:
+		def __init__(self, val=inspect.Parameter.empty):
+			self.val = val
 
 	@agnostic
-	def fill_hparams(self, fn, args=None, kwargs=None, *, by_hparam=False, **other) -> Tuple[Tuple, Dict[str, Any]]:
-		return extract_function_signature(fn, args, kwargs,
-		                                  default_fn=self._hparam_finder(self, by_hparam=by_hparam), **other)
+	def fill_hparams(self, fn, args=None, kwargs=None) -> Dict[str, Any]:
+		#Tuple[Tuple, Dict[str, Any]]:
+		# return extract_function_signature(fn, args, kwargs,
+		#                                   default_fn=self._hparam_finder(self, by_hparam=by_hparam), **other)
+		params = extract_function_signature(fn, args=args, kwargs=kwargs, allow_positional=False,
+		                                    default_fn=lambda n, d: self._missing_hparam(d))
+		
+		return params
 
 	@agnostic
 	def _extract_hparams(self, kwargs):

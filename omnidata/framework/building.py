@@ -26,7 +26,7 @@ prt.addHandler(ch)
 
 class Builder(Parameterized):
 	@staticmethod
-	def validate(product):
+	def validate(product, *args, **kwargs):
 		return product
 
 	@staticmethod
@@ -43,12 +43,12 @@ class Builder(Parameterized):
 
 
 class AutoBuilder(Builder, auto_methods,
-                  inheritable_auto_methods=['__init__', 'build', 'product', 'plan']):
+                  inheritable_auto_methods=['__init__', 'build', 'product', 'plan', 'validate']):
 
 	class MissingArgumentsError(TypeError):
 		def __init__(self, src, method, missing, *, msg=None):
 			if msg is None:
-				msg = f'{src.__name__}.{method.__name__}() missing {len(missing)} ' \
+				msg = f'{src.__name__}.{method.__name__} missing {len(missing)} ' \
 				      f'required arguments: {", ".join(missing)}'
 			super().__init__(msg)
 			self.missing = missing
