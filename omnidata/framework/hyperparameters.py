@@ -25,6 +25,9 @@ class _hyperparameter_property(defaultproperty):
 		raise NotImplementedError
 
 
+# class Structured:
+# 	def children
+
 
 class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, TrackSmart):
 	space = defaultproperty(None)

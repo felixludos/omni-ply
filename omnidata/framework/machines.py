@@ -3,7 +3,7 @@ from collections import OrderedDict
 from omnibelt import split_dict, unspecified_argument, OrderedSet, extract_function_signature, method_wrapper, agnostic
 
 from .hyperparameters import Hyperparameter, Parameterized, hparam
-from .building import get_builder, Builder, ClassBuilder, AutoClassBuilder
+from .building import get_builder, Builder, MultiBuilder, AutoClassBuilder
 
 from omnibelt.nodes import AutoTreeNode
 

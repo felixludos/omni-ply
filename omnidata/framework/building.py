@@ -5,6 +5,7 @@ import inspect
 import logging
 from collections import UserDict
 from omnibelt import unspecified_argument, Class_Registry, extract_function_signature, agnostic, agnosticproperty
+from omnibelt.nodes import AddressNode
 from omnibelt.tricks import auto_methods
 from .hyperparameters import Parameterized, spaces, hparam, inherit_hparams, with_hparams, Hyperparameter
 
@@ -15,13 +16,6 @@ ch.setFormatter(logging.Formatter('%(levelname)s: %(msg)s'))
 ch.setLevel(0)
 prt.addHandler(ch)
 
-
-# class Buildable:
-# 	@agnostic
-# 	def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}', include_machines=True):
-# 		raise NotImplementedError
-#
-# 	pass
 
 
 class Builder(Parameterized):
@@ -40,6 +34,20 @@ class Builder(Parameterized):
 	@staticmethod
 	def plan(*args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
 		raise NotImplementedError
+
+
+class Buildable(Builder):
+	@classmethod
+	def product(cls, *args, **kwargs) -> Type:
+		return cls
+
+	@classmethod
+	def build(cls, *args, **kwargs):
+		return cls.product(*args, **kwargs)(*args, **kwargs)
+
+	@classmethod
+	def plan(cls, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
+		yield from cls.named_hyperparameters()
 
 
 class AutoBuilder(Builder, auto_methods,
@@ -80,20 +88,20 @@ register_builder = builder_registry.get_decorator()
 get_builder = builder_registry.get_class
 
 
-class ClassBuilder(Builder):
-	IdentParameter = Hyperparameter
+class MultiBuilder(Builder):
+	_IdentParameter = Hyperparameter
 
 	def __init_subclass__(cls, _register_ident=False, **kwargs):
 		super().__init_subclass__(**kwargs)
 		if _register_ident:
-			cls.register_hparam('ident', cls.IdentParameter(required=True))
+			cls.register_hparam('ident', cls._IdentParameter(required=True))
+
+	class NoProductFound(KeyError):
+		pass
 
 	@agnostic
 	def available_products(self):
 		return {}
-
-	class NoProductFound(KeyError):
-		pass
 
 	@agnostic
 	def product(self, ident):
@@ -102,14 +110,25 @@ class ClassBuilder(Builder):
 			raise self.NoProductFound(ident)
 		return product
 
-	# @agnostic
-	# def plan(self, ident):
-	# 	product = self.product(ident)
-	# 	yield from product.named_hyperparameters()
+	@agnostic
+	def plan(self, ident, *args, **kwargs):
+		try:
+			product = self.product(ident)
+		except self.NoProductFound:
+			product = None
+
+		if isinstance(product, Builder):
+			return product.plan(*args, **kwargs)
+		elif isinstance(product, Parameterized):
+			yield from product.named_hyperparameters()
+		else:
+			yield from self.named_hyperparameters()
 
 	@agnostic
 	def build(self, ident, *args, **kwargs):
 		product = self.product(ident)
+		if isinstance(product, Builder):
+			return product.build(*args, **kwargs)
 		return product(*args, **kwargs)
 
 	@agnostic
@@ -119,14 +138,18 @@ class ClassBuilder(Builder):
 		return product
 
 
-@inherit_hparams('ident')
-class RegistryBuilder(ClassBuilder):
+class RegistryBuilder(MultiBuilder):
 	Product_Registry = Class_Registry
 	_product_registry: Product_Registry = None
 	_registration_node = None
 
 
-	class IdentParameter(ClassBuilder.Hyperparameter):
+	class _IdentParameter(MultiBuilder.Hyperparameter):
+		def __init__(self, *, space=None, **kwargs):
+			if space is None:
+				space = spaces.Selection()
+			super().__init__(space=space, **kwargs)
+
 		def set_default_value(self, value):
 			self.default = value
 			if value not in self.values:
@@ -151,6 +174,7 @@ class RegistryBuilder(ClassBuilder):
 			cls._registration_node = cls
 		if default_ident is not unspecified_argument:
 			cls._set_default_product(default_ident)
+
 
 	@classmethod
 	def _set_default_product(cls, ident):
@@ -184,14 +208,8 @@ class RegistryBuilder(ClassBuilder):
 		entry = self.find_product_entry(ident)
 		return entry.cls
 
-	# @agnostic
-	# def plan(self, ident):
-	# 	product = self.product(ident)
-	# 	yield from product.named_hyperparameters()
 
 
-
-@inherit_hparams('ident')
 class AutoClassBuilder(RegistryBuilder):
 	'''Automatically register subclasses and add them to the product_registry.'''
 

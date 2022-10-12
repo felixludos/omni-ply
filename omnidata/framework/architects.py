@@ -4,7 +4,7 @@ from omnibelt import unspecified_argument, agnosticmethod, extract_function_sign
 from omnibelt.nodes import TreeNode, AutoTreeNode
 
 from .hyperparameters import Hyperparameter, Parameterized, hparam
-from .building import Builder, ClassBuilder, AutoClassBuilder
+from .building import Builder, MultiBuilder, AutoClassBuilder
 from .machines import Machine, MachineParametrized
 
 
@@ -111,7 +111,7 @@ class Architect(Builder, MachineParametrized):
 
 
 
-class ClassArchitect(ClassBuilder, Architect):
+class ClassArchitect(MultiBuilder, Architect):
 	@agnosticmethod
 	def build_from_spec(self, spec: Architect.Specification) -> Any:
 		if spec.is_leaf:
