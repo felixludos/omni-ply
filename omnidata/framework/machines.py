@@ -27,9 +27,13 @@ class Machine(Hyperparameter):
 	def get_builder(self) -> Builder:
 		if self.builder is not None:
 			return get_builder(self.builder) if isinstance(self.builder, str) else self.builder
-		if self.type is not None and isinstance(self.type, Builder):
-			return self.type
-
+		# if self.type is not None and isinstance(self.type, Builder):
+		# 	return self.type
+	
+	@agnostic
+	def full_spec(self):
+		builder = self.get_builder()
+		yield from builder.full_spec()
 
 
 class MachineParametrized(Parameterized):
@@ -54,24 +58,24 @@ class MachineParametrized(Parameterized):
 		for key, val in self.named_hyperparameters():
 			if isinstance(val, Machine):
 				yield key, val
-
-
-	@agnostic
-	def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}', include_machines=True):
-		for key, val in self.named_hyperparameters():
-			ident = fmt.format(key)
-			if isinstance(val, Machine):
-				builder = val.get_builder()
-				if include_machines or builder is None:
-					yield ident, val
-				if builder is not None:
-					if isinstance(builder, MachineParametrized):
-						yield from builder.full_spec(fmt=fmt_rule.format(parent=ident, child='{}'), fmt_rule=fmt_rule)
-					else:
-						for k, v in builder.plan():
-							yield fmt_rule.format(parent=ident, child=k), v
-			else:
-				yield ident, val
+	
+	
+	# @agnostic
+	# def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}', include_machines=True):
+	# 	for key, val in self.named_hyperparameters():
+	# 		ident = fmt.format(key)
+	# 		if isinstance(val, Machine):
+	# 			builder = val.get_builder()
+	# 			if include_machines or builder is None:
+	# 				yield ident, val
+	# 			if builder is not None:
+	# 				if isinstance(builder, MachineParametrized):
+	# 					yield from builder.full_spec(fmt=fmt_rule.format(parent=ident, child='{}'), fmt_rule=fmt_rule)
+	# 				else:
+	# 					for k, v in builder.plan():
+	# 						yield fmt_rule.format(parent=ident, child=k), v
+	# 		else:
+	# 			yield ident, val
 
 
 

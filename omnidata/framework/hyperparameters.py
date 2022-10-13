@@ -20,6 +20,12 @@ ch.setLevel(0)
 prt.addHandler(ch)
 
 
+class Specced:
+	@agnostic
+	def full_spec(self):
+		yield from ()
+
+
 class _hyperparameter_property(defaultproperty):
 	def register_with(self, obj, name):
 		raise NotImplementedError
@@ -29,7 +35,7 @@ class _hyperparameter_property(defaultproperty):
 # 	def children
 
 
-class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, TrackSmart):
+class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, TrackSmart, Specced):
 	space = defaultproperty(None)
 	required = defaultproperty(False)
 	hidden = defaultproperty(False)
@@ -129,7 +135,7 @@ class hparam(_hyperparameter_property):
 		return kwargs
 
 
-class Parameterized:
+class Parameterized(Specced):
 	_registered_hparams = None
 	def __init_subclass__(cls, skip_auto_registration=False, **kwargs):
 		super().__init_subclass__(**kwargs)
@@ -140,7 +146,7 @@ class Parameterized:
 					val.register_with(cls, key)
 
 	def __init__(self, *args, **kwargs):
-		self._registered_hparams = self._registered_hparams.copy()
+		# self._registered_hparams = self._registered_hparams.copy()
 		super().__init__(*args, **self._extract_hparams(kwargs))
 
 	# class _hparam_finder:
@@ -215,20 +221,15 @@ class Parameterized:
 
 	@agnostic
 	def named_hyperparameters(self):
-		# base = self if isinstance(self, type) else self
-		# for key, val in base.__dict__.items():
-		# 	if isinstance(val, Hyperparameter):
-		# 		yield key, val
 		for key in self._registered_hparams:
 			val = inspect.getattr_static(self, key, None)
 			if val is not None:
 				yield key, val
-
-	# @agnostic
-	# def full_spec(self, *, fmt='{}', fmt_rule='{parent}.{child}'):
-	# 	for key, val in self.named_hyperparameters():
-	# 		yield fmt.format(key), val
-
+	
+	@agnostic
+	def full_spec(self):
+		yield from self.named_hyperparameters()
+	
 	@classmethod
 	def inherit_hparams(cls, *names):
 		for name in reversed(names):

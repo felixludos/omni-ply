@@ -47,7 +47,7 @@ class Buildable(Builder):
 
 	@classmethod
 	def plan(cls, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
-		yield from cls.named_hyperparameters()
+		yield from cls.full_spec()
 
 
 class AutoBuilder(Builder, auto_methods,
