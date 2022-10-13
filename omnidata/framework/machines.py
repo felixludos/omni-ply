@@ -1,15 +1,17 @@
 from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, Callable, Type, Iterable, Iterator
 from collections import OrderedDict
-from omnibelt import split_dict, unspecified_argument, OrderedSet, extract_function_signature, method_wrapper, agnostic
+from omnibelt import split_dict, unspecified_argument, OrderedSet, get_printer, \
+	extract_function_signature, method_wrapper, agnostic
 
-from .hyperparameters import Hyperparameter, Parameterized, hparam
+from .hyperparameters import Hyperparameter, Parameterized, hparam, Specced
 from .building import get_builder, Builder, MultiBuilder, AutoClassBuilder
 
 from omnibelt.nodes import AutoTreeNode
 
+prt = get_printer(__name__)
 
 
-class Machine(Hyperparameter):
+class Machine(Hyperparameter, Specced):
 	def __init__(self, default=unspecified_argument, *, required=True, type=None, builder=None, cache=True, **kwargs):
 		super().__init__(default=default, required=required, cache=cache, **kwargs)
 		self.type = type
@@ -23,17 +25,21 @@ class Machine(Hyperparameter):
 			builder = self.builder
 		return super().copy(type=type, builder=builder, **kwargs)
 
+	def validate_value(self, value):
+		if self.type is not None and not isinstance(value, self.type):
+			prt.warning(f'Value {value} is not of type {self.type}')
 
 	def get_builder(self) -> Builder:
 		if self.builder is not None:
 			return get_builder(self.builder) if isinstance(self.builder, str) else self.builder
-		# if self.type is not None and isinstance(self.type, Builder):
-		# 	return self.type
 	
 	@agnostic
-	def full_spec(self):
+	def full_spec(self, spec=None):
+		spec = super().full_spec(spec=spec)
 		builder = self.get_builder()
-		yield from builder.full_spec()
+		if builder is not None:
+			spec.include(builder)
+		return spec
 
 
 class MachineParametrized(Parameterized):

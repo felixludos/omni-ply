@@ -1,13 +1,14 @@
 
 from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, Callable, Generator, Type, Iterable, \
 	Iterator, NamedTuple, ContextManager
+import types
 import inspect
-
+from pprint import pprint
 import logging
 from collections import OrderedDict
 from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, \
 	extract_function_signature, method_wrapper, agnostic, agnosticproperty, \
-	defaultproperty, autoproperty, referenceproperty, smartproperty, cachedproperty, TrackSmart
+	defaultproperty, autoproperty, referenceproperty, smartproperty, cachedproperty, TrackSmart, Tracer
 
 from . import spaces
 
@@ -20,10 +21,73 @@ ch.setLevel(0)
 prt.addHandler(ch)
 
 
+class Specification:
+	def __iter__(self):
+		return iter(self.emit())
+
+	def include(self, src: Union['Specification', 'Specced', Iterable[Tuple[str, 'Hyperparameter']]]):
+		raise NotImplementedError
+
+	def emit(self, **kwargs) -> Iterator[Tuple[str, 'Hyperparameter']]:
+		raise NotImplementedError
+
+
 class Specced:
+	class Specification:
+		def __init__(self, *srcs, **kwargs):
+			super().__init__(**kwargs)
+			self.srcs = []
+			self.include(*srcs)
+
+		def __iter__(self):
+			return iter(self.flat())
+
+		def include(self, *srcs: Union['Specced.Specification', 'Specced', Iterator[Tuple[str, 'Hyperparameter']]]):
+			for src in srcs:
+				if isinstance(src, types.GeneratorType):
+					src = list(src)
+				self.srcs.append(src)
+
+		def _package(self, key, param, trace, delimiter=None, **kwargs):
+			if delimiter is not None:
+				history = trace.path
+				if len(history):
+					terms = [k for k, _ in history] + [key]
+					key = delimiter.join(terms)
+			return key, param
+
+		def _emit_params(self, params, *, trace, recursive=True, **kwargs):
+			for key, param in params:
+				item = self._package(key, param, trace=trace, **kwargs)
+				if item is not None:
+					yield item
+					if recursive and isinstance(param, Specced): # recursive
+						yield from self._emit_src(param, trace=trace.append((key, param)), **kwargs)
+
+		def _emit_src(self, src, **kwargs):
+			if isinstance(src, Specification):
+				yield from self._emit_params(src.emit(**kwargs), **kwargs)
+			elif isinstance(src, Specced):
+				yield from self._emit_params(src.full_spec().emit(**kwargs), **kwargs)
+			else:
+				yield from self._emit_params(src, **kwargs)
+
+		Tracer = Tracer
+
+		def emit(self, trace=None, recursive=True, **kwargs) -> Iterator[Tuple[str, 'Hyperparameter']]:
+			if trace is None:
+				trace = self.Tracer()
+			for src in self.srcs:
+				yield from self._emit_src(src, trace=trace, recursive=recursive, **kwargs)
+
+		def flat(self, delimiter='.'):
+			yield from self.emit(delimiter=delimiter)
+
 	@agnostic
-	def full_spec(self):
-		yield from ()
+	def full_spec(self, spec: Optional[Specification] = None) -> Specification:
+		if spec is None:
+			spec = self.Specification()
+		return spec
 
 
 class _hyperparameter_property(defaultproperty):
@@ -31,11 +95,7 @@ class _hyperparameter_property(defaultproperty):
 		raise NotImplementedError
 
 
-# class Structured:
-# 	def children
-
-
-class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, TrackSmart, Specced):
+class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, TrackSmart):
 	space = defaultproperty(None)
 	required = defaultproperty(False)
 	hidden = defaultproperty(False)
@@ -65,6 +125,11 @@ class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, Tra
 			self = self.copy(name=name, **kwargs)
 		return obj.register_hparam(self.name, self)
 
+	def validate_value(self, value):
+		return value
+
+	def update_value(self, base, value):
+		return super().update_value(base, self.validate_value(value))
 
 
 # class _hparam_referenceproperty(referenceproperty):
@@ -225,11 +290,13 @@ class Parameterized(Specced):
 			val = inspect.getattr_static(self, key, None)
 			if val is not None:
 				yield key, val
-	
+
 	@agnostic
-	def full_spec(self):
-		yield from self.named_hyperparameters()
-	
+	def full_spec(self, spec=None):
+		spec = super().full_spec(spec)
+		spec.include(self.named_hyperparameters())
+		return spec
+
 	@classmethod
 	def inherit_hparams(cls, *names):
 		for name in reversed(names):

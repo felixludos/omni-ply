@@ -35,19 +35,29 @@ class Builder(Parameterized):
 	def plan(*args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
 		raise NotImplementedError
 
+	@agnostic
+	def full_spec(self, spec=None):
+		spec = super().full_spec(spec)
+		spec.include(self.plan())
+		return spec
+
 
 class Buildable(Builder):
 	@classmethod
 	def product(cls, *args, **kwargs) -> Type:
 		return cls
 
-	@classmethod
-	def build(cls, *args, **kwargs):
-		return cls.product(*args, **kwargs)(*args, **kwargs)
+	@agnostic
+	def build(self, *args, **kwargs):
+		return self.product(*args, **kwargs)(*args, **kwargs)
 
-	@classmethod
-	def plan(cls, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
-		yield from cls.full_spec()
+	@agnostic
+	def plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
+		return self.full_spec()
+
+	@agnostic
+	def full_spec(self, spec=None):
+		return super(Builder, self).full_spec(spec=spec)
 
 
 class AutoBuilder(Builder, auto_methods,
@@ -72,6 +82,9 @@ class AutoBuilder(Builder, auto_methods,
 		if len(missing):
 			raise base.MissingArgumentsError(src, method, missing)
 		return method(*fixed_args, **fixed_kwargs)
+
+	# def full_spec(self, spec=None):
+
 
 
 	# class Specification:
