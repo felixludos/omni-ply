@@ -10,6 +10,8 @@ from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSe
 	extract_function_signature, method_wrapper, agnostic, agnosticproperty, \
 	defaultproperty, autoproperty, referenceproperty, smartproperty, cachedproperty, TrackSmart, Tracer
 
+from .specification import Specced, Specification
+
 from . import spaces
 
 # prt = get_printer(__file__, format='%(levelname)s: %(msg)s')
@@ -31,6 +33,16 @@ class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, Tra
 	required = defaultproperty(False)
 	hidden = defaultproperty(False)
 
+	@property
+	def value(self):
+		return getattr(self, '_value', self.unknown)
+	@value.setter
+	def value(self, value):
+		self._value = value
+	@value.deleter
+	def value(self):
+		del self._value
+
 	def copy(self, *, space=unspecified_argument, hidden=unspecified_argument, required=unspecified_argument,
 	         **kwargs):
 		if space is unspecified_argument:
@@ -43,7 +55,7 @@ class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, Tra
 
 	def __str__(self):
 		name = '' if self.name is None else self.name
-		default = '' if self.default is self._unknown else f', default={self.default}'
+		default = '' if self.default is self.unknown else f', default={self.default}'
 		return f'{self.__class__.__name__}({name}{default})'
 
 	def __repr__(self):
@@ -120,7 +132,7 @@ class hparam(_hyperparameter_property):
 
 	def _get_registration_args(self):
 		kwargs = self.info.copy()
-		if self.default is not self._unknown:
+		if self.default is not self.unknown:
 			kwargs['default'] = self.default
 		kwargs['space'] = self.space
 		kwargs['cache'] = self.cache
@@ -159,9 +171,15 @@ class Parameterized(Specced):
 	# 				return default
 	# 			raise KeyError(name)
 
-	class _missing_hparam:
-		def __init__(self, val=inspect.Parameter.empty):
-			self.val = val
+	class _find_missing_hparam:
+		def __init__(self, base, **kwargs):
+			super().__init__(**kwargs)
+			self.base = base
+
+		def __call__(self, name, default=inspect.Parameter.empty):
+			# if default is not inspect.Parameter.empty:
+			# 	return default
+			raise KeyError(name)
 
 	@agnostic
 	def fill_hparams(self, fn, args=None, kwargs=None) -> Dict[str, Any]:
@@ -169,7 +187,7 @@ class Parameterized(Specced):
 		# return extract_function_signature(fn, args, kwargs,
 		#                                   default_fn=self._hparam_finder(self, by_hparam=by_hparam), **other)
 		params = extract_function_signature(fn, args=args, kwargs=kwargs, allow_positional=False,
-		                                    default_fn=lambda n, d: self._missing_hparam(d))
+		                                    default_fn=self._find_missing_hparam(self))
 		
 		return params
 
@@ -211,21 +229,23 @@ class Parameterized(Specced):
 		return val
 
 	@agnostic
-	def hyperparameters(self):
-		for key, val in self.named_hyperparameters():
+	def hyperparameters(self, include_values=False):
+		for key, val in self.named_hyperparameters(include_values=include_values):
 			yield val
 
 	@agnostic
-	def named_hyperparameters(self):
+	def named_hyperparameters(self, include_values=False):
 		for key in self._registered_hparams:
 			val = inspect.getattr_static(self, key, None)
+			if include_values:
+				val.value = getattr(self, key, val.unknown)
 			if val is not None:
 				yield key, val
 
 	@agnostic
 	def full_spec(self, spec=None):
 		spec = super().full_spec(spec)
-		spec.include(self.named_hyperparameters())
+		spec.include(self.named_hyperparameters(include_values=True))
 		return spec
 
 	@classmethod

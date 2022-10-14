@@ -70,31 +70,46 @@ class LazySpecification(Specification):
 
 
 class SpecNode(Specification, AutoAddressNode, SparseNode):
-	
-	def _include_param(self, key, param, **kwargs):
-		raise NotImplementedError
+	def _include_param(self, key, param, trace=None, recursive=True, **kwargs):
+		self.set(key, param)
+		if recursive and isinstance(param, Specced): # recursive
+			self._include_src(param, trace=trace.append((key, param)), **kwargs)
 
-	def _include_src(self, src, **kwargs):
+	Tracer = Tracer
+	def _include_src(self, src, trace=None, **kwargs):
+		if trace is None:
+			trace = self.Tracer()
 		if isinstance(src, Specification):
-			yield from self._emit_params(src.emit(**kwargs), **kwargs)
+			for key, param in src.emit(**kwargs):
+				self._include_param(key, param, trace=trace, **kwargs)
 		elif isinstance(src, Specced):
-			yield from self._emit_params(src.full_spec().emit(**kwargs), **kwargs)
+			for key, param in src.full_spec().emit(**kwargs):
+				self._include_param(key, param, trace=trace, **kwargs)
 		else:
-			yield from self._emit_params(src, **kwargs)
+			for key, param in src:
+				self._include_param(key, param, trace=trace, **kwargs)
 
 	def include(self, *srcs: Union['Specification', 'Specced', Iterable[Tuple[str, 'Hyperparameter']]]):
 		for src in srcs:
 			if isinstance(src, types.GeneratorType):
 				src = list(src)
 			self.add(src)
-	
-	pass
 
+	def emit(self, recursive=True, flat=True, prefix=None, **kwargs) -> Iterator[Tuple[str, 'Hyperparameter']]:
+		if prefix is None:
+			prefix = self.Tracer()
+		for key, child in self.named_children():
+			addr = prefix.append(key)
+			if child.has_payload:
+				name = self._address_delimiter.join(addr.path) if flat else key
+				yield name, child.payload
+			if recursive and not child.is_leaf:
+				yield from child.emit(recursive=recursive, flat=flat, prefix=addr, **kwargs)
 
 
 class Specced:
-	class Specification(Specification):
-		pass
+	Specification = SpecNode
+	# class Specification(SpecNode): pass
 
 	@agnostic
 	def full_spec(self, spec: Optional[Specification] = None) -> Specification:

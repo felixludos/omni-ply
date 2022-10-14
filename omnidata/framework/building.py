@@ -4,11 +4,12 @@ import inspect
 
 import logging
 from collections import UserDict
-from omnibelt import unspecified_argument, Class_Registry, extract_function_signature, agnostic, agnosticproperty
+from omnibelt import unspecified_argument, Class_Registry, extract_function_signature, agnostic, agnosticproperty, \
+	Modifiable, inject_modifiers
 from omnibelt.nodes import AddressNode
 from omnibelt.tricks import auto_methods
 from .hyperparameters import Parameterized, spaces, hparam, inherit_hparams, with_hparams, Hyperparameter
-
+from .specification import Specification
 
 prt = logging.Logger('Building')
 ch = logging.StreamHandler()
@@ -32,14 +33,28 @@ class Builder(Parameterized):
 		raise NotImplementedError
 
 	@staticmethod
-	def plan(*args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
+	def plan(*args, **kwargs) -> Specification:
+		'''Generally the top level specification for the product (inferred from the provided arguments)'''
 		raise NotImplementedError
 
 	@agnostic
 	def full_spec(self, spec=None):
+		'''The full specification for this builder (generally this is the plan, but may be more)'''
 		spec = super().full_spec(spec)
 		spec.include(self.plan())
 		return spec
+
+	@staticmethod
+	def build_from_spec(spec):
+		raise NotImplementedError
+
+	@staticmethod
+	def plan_from_spec(spec):
+		raise NotImplementedError
+
+	@staticmethod
+	def product_from_spec(spec):
+		raise NotImplementedError
 
 
 class Buildable(Builder):
@@ -53,11 +68,24 @@ class Buildable(Builder):
 
 	@agnostic
 	def plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
-		return self.full_spec()
+		return self.product(*args, **kwargs).full_spec()
 
 	@agnostic
 	def full_spec(self, spec=None):
 		return super(Builder, self).full_spec(spec=spec)
+
+
+class ModProduct(Builder):
+	@staticmethod
+	def _modify_product(product, *mods, name=None):
+		if issubclass(product, Modifiable):
+			return product.inject_mods(*mods, name=name)
+		return inject_modifiers(product, *mods, name=name)
+
+	@agnostic
+	def product(self, *args, mods=None, **kwargs) -> Type:
+		product = super().product(*args, **kwargs)
+		return self._modify_product(product, *mods)
 
 
 class AutoBuilder(Builder, auto_methods,
