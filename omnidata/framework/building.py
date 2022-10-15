@@ -32,33 +32,47 @@ class Builder(Parameterized):
 	def build(*args, **kwargs):
 		raise NotImplementedError
 
-	@staticmethod
-	def plan(*args, **kwargs) -> Specification:
-		'''Generally the top level specification for the product (inferred from the provided arguments)'''
-		raise NotImplementedError
+	# @staticmethod
+	# def plan(*args, **kwargs) -> Specification:
+	# 	'''Generally the top level specification for the product (inferred from the provided arguments)'''
+	# 	raise NotImplementedError
 
-	@agnostic
-	def full_spec(self, spec=None):
-		'''The full specification for this builder (generally this is the plan, but may be more)'''
-		spec = super().full_spec(spec)
-		spec.include(self.plan())
-		return spec
-
-	@staticmethod
-	def fill_in_spec(spec, fn, args=None, kwargs=None):
-		raise NotImplementedError
-
-	@staticmethod
-	def build_from_spec(spec):
-		raise NotImplementedError
-
-	@staticmethod
-	def plan_from_spec(spec):
-		raise NotImplementedError
-
-	@staticmethod
-	def product_from_spec(spec):
-		raise NotImplementedError
+	# @agnostic
+	# def full_spec(self, spec=None):
+	# 	'''The full specification for this builder (generally this is the plan, but may be more)'''
+	# 	spec = super().full_spec(spec)
+	# 	spec.include(self.plan())
+	# 	return spec
+	#
+	# class _find_missing_hparam(Parameterized._find_missing_hparam):
+	# 	def __init__(self, base, spec=None, **kwargs):
+	# 		super().__init__(**kwargs)
+	# 		self.base = base
+	# 		self.spec = spec
+	#
+	# 	def __call__(self, name, default=inspect.Parameter.empty):
+	# 		if self.spec is not None:
+	# 			if name in self.spec:
+	# 				return self.spec[name]
+	# 		# if default is not inspect.Parameter.empty:
+	# 		# 	return default
+	# 		return super().__call__(name, default=default)
+	#
+	# @agnostic
+	# def _fill_in_spec(self, fn, spec, args=None, kwargs=None, **finder_kwargs):
+	# 	return self.fill_hparams(fn, spec=spec, args=args, kwargs=kwargs, **finder_kwargs)
+	#
+	# @agnostic
+	# def build_from_spec(self, spec):
+	# 	return self.build(**self._fill_in_spec(self.build, spec))
+	#
+	# @agnostic
+	# def plan_from_spec(self, spec):
+	# 	return self.plan(**self._fill_in_spec(self.plan, spec))
+	#
+	# @agnostic
+	# def product_from_spec(self, spec):
+	# 	return self.product(**self._fill_in_spec(self.product, spec))
 
 
 class Buildable(Builder):

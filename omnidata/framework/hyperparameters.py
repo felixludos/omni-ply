@@ -33,15 +33,15 @@ class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, Tra
 	required = defaultproperty(False)
 	hidden = defaultproperty(False)
 
-	@property
-	def value(self):
-		return getattr(self, '_value', self.unknown)
-	@value.setter
-	def value(self, value):
-		self._value = value
-	@value.deleter
-	def value(self):
-		del self._value
+	# @property
+	# def value(self):
+	# 	return getattr(self, '_value', self.unknown)
+	# @value.setter
+	# def value(self, value):
+	# 	self._value = value
+	# @value.deleter
+	# def value(self):
+	# 	del self._value
 
 	def copy(self, *, space=unspecified_argument, hidden=unspecified_argument, required=unspecified_argument,
 	         **kwargs):
@@ -182,12 +182,12 @@ class Parameterized(Specced):
 			raise KeyError(name)
 
 	@agnostic
-	def fill_hparams(self, fn, args=None, kwargs=None) -> Dict[str, Any]:
+	def fill_hparams(self, fn, args=None, kwargs=None, **finder_kwargs) -> Dict[str, Any]:
 		#Tuple[Tuple, Dict[str, Any]]:
 		# return extract_function_signature(fn, args, kwargs,
 		#                                   default_fn=self._hparam_finder(self, by_hparam=by_hparam), **other)
 		params = extract_function_signature(fn, args=args, kwargs=kwargs, allow_positional=False,
-		                                    default_fn=self._find_missing_hparam(self))
+		                                    default_fn=self._find_missing_hparam(self, **finder_kwargs))
 		
 		return params
 
@@ -234,11 +234,11 @@ class Parameterized(Specced):
 			yield val
 
 	@agnostic
-	def named_hyperparameters(self, include_values=False):
+	def named_hyperparameters(self):#, include_values=False):
 		for key in self._registered_hparams:
 			val = inspect.getattr_static(self, key, None)
-			if include_values:
-				val.value = getattr(self, key, val.unknown)
+			# if include_values:
+			# 	val.value = getattr(self, key, val.unknown)
 			if val is not None:
 				yield key, val
 
