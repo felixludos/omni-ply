@@ -45,6 +45,10 @@ class Builder(Parameterized):
 		return spec
 
 	@staticmethod
+	def fill_in_spec(spec, fn, args=None, kwargs=None):
+		raise NotImplementedError
+
+	@staticmethod
 	def build_from_spec(spec):
 		raise NotImplementedError
 
