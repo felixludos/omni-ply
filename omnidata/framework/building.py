@@ -7,7 +7,9 @@ from collections import UserDict
 from omnibelt import unspecified_argument, Class_Registry, extract_function_signature, agnostic, agnosticproperty, \
 	Modifiable, inject_modifiers
 from omnibelt.nodes import AddressNode
-from omnibelt.tricks import auto_methods
+from omnibelt.tricks import auto_methods, dynamic_capture
+import omnifig as fig
+
 from .hyperparameters import Parameterized, spaces, hparam, inherit_hparams, with_hparams, Hyperparameter
 from .specification import Specification
 
@@ -32,33 +34,47 @@ class Builder(Parameterized):
 	def build(*args, **kwargs):
 		raise NotImplementedError
 
-	@staticmethod
-	def plan(*args, **kwargs) -> Specification:
-		'''Generally the top level specification for the product (inferred from the provided arguments)'''
-		raise NotImplementedError
+	# @staticmethod
+	# def plan(*args, **kwargs) -> Specification:
+	# 	'''Generally the top level specification for the product (inferred from the provided arguments)'''
+	# 	raise NotImplementedError
 
-	@agnostic
-	def full_spec(self, spec=None):
-		'''The full specification for this builder (generally this is the plan, but may be more)'''
-		spec = super().full_spec(spec)
-		spec.include(self.plan())
-		return spec
-
-	@staticmethod
-	def fill_in_spec(spec, fn, args=None, kwargs=None):
-		raise NotImplementedError
-
-	@staticmethod
-	def build_from_spec(spec):
-		raise NotImplementedError
-
-	@staticmethod
-	def plan_from_spec(spec):
-		raise NotImplementedError
-
-	@staticmethod
-	def product_from_spec(spec):
-		raise NotImplementedError
+	# @agnostic
+	# def full_spec(self, spec=None):
+	# 	'''The full specification for this builder (generally this is the plan, but may be more)'''
+	# 	spec = super().full_spec(spec)
+	# 	spec.include(self.plan())
+	# 	return spec
+	#
+	# class _find_missing_hparam(Parameterized._find_missing_hparam):
+	# 	def __init__(self, base, spec=None, **kwargs):
+	# 		super().__init__(**kwargs)
+	# 		self.base = base
+	# 		self.spec = spec
+	#
+	# 	def __call__(self, name, default=inspect.Parameter.empty):
+	# 		if self.spec is not None:
+	# 			if name in self.spec:
+	# 				return self.spec[name]
+	# 		# if default is not inspect.Parameter.empty:
+	# 		# 	return default
+	# 		return super().__call__(name, default=default)
+	#
+	# @agnostic
+	# def _fill_in_spec(self, fn, spec, args=None, kwargs=None, **finder_kwargs):
+	# 	return self.fill_hparams(fn, spec=spec, args=args, kwargs=kwargs, **finder_kwargs)
+	#
+	# @agnostic
+	# def build_from_spec(self, spec):
+	# 	return self.build(**self._fill_in_spec(self.build, spec))
+	#
+	# @agnostic
+	# def plan_from_spec(self, spec):
+	# 	return self.plan(**self._fill_in_spec(self.plan, spec))
+	#
+	# @agnostic
+	# def product_from_spec(self, spec):
+	# 	return self.product(**self._fill_in_spec(self.product, spec))
 
 
 class Buildable(Builder):
@@ -70,13 +86,51 @@ class Buildable(Builder):
 	def build(self, *args, **kwargs):
 		return self.product(*args, **kwargs)(*args, **kwargs)
 
-	@agnostic
-	def plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
-		return self.product(*args, **kwargs).full_spec()
+	# @agnostic
+	# def plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
+	# 	return self.product(*args, **kwargs).full_spec()
 
 	@agnostic
 	def full_spec(self, spec=None):
 		return super(Builder, self).full_spec(spec=spec)
+
+
+class ConfigBuilder(Builder, fig.Configurable):
+
+	class _find_missing_hparam(Builder._find_missing_hparam):
+		def __init__(self, base, config=None, *, silent=None, **kwargs):
+			super().__init__(**kwargs)
+			if config is None:
+				config = base.my_config
+			self.config = config
+			self.config_fixer = base._fill_config_args(config, silent=silent)
+
+		def __call__(self, name, default=inspect.Parameter.empty):
+			# if default is not inspect.Parameter.empty:
+			# 	return default
+			raise KeyError(name)
+		
+
+	@classmethod
+	def _fn_from_config(cls, config, fn_name, args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None, *,
+	                     silent: Optional[bool] = None) -> Any:
+		if args is None:
+			args = ()
+		if kwargs is None:
+			kwargs = {}
+
+		init_capture = dynamic_capture(cls._fill_config_args.configurable_parents(cls),
+		                               cls._fill_config_args(config, silent=silent), fn_name).activate()
+
+		obj = cls(*args, **kwargs)
+
+		init_capture.deactivate()
+		return obj
+		
+	@classmethod
+	def init_from_config(cls, config, args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None, *,
+	                     silent: Optional[bool] = None) -> Any:
+		return cls._fn_from_config(config, '__init__', args=args, kwargs=kwargs, silent=silent)
 
 
 class ModProduct(Builder):
