@@ -34,10 +34,10 @@ class Builder(Parameterized):
 	def build(*args, **kwargs):
 		raise NotImplementedError
 
-	# @staticmethod
-	# def plan(*args, **kwargs) -> Specification:
-	# 	'''Generally the top level specification for the product (inferred from the provided arguments)'''
-	# 	raise NotImplementedError
+	@staticmethod
+	def plan(*args, **kwargs) -> Specification:
+		'''Generally the top level specification for the product (inferred from the provided arguments)'''
+		raise NotImplementedError
 
 	# @agnostic
 	# def full_spec(self, spec=None):
