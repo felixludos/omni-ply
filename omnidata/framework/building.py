@@ -103,7 +103,7 @@ class ConfigBuilder(Builder, fig.Configurable):
 			if config is None:
 				config = base.my_config
 			self.config = config
-			self.config_fixer = base._fill_config_args(config, silent=silent)
+			self.config_fixer = base._config_builder(config, silent=silent)
 
 		def __call__(self, name, default=inspect.Parameter.empty):
 			# if default is not inspect.Parameter.empty:
@@ -119,8 +119,8 @@ class ConfigBuilder(Builder, fig.Configurable):
 		if kwargs is None:
 			kwargs = {}
 
-		init_capture = dynamic_capture(cls._fill_config_args.configurable_parents(cls),
-		                               cls._fill_config_args(config, silent=silent), fn_name).activate()
+		init_capture = dynamic_capture(cls._config_builder.configurable_parents(cls),
+		                               cls._config_builder(config, silent=silent), fn_name).activate()
 
 		obj = cls(*args, **kwargs)
 

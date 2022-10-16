@@ -28,6 +28,8 @@ class _hyperparameter_property(defaultproperty):
 		raise NotImplementedError
 
 
+# manual -> cache -> config -> (builder) -> fget -> default
+
 class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, TrackSmart):
 	space = defaultproperty(None)
 	required = defaultproperty(False)
