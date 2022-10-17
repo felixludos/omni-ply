@@ -34,16 +34,24 @@ class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, Tra
 	space = defaultproperty(None)
 	required = defaultproperty(False)
 	hidden = defaultproperty(False)
+	fixed = defaultproperty(False)
 
-	# @property
-	# def value(self):
-	# 	return getattr(self, '_value', self.unknown)
-	# @value.setter
-	# def value(self, value):
-	# 	self._value = value
-	# @value.deleter
-	# def value(self):
-	# 	del self._value
+	@classmethod
+	def extract_from(cls, param: 'Hyperparameter'):
+		kwargs = {
+			'name': param.name,
+			'src': param.src,
+			'default': param.default,
+			'hidden': param.hidden,
+			'required': param.required,
+			'space': param.space,
+			'fixed': param.fixed,
+			'cache': param.cache,
+			'fget': param.fget,
+			'fset': param.fset,
+			'fdel': param.fdel,
+		}
+		return cls(**kwargs)
 
 	def copy(self, *, space=unspecified_argument, hidden=unspecified_argument, required=unspecified_argument,
 	         **kwargs):
@@ -77,9 +85,22 @@ class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, Tra
 		return super().update_value(base, self.validate_value(value))
 
 
-# class _hparam_referenceproperty(referenceproperty):
-# 	def __init__(self, ref_key='ref', **kwargs):
-# 		super().__init__(ref_key=ref_key, **kwargs)
+class ConfigHyperparameter(Hyperparameter):
+	def __init__(self, default=unspecified_argument, *, aliases=(), **kwargs):
+		super().__init__(default=default, **kwargs)
+		self.aliases = aliases
+
+	def create_value(self, base, owner=None): # TODO: maybe make thread-safe by using a lock
+		config = getattr(base, 'my_config', None)
+		default = config._empty_default if (self.default is self.unknown or self.fget is not None) else self.default
+
+		try:
+			result = config.pulls(self.name, *self.aliases, default=default)
+		except config.SearchFailed:
+			return super().create_value(base, owner=owner)
+		else:
+			return self.validate_value(result)
+
 
 
 class RefHyperparameter(Hyperparameter): # TODO: test, a lot
@@ -203,18 +224,24 @@ class Parameterized(Specced):
 	Hyperparameter = Hyperparameter
 
 	@classmethod
-	def register_hparam(cls, name=None, _instance=None, *, default=unspecified_argument, _hparam_type=None, **kwargs):
+	def _register_hparam(cls, name, param):
+		if not getattr(param, 'hidden', False):
+			cls._registered_hparams.add(name)
+		setattr(cls, name, param)
+
+	@classmethod
+	def register_hparam(cls, name: Optional[str] = None, _instance: Optional[Hyperparameter] = None, *,
+	                    default: Optional[Any] = unspecified_argument, **kwargs):
 		if _instance is None:
-			base = cls
-			if _hparam_type is None:
-				_hparam_type = cls.Hyperparameter
-			_instance = _hparam_type(default=default, name=name, src=base, **kwargs)
+			_instance = cls.Hyperparameter(name=name, default=default, **kwargs)
+		else:
+			if not isinstance(_instance, Hyperparameter):
+				raise TypeError(f'Expected Hyperparameter, got {_instance.__class__}')
+			_instance = cls.Hyperparameter.extract_from(_instance)
 		if name is None:
 			name = _instance.name
-		assert name is not None
-		if not getattr(_instance, 'hidden', False):
-			cls._registered_hparams.add(name)
-		setattr(cls, name, _instance)
+		assert name is not None, f'No name provided for {_instance}'
+		cls._register_hparam(name, _instance)
 
 	@agnostic
 	def reset_hparams(self):
@@ -236,23 +263,22 @@ class Parameterized(Specced):
 			yield val
 
 	@agnostic
-	def named_hyperparameters(self):#, include_values=False):
+	def named_hyperparameters(self):
 		for key in self._registered_hparams:
 			val = inspect.getattr_static(self, key, None)
-			# if include_values:
-			# 	val.value = getattr(self, key, val.unknown)
 			if val is not None:
 				yield key, val
 
-	@agnostic
-	def full_spec(self, spec=None):
-		spec = super().full_spec(spec)
-		spec.include(self.named_hyperparameters(include_values=True))
-		return spec
+	# @agnostic
+	# def full_spec(self, spec=None):
+	# 	spec = super().full_spec(spec)
+	# 	spec.include(self.named_hyperparameters(include_values=True))
+	# 	return spec
 
 	@classmethod
 	def inherit_hparams(cls, *names):
 		for name in reversed(names):
+			cls.register_hparam(name, cls.get_hparam(name))
 			cls._registered_hparams.discard(name)
 			cls._registered_hparams.insert(0, name)
 

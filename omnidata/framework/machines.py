@@ -33,13 +33,13 @@ class Machine(Hyperparameter, Specced):
 		if self.builder is not None:
 			return get_builder(self.builder) if isinstance(self.builder, str) else self.builder
 	
-	@agnostic
-	def full_spec(self, spec=None):
-		spec = super().full_spec(spec=spec)
-		builder = self.get_builder()
-		if builder is not None:
-			spec.include(builder)
-		return spec
+	# @agnostic
+	# def full_spec(self, spec=None):
+	# 	spec = super().full_spec(spec=spec)
+	# 	builder = self.get_builder()
+	# 	if builder is not None:
+	# 		spec.include(builder)
+	# 	return spec
 
 
 class MachineParametrized(Parameterized):
