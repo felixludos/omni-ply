@@ -37,8 +37,8 @@ class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, Tra
 	fixed = defaultproperty(False)
 
 	@classmethod
-	def extract_from(cls, param: 'Hyperparameter'):
-		kwargs = {
+	def extract_from(cls, param: 'Hyperparameter', **kwargs):
+		info = {
 			'name': param.name,
 			'src': param.src,
 			'default': param.default,
@@ -51,7 +51,8 @@ class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, Tra
 			'fset': param.fset,
 			'fdel': param.fdel,
 		}
-		return cls(**kwargs)
+		info.update(kwargs)
+		return cls(**info)
 
 	def copy(self, *, space=unspecified_argument, hidden=unspecified_argument, required=unspecified_argument,
 	         **kwargs):
@@ -72,7 +73,6 @@ class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, Tra
 		name = f'{id(self)[-8:]}' if self.name is None else self.name
 		return f'<{self.__class__.__name__}:{name}>'
 
-
 	def register_with(self, obj, name, **kwargs):
 		if name != self.name:
 			self = self.copy(name=name, **kwargs)
@@ -81,26 +81,44 @@ class Hyperparameter(_hyperparameter_property, autoproperty, cachedproperty, Tra
 	def validate_value(self, value):
 		return value
 
+	def create_value(self, base, owner=None): # TODO: maybe make thread-safe by using a lock
+		return self.validate_value(super().create_value(base, owner=owner))
+		
 	def update_value(self, base, value):
 		return super().update_value(base, self.validate_value(value))
-
-
+	
+	
 class ConfigHyperparameter(Hyperparameter):
-	def __init__(self, default=unspecified_argument, *, aliases=(), **kwargs):
-		super().__init__(default=default, **kwargs)
-		self.aliases = aliases
+	aliases = defaultproperty(None)
+	silent = defaultproperty(None)
 
-	def create_value(self, base, owner=None): # TODO: maybe make thread-safe by using a lock
+	@classmethod
+	def extract_from(cls, param: 'Hyperparameter', **kwargs):
+		return super().extract_from(param, aliases=getattr(param, 'aliases', None),
+		                            silent=getattr(param, 'silent', None), **kwargs)
+		
+	def copy(self, *, aliases=unspecified_argument, silent=unspecified_argument, required=unspecified_argument,
+	         **kwargs):
+		if aliases is unspecified_argument:
+			aliases = self.aliases
+		if silent is unspecified_argument:
+			silent = self.silent
+		return super().copy(aliases=aliases, silent=silent, **kwargs)
+	
+	def create_value(self, base, owner=None):  # TODO: maybe make thread-safe by using a lock
 		config = getattr(base, 'my_config', None)
 		default = config._empty_default if (self.default is self.unknown or self.fget is not None) else self.default
-
-		try:
-			result = config.pulls(self.name, *self.aliases, default=default)
-		except config.SearchFailed:
-			return super().create_value(base, owner=owner)
+		
+		if config is None:
+			result = super().create_value(base, owner=owner)
 		else:
-			return self.validate_value(result)
-
+			try:
+				result = config.pulls(self.name, *self.aliases, default=default, silent=self.silent)
+			except config.SearchFailed:
+				result = super().create_value(base, owner=owner)
+			else:
+				result = self.validate_value(result)
+		return result
 
 
 class RefHyperparameter(Hyperparameter): # TODO: test, a lot
@@ -110,6 +128,8 @@ class RefHyperparameter(Hyperparameter): # TODO: test, a lot
 
 	hidden = referenceproperty('ref')
 	space = referenceproperty('ref')
+	required = defaultproperty('ref')
+	fixed = defaultproperty('ref')
 
 	fget = referenceproperty('ref')
 	fset = referenceproperty('ref')
@@ -166,7 +186,7 @@ class hparam(_hyperparameter_property):
 		return kwargs
 
 
-class Parameterized(Specced):
+class Parameterized:
 	_registered_hparams = None
 	def __init_subclass__(cls, skip_auto_registration=False, **kwargs):
 		super().__init_subclass__(**kwargs)
@@ -200,9 +220,9 @@ class Parameterized(Specced):
 			self.base = base
 
 		def __call__(self, name, default=inspect.Parameter.empty):
-			# if default is not inspect.Parameter.empty:
-			# 	return default
-			raise KeyError(name)
+			value = getattr(self.base, name, default)
+			if value is default:
+				raise KeyError(name)
 
 	@agnostic
 	def fill_hparams(self, fn, args=None, kwargs=None, **finder_kwargs) -> Dict[str, Any]:
@@ -227,21 +247,18 @@ class Parameterized(Specced):
 	def _register_hparam(cls, name, param):
 		if not getattr(param, 'hidden', False):
 			cls._registered_hparams.add(name)
+		assert name is not None, f'No name provided for {param}'
 		setattr(cls, name, param)
+		return param
 
 	@classmethod
 	def register_hparam(cls, name: Optional[str] = None, _instance: Optional[Hyperparameter] = None, *,
 	                    default: Optional[Any] = unspecified_argument, **kwargs):
-		if _instance is None:
-			_instance = cls.Hyperparameter(name=name, default=default, **kwargs)
-		else:
-			if not isinstance(_instance, Hyperparameter):
-				raise TypeError(f'Expected Hyperparameter, got {_instance.__class__}')
-			_instance = cls.Hyperparameter.extract_from(_instance)
+		_instance = cls.Hyperparameter(name=name, default=default, **kwargs) \
+			if _instance is None else cls.Hyperparameter.extract_from(_instance)
 		if name is None:
 			name = _instance.name
-		assert name is not None, f'No name provided for {_instance}'
-		cls._register_hparam(name, _instance)
+		return cls._register_hparam(name, _instance)
 
 	@agnostic
 	def reset_hparams(self):
@@ -309,7 +326,8 @@ class inherit_hparams:
 
 
 class with_hparams(method_wrapper):
-	def process_args(self, args, kwargs, owner, instance, fn):
+	@staticmethod
+	def process_args(args, kwargs, owner, instance, fn):
 		base = owner if instance is None else instance
 		return base.fill_hparams(fn, args, kwargs)
 

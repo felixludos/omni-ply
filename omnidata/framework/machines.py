@@ -3,20 +3,19 @@ from collections import OrderedDict
 from omnibelt import split_dict, unspecified_argument, OrderedSet, get_printer, \
 	extract_function_signature, method_wrapper, agnostic
 
-from .hyperparameters import Hyperparameter, Parameterized, hparam, Specced
-from .building import get_builder, Builder, MultiBuilder, AutoClassBuilder
+from .hyperparameters import Hyperparameter, Parameterized, hparam
+from .building import get_builder, Builder, MultiBuilder#, AutoClassBuilder
 
 from omnibelt.nodes import AutoTreeNode
 
 prt = get_printer(__name__)
 
 
-class Machine(Hyperparameter, Specced):
+class Machine(Hyperparameter):
 	def __init__(self, default=unspecified_argument, *, required=True, type=None, builder=None, cache=True, **kwargs):
 		super().__init__(default=default, required=required, cache=cache, **kwargs)
 		self.type = type
 		self.builder = builder
-
 
 	def copy(self, *, type=unspecified_argument, builder=unspecified_argument, **kwargs):
 		if type is unspecified_argument:
@@ -26,9 +25,13 @@ class Machine(Hyperparameter, Specced):
 		return super().copy(type=type, builder=builder, **kwargs)
 
 	def validate_value(self, value):
+		value = super().validate_value(value)
 		if self.type is not None and not isinstance(value, self.type):
 			prt.warning(f'Value {value} is not of type {self.type}')
-
+		builder = self.get_builder()
+		if builder is not None:
+			return builder.validate(value)
+		
 	def get_builder(self) -> Builder:
 		if self.builder is not None:
 			return get_builder(self.builder) if isinstance(self.builder, str) else self.builder
@@ -45,26 +48,23 @@ class Machine(Hyperparameter, Specced):
 class MachineParametrized(Parameterized):
 	Machine = Machine
 
-
-	@agnostic
-	def register_machine(self, name=None, _instance=None, **kwargs):
-		if _instance is None:
-			_instance = self.Machine(name=name, **kwargs)
-		return self.register_hparam(name, _instance, **kwargs)
-
+	@classmethod
+	def register_machine(cls, name=None, _instance=None, **kwargs):
+		_instance = cls.Machine(name=name, **kwargs) if _instance is None else cls.Machine.extract_from(_instance)
+		if name is None:
+			name = _instance.name
+		return cls._register_hparam(name, _instance)
 
 	@agnostic
 	def machines(self):
 		for key, val in self.named_machines():
 			yield val
 
-
 	@agnostic
 	def named_machines(self):
 		for key, val in self.named_hyperparameters():
 			if isinstance(val, Machine):
 				yield key, val
-	
 	
 	# @agnostic
 	# def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}', include_machines=True):

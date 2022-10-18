@@ -90,9 +90,9 @@ class Buildable(Builder):
 	# def plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
 	# 	return self.product(*args, **kwargs).full_spec()
 
-	@agnostic
-	def full_spec(self, spec=None):
-		return super(Builder, self).full_spec(spec=spec)
+	# @agnostic
+	# def full_spec(self, spec=None):
+	# 	return super(Builder, self).full_spec(spec=spec)
 
 
 class ConfigBuilder(Builder, fig.Configurable):
@@ -309,7 +309,7 @@ class RegistryBuilder(MultiBuilder):
 
 
 
-class AutoClassBuilder(RegistryBuilder):
+class ClassBuilder(RegistryBuilder):
 	'''Automatically register subclasses and add them to the product_registry.'''
 
 	def __init_subclass__(cls, ident=None, is_default=False, **kwargs):
