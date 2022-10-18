@@ -6,10 +6,18 @@ from .features import Named, Device, Rooted, DeviceContainer, Fingerprinted
 from .math import angle_diff, round_sigfigs, sigfig_noise, mixing_score, Metric, Norm, Lp, L0, L1, L2, Linf
 from . import spaces
 from . import base
+
+from .hyperparameters import Hyperparameter, hparam
+from .parameterized import Parameterized, inherit_hparams, with_hparams
+from .building import register_builder, get_builder, Builder, BasicBuilder, Buildable, \
+	MultiBuilder, RegistryBuilder, ClassBuilder, BuilderCreator
+from .machines import Machine, machine
+
+
 from .base import Function
-from .hyperparameters import Hyperparameter, Parameterized, hparam, inherit_hparams, with_hparams
-from .building import Builder, get_builder, register_builder
-from .machines import Machine, MachineParametrized, machine
+# from .hyperparameters import Hyperparameter, Parameterized, hparam, inherit_hparams, with_hparams
+# from .building import Builder, get_builder, register_builder
+# from .machines import Machine, MachineParametrized, machine
 # from .architects import Architect, ClassArchitect, AutoClassArchitect
 # from .util import data_args
 # from .hyperparameters import Hyperparameter, Parametrized, hparam, inherit_hparams

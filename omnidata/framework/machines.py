@@ -3,15 +3,15 @@ from collections import OrderedDict
 from omnibelt import split_dict, unspecified_argument, OrderedSet, get_printer, \
 	extract_function_signature, method_wrapper, agnostic
 
-from .hyperparameters import Hyperparameter, Parameterized, hparam
-from .building import get_builder, Builder, MultiBuilder#, AutoClassBuilder
+from .hyperparameters import HyperparameterBase, ConfigHyperparameter, Hyperparameter, hparam
+from .building import get_builder#, Builder, MultiBuilder#, AutoClassBuilder
 
 from omnibelt.nodes import AutoTreeNode
 
 prt = get_printer(__name__)
 
 
-class Machine(Hyperparameter):
+class MachineBase(HyperparameterBase):
 	def __init__(self, default=unspecified_argument, *, required=True, type=None, builder=None, cache=True, **kwargs):
 		super().__init__(default=default, required=required, cache=cache, **kwargs)
 		self.type = type
@@ -32,40 +32,20 @@ class Machine(Hyperparameter):
 		if builder is not None:
 			return builder.validate(value)
 		
-	def get_builder(self) -> Builder:
+	def get_builder(self) -> Optional['Builder']:
 		if self.builder is not None:
 			return get_builder(self.builder) if isinstance(self.builder, str) else self.builder
-	
-	# @agnostic
-	# def full_spec(self, spec=None):
-	# 	spec = super().full_spec(spec=spec)
-	# 	builder = self.get_builder()
-	# 	if builder is not None:
-	# 		spec.include(builder)
-	# 	return spec
+
+	def create_value(self, base, owner=None):  # TODO: maybe make thread-safe by using a lock
+		try:
+			return super().create_value(base, owner)
+		except self.MissingValueError:
+			builder = self.get_builder()
+			if builder is None:
+				raise
+			return builder.build()
 
 
-class MachineParametrized(Parameterized):
-	Machine = Machine
-
-	@classmethod
-	def register_machine(cls, name=None, _instance=None, **kwargs):
-		_instance = cls.Machine(name=name, **kwargs) if _instance is None else cls.Machine.extract_from(_instance)
-		if name is None:
-			name = _instance.name
-		return cls._register_hparam(name, _instance)
-
-	@agnostic
-	def machines(self):
-		for key, val in self.named_machines():
-			yield val
-
-	@agnostic
-	def named_machines(self):
-		for key, val in self.named_hyperparameters():
-			if isinstance(val, Machine):
-				yield key, val
-	
 	# @agnostic
 	# def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}', include_machines=True):
 	# 	for key, val in self.named_hyperparameters():
@@ -83,6 +63,9 @@ class MachineParametrized(Parameterized):
 	# 		else:
 	# 			yield ident, val
 
+
+class Machine(Hyperparameter, MachineBase):
+	pass
 
 
 class machine(hparam):

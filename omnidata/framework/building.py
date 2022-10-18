@@ -10,8 +10,9 @@ from omnibelt.nodes import AddressNode
 from omnibelt.tricks import auto_methods, dynamic_capture
 import omnifig as fig
 
-from .hyperparameters import Parameterized, spaces, hparam, inherit_hparams, with_hparams, Hyperparameter
-from .specification import Specification
+from .hyperparameters import HyperparameterBase
+from .parametrized import Parameterized
+from . import spaces
 
 prt = logging.Logger('Building')
 ch = logging.StreamHandler()
@@ -20,8 +21,7 @@ ch.setLevel(0)
 prt.addHandler(ch)
 
 
-
-class Builder(Parameterized):
+class AbstractBuilder(Parameterized):
 	@staticmethod
 	def validate(product, *args, **kwargs):
 		return product
@@ -34,50 +34,8 @@ class Builder(Parameterized):
 	def build(*args, **kwargs):
 		raise NotImplementedError
 
-	# @staticmethod
-	# def plan(*args, **kwargs) -> Specification:
-	# 	'''Generally the top level specification for the product (inferred from the provided arguments)'''
-	# 	raise NotImplementedError
 
-	# @agnostic
-	# def full_spec(self, spec=None):
-	# 	'''The full specification for this builder (generally this is the plan, but may be more)'''
-	# 	spec = super().full_spec(spec)
-	# 	spec.include(self.plan())
-	# 	return spec
-	#
-	# class _find_missing_hparam(Parameterized._find_missing_hparam):
-	# 	def __init__(self, base, spec=None, **kwargs):
-	# 		super().__init__(**kwargs)
-	# 		self.base = base
-	# 		self.spec = spec
-	#
-	# 	def __call__(self, name, default=inspect.Parameter.empty):
-	# 		if self.spec is not None:
-	# 			if name in self.spec:
-	# 				return self.spec[name]
-	# 		# if default is not inspect.Parameter.empty:
-	# 		# 	return default
-	# 		return super().__call__(name, default=default)
-	#
-	# @agnostic
-	# def _fill_in_spec(self, fn, spec, args=None, kwargs=None, **finder_kwargs):
-	# 	return self.fill_hparams(fn, spec=spec, args=args, kwargs=kwargs, **finder_kwargs)
-	#
-	# @agnostic
-	# def build_from_spec(self, spec):
-	# 	return self.build(**self._fill_in_spec(self.build, spec))
-	#
-	# @agnostic
-	# def plan_from_spec(self, spec):
-	# 	return self.plan(**self._fill_in_spec(self.plan, spec))
-	#
-	# @agnostic
-	# def product_from_spec(self, spec):
-	# 	return self.product(**self._fill_in_spec(self.product, spec))
-
-
-class Buildable(Builder):
+class BuildableBase(AbstractBuilder):
 	@classmethod
 	def product(cls, *args, **kwargs) -> Type:
 		return cls
@@ -86,54 +44,38 @@ class Buildable(Builder):
 	def build(self, *args, **kwargs):
 		return self.product(*args, **kwargs)(*args, **kwargs)
 
-	# @agnostic
-	# def plan(self, *args, **kwargs) -> Iterator[Tuple[str, Hyperparameter]]:
-	# 	return self.product(*args, **kwargs).full_spec()
 
-	# @agnostic
-	# def full_spec(self, spec=None):
-	# 	return super(Builder, self).full_spec(spec=spec)
+class ConfigBuilder(AbstractBuilder, fig.Configurable):
+	class _config_builder_type(fig.Configurable._config_builder_type):
+		def __init__(self, product, config, *, target_name='__init__', silent=None):
+			super().__init__(product, config, silent=silent)
+			self.target_name = target_name
 
+		def build(self, *args, **kwargs):
+			init_capture = dynamic_capture(self.configurable_parents(self.product),
+			                               self.fixer, self.target_name).activate()
 
-class ConfigBuilder(Builder, fig.Configurable):
+			obj = self.product(*args, **kwargs)
 
-	class _find_missing_hparam(Builder._find_missing_hparam):
-		def __init__(self, base, config=None, *, silent=None, **kwargs):
-			super().__init__(**kwargs)
-			if config is None:
-				config = base.my_config
-			self.config = config
-			self.config_fixer = base._config_builder(config, silent=silent)
+			init_capture.deactivate()
+			return obj
 
-		def __call__(self, name, default=inspect.Parameter.empty):
-			# if default is not inspect.Parameter.empty:
-			# 	return default
-			raise KeyError(name)
-		
 
 	@classmethod
-	def _fn_from_config(cls, config, fn_name, args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None, *,
+	def _config_builder(cls, config, silent=None, target_name='__init__'):
+		return cls._config_builder_type(cls, config, target_name=target_name, silent=silent)
+
+	@classmethod
+	def build_from_config(cls, config, args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None, *,
 	                     silent: Optional[bool] = None) -> Any:
 		if args is None:
 			args = ()
 		if kwargs is None:
 			kwargs = {}
-
-		init_capture = dynamic_capture(cls._config_builder.configurable_parents(cls),
-		                               cls._config_builder(config, silent=silent), fn_name).activate()
-
-		obj = cls(*args, **kwargs)
-
-		init_capture.deactivate()
-		return obj
-		
-	@classmethod
-	def init_from_config(cls, config, args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None, *,
-	                     silent: Optional[bool] = None) -> Any:
-		return cls._fn_from_config(config, '__init__', args=args, kwargs=kwargs, silent=silent)
+		return cls._config_builder(config, target_name='build', silent=silent).build(*args, **kwargs)
 
 
-class ModProduct(Builder):
+class ModifiableProduct(AbstractBuilder):
 	@staticmethod
 	def _modify_product(product, *mods, name=None):
 		if issubclass(product, Modifiable):
@@ -141,13 +83,49 @@ class ModProduct(Builder):
 		return inject_modifiers(product, *mods, name=name)
 
 	@agnostic
+	def product_base(self, *args, **kwargs):
+		raise NotImplementedError
+
+	@agnostic
 	def product(self, *args, mods=None, **kwargs) -> Type:
-		product = super().product(*args, **kwargs)
-		return self._modify_product(product, *mods)
+		if mods is None:
+			mods = []
+		return self._modify_product(self.product_base(*args, **kwargs), *mods)
 
 
-class AutoBuilder(Builder, auto_methods,
-                  inheritable_auto_methods=['__init__', 'build', 'product', 'plan', 'validate']):
+# @fig.creator('build')
+class BuilderCreator(fig.ConfigNode.DefaultCreator):
+	@staticmethod
+	def _modify_component(component, modifiers=()):
+		if issubclass(component, ModifiableProduct):
+			return component._modify_product(component, *modifiers)
+		return super()._modify_component(component, modifiers=modifiers)
+
+	def _create_component(self, config, args: Tuple, kwargs: Dict[str, Any], silent: bool = None) -> Any:
+		config.reporter.create_component(config, component_type=self.component_type, modifiers=self.modifiers,
+		                                 creator_type=self._creator_name, silent=silent)
+
+		cls = self._modify_component(self.component_entry,
+		                             [self.project.find_artifact('modifier', mod) for mod in self.modifiers])
+
+		if issubclass(cls, ConfigBuilder):
+			obj = cls.build_from_config(config, args, kwargs, silent=silent)
+		elif isinstance(cls, AbstractBuilder):
+			settings = config.settings
+			old_silent = settings.get('silent', None)
+			settings['silent'] = silent
+			obj = cls.build(*args, **kwargs)
+			if old_silent is not None:
+				settings['silent'] = old_silent
+		else:
+			raise NotImplementedError(f'Cannot create component of type {cls!r}')
+
+		config._trace = None
+		return obj
+
+
+class AutoBuilder(AbstractBuilder, auto_methods,
+                  inheritable_auto_methods=['__init__', 'build', 'product', 'validate']):
 
 	class MissingArgumentsError(TypeError):
 		def __init__(self, src, method, missing, *, msg=None):
@@ -169,26 +147,14 @@ class AutoBuilder(Builder, auto_methods,
 			raise base.MissingArgumentsError(src, method, missing)
 		return method(*fixed_args, **fixed_kwargs)
 
-	# def full_spec(self, spec=None):
-
-
-
-	# class Specification:
-	# 	def find(self, key):
-	# 		raise NotImplementedError
-	#
-	# 	def has(self, key):
-	# 		raise NotImplementedError
-
-
 
 builder_registry = Class_Registry()
 register_builder = builder_registry.get_decorator()
 get_builder = builder_registry.get_class
 
 
-class MultiBuilder(Builder):
-	_IdentParameter = Hyperparameter
+class MultiBuilderBase(AbstractBuilder):
+	_IdentParameter = HyperparameterBase
 
 	def __init_subclass__(cls, _register_ident=False, **kwargs):
 		super().__init_subclass__(**kwargs)
@@ -210,23 +176,9 @@ class MultiBuilder(Builder):
 		return product
 
 	@agnostic
-	def plan(self, ident, *args, **kwargs):
-		try:
-			product = self.product(ident)
-		except self.NoProductFound:
-			product = None
-
-		if isinstance(product, Builder):
-			return product.plan(*args, **kwargs)
-		elif isinstance(product, Parameterized):
-			yield from product.named_hyperparameters()
-		else:
-			yield from self.named_hyperparameters()
-
-	@agnostic
 	def build(self, ident, *args, **kwargs):
 		product = self.product(ident)
-		if isinstance(product, Builder):
+		if isinstance(product, AbstractBuilder):
 			return product.build(*args, **kwargs)
 		return product(*args, **kwargs)
 
@@ -237,13 +189,14 @@ class MultiBuilder(Builder):
 		return product
 
 
-class RegistryBuilder(MultiBuilder):
+
+class RegistryBuilderBase(MultiBuilderBase):
 	Product_Registry = Class_Registry
 	_product_registry: Product_Registry = None
 	_registration_node = None
 
 
-	class _IdentParameter(MultiBuilder.Hyperparameter):
+	class _IdentParameter(MultiBuilderBase.Hyperparameter):
 		def __init__(self, *, space=None, **kwargs):
 			if space is None:
 				space = spaces.Selection()
@@ -256,11 +209,13 @@ class RegistryBuilder(MultiBuilder):
 			return self
 
 
-	def __init_subclass__(cls, create_registry=None, default_ident=unspecified_argument,
+	def __init_subclass__(cls, create_registry=None, products=None, default_ident=unspecified_argument,
 	                      _register_ident=None, **kwargs):
 		if _register_ident is not None:
 			prt.warning(f'`register_ident` should not be used with `RegistryBuilder`')
 		prev_ident_hparam = None
+		if create_registry is None and products is not None:
+			create_registry = True
 		if create_registry is None:
 			create_registry = cls._registration_node is None
 			prev_ident_hparam = cls.get_hparam('ident', None)
@@ -273,6 +228,9 @@ class RegistryBuilder(MultiBuilder):
 			cls._registration_node = cls
 		if default_ident is not unspecified_argument:
 			cls._set_default_product(default_ident)
+		if products is not None:
+			for name, product in products.items():
+				cls.register_product(name, product)
 
 
 	@classmethod
@@ -308,8 +266,7 @@ class RegistryBuilder(MultiBuilder):
 		return entry.cls
 
 
-
-class ClassBuilder(RegistryBuilder):
+class ClassBuilderBase(RegistryBuilderBase):
 	'''Automatically register subclasses and add them to the product_registry.'''
 
 	def __init_subclass__(cls, ident=None, is_default=False, **kwargs):
@@ -320,6 +277,28 @@ class ClassBuilder(RegistryBuilder):
 
 
 
+class BasicBuilder(ConfigBuilder, AutoBuilder): # not recommended as it can't handle modifiers
+	pass
+
+class Builder(ModifiableProduct, BasicBuilder, inheritable_auto_methods=['product_base']):
+	pass
+
+class Buildable(BuildableBase, Builder):
+	pass
+
+
+class MultiBuilder(Builder, MultiBuilderBase, wrap_existing=True):
+	@agnostic
+	def product_base(self, *args, **kwargs):
+		return super(ModifiableProduct, self).product(*args, **kwargs)
+
+
+class RegistryBuilder(MultiBuilder, RegistryBuilderBase):
+	pass
+
+
+class ClassBuilder(RegistryBuilder, ClassBuilderBase):
+	pass
 
 
 

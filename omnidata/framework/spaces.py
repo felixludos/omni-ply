@@ -53,6 +53,9 @@ class Dim(Packable, Metric, Sampler, Fingerprinted):
 		if self.max is not None and value > self.max:
 			raise self.InvalidValue(value)
 
+	@property
+	def width(self):
+		return self.dof
 
 	@property
 	def dof(self):
