@@ -6,8 +6,10 @@ from omnibelt import agnosticmethod, unspecified_argument#, mix_into
 # from .. import util
 from . import abstract
 from .features import Seeded, Prepared
-from .hyperparameters import Parameterized, hparam, inherit_hparams
-from .machines import machine, MachineParametrized
+from .hyperparameters import hparam
+from .parameterized import inherit_hparams
+from .machines import machine
+from .top import Parameterized
 from .base import Function, Container
 
 
@@ -163,7 +165,7 @@ class Resultable:
 
 
 
-class Computable(MachineParametrized, Resultable):
+class Computable(Parameterized, Resultable):
 	@agnosticmethod
 	def compute(self, source=None, **kwargs):
 		info = self.create_results_container(source=source, **kwargs)
@@ -199,7 +201,7 @@ class Fitable(Resultable):
 
 
 class Model(#Buildable,
-            MachineParametrized, Fitable, Prepared):
+            Parameterized, Fitable, Prepared):
 	def _prepare(self, source=None, **kwargs):
 		pass
 
@@ -235,7 +237,7 @@ class Model(#Buildable,
 # TODO: hparams that should be extracted from the config should be specified with a decorator
 
 
-class Trainer(MachineParametrized, Fitable, Prepared):
+class Trainer(Parameterized, Fitable, Prepared):
 	# model = hparam(None)
 	model = machine(type=Model)
 

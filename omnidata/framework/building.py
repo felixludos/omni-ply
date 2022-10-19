@@ -11,7 +11,7 @@ from omnibelt.tricks import auto_methods, dynamic_capture
 import omnifig as fig
 
 from .hyperparameters import HyperparameterBase
-from .parameterized import Parameterized
+from .parameterized import ParameterizedBase
 from . import spaces
 
 prt = logging.Logger('Building')
@@ -21,7 +21,7 @@ ch.setLevel(0)
 prt.addHandler(ch)
 
 
-class AbstractBuilder(Parameterized):
+class AbstractBuilder(ParameterizedBase):
 	@staticmethod
 	def validate(product, *args, **kwargs):
 		return product
@@ -131,7 +131,7 @@ class AutoBuilder(AbstractBuilder, auto_methods,
 		def __init__(self, src, method, missing, *, msg=None):
 			if msg is None:
 				msg = f'{src.__name__}.{method.__name__} missing {len(missing)} ' \
-				      f'required arguments: {", ".join(missing)}'
+				      f'required arguments: {", ".join(map(str,missing))}'
 			super().__init__(msg)
 			self.missing = missing
 			self.src = src
@@ -159,7 +159,7 @@ class MultiBuilderBase(AbstractBuilder):
 	def __init_subclass__(cls, _register_ident=False, **kwargs):
 		super().__init_subclass__(**kwargs)
 		if _register_ident:
-			cls.register_hparam('ident', cls._IdentParameter(required=True))
+			cls._register_hparam('ident', cls._IdentParameter(required=True))
 
 	class NoProductFound(KeyError):
 		pass
@@ -169,18 +169,18 @@ class MultiBuilderBase(AbstractBuilder):
 		return {}
 
 	@agnostic
-	def product(self, ident):
+	def product(self, ident, **kwargs):
 		product = self.available_products().get(ident, None)
 		if product is None:
 			raise self.NoProductFound(ident)
 		return product
 
 	@agnostic
-	def build(self, ident, *args, **kwargs):
+	def build(self, ident, **kwargs):
 		product = self.product(ident)
 		if isinstance(product, AbstractBuilder):
-			return product.build(*args, **kwargs)
-		return product(*args, **kwargs)
+			return product.build(**kwargs)
+		return product(**kwargs)
 
 	@agnostic
 	def validate(self, product):
@@ -204,8 +204,8 @@ class RegistryBuilderBase(MultiBuilderBase):
 
 		def set_default_value(self, value):
 			self.default = value
-			if value not in self.values:
-				self.values.append(value)
+			if value not in self.space.values:
+				self.space.values.append(value)
 			return self
 
 
@@ -237,12 +237,13 @@ class RegistryBuilderBase(MultiBuilderBase):
 	def _set_default_product(cls, ident):
 		return cls._registration_node.get_hparam('ident').set_default_value(ident)
 
-	def find_product_entry(self, ident, default=unspecified_argument):
-		entry = self._registration_node._product_registry.find(ident, None)
+	@classmethod
+	def find_product_entry(cls, ident, default=unspecified_argument):
+		entry = cls._registration_node._product_registry.find(ident, None)
 		if entry is None:
 			if default is not unspecified_argument:
 				return default
-			raise self.NoProductFound(ident)
+			raise cls.NoProductFound(ident)
 		return entry
 
 	@classmethod
@@ -261,7 +262,7 @@ class RegistryBuilderBase(MultiBuilderBase):
 		return {ident: entry.cls for ident, entry in self._registration_node._product_registry.items()}
 
 	@agnostic
-	def product(self, ident):
+	def product(self, ident, **kwargs):
 		entry = self.find_product_entry(ident)
 		return entry.cls
 
@@ -276,29 +277,6 @@ class ClassBuilderBase(RegistryBuilderBase):
 			cls.register_product(ident, cls, is_default=is_default)
 
 
-
-class BasicBuilder(ConfigBuilder, AutoBuilder): # not recommended as it can't handle modifiers
-	pass
-
-class Builder(ModifiableProduct, BasicBuilder, inheritable_auto_methods=['product_base']):
-	pass
-
-class Buildable(BuildableBase, Builder):
-	pass
-
-
-class MultiBuilder(Builder, MultiBuilderBase, wrap_existing=True):
-	@agnostic
-	def product_base(self, *args, **kwargs):
-		return super(ModifiableProduct, self).product(*args, **kwargs)
-
-
-class RegistryBuilder(MultiBuilder, RegistryBuilderBase):
-	pass
-
-
-class ClassBuilder(RegistryBuilder, ClassBuilderBase):
-	pass
 
 
 

@@ -7,12 +7,12 @@ from .math import angle_diff, round_sigfigs, sigfig_noise, mixing_score, Metric,
 from . import spaces
 from . import base
 
-from .hyperparameters import Hyperparameter, hparam
-from .parameterized import Parameterized, inherit_hparams, with_hparams
-from .building import register_builder, get_builder, Builder, BasicBuilder, Buildable, \
-	MultiBuilder, RegistryBuilder, ClassBuilder, BuilderCreator
-from .machines import Machine, machine
-
+from .hyperparameters import hparam
+from .parameterized import inherit_hparams, with_hparams
+from .building import register_builder, get_builder, BuilderCreator
+from .machines import machine
+from .top import Builder, BasicBuilder, Buildable, MultiBuilder, RegistryBuilder, ClassBuilder, \
+	Machine, Hyperparameter, Parameterized
 
 from .base import Function
 # from .hyperparameters import Hyperparameter, Parameterized, hparam, inherit_hparams, with_hparams

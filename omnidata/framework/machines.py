@@ -1,17 +1,16 @@
 from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, Callable, Type, Iterable, Iterator
 from collections import OrderedDict
-from omnibelt import split_dict, unspecified_argument, OrderedSet, get_printer, \
-	extract_function_signature, method_wrapper, agnostic
+from omnibelt import split_dict, unspecified_argument, OrderedSet, get_printer, agnostic
 
-from .hyperparameters import HyperparameterBase, ConfigHyperparameter, Hyperparameter, hparam
-from .building import get_builder#, Builder, MultiBuilder#, AutoClassBuilder
-
-from omnibelt.nodes import AutoTreeNode
+from .features import Prepared
+from .hyperparameters import HyperparameterBase, hparam
+from .parameterized import ParameterizedBase
+from .building import get_builder, AbstractBuilder
 
 prt = get_printer(__name__)
 
 
-class MachineBase(HyperparameterBase):
+class MachineBase(HyperparameterBase): # TODO: check builder for space (if none is provided)
 	def __init__(self, default=unspecified_argument, *, required=True, type=None, builder=None, cache=True, **kwargs):
 		super().__init__(default=default, required=required, cache=cache, **kwargs)
 		self.type = type
@@ -32,9 +31,15 @@ class MachineBase(HyperparameterBase):
 		if builder is not None:
 			return builder.validate(value)
 		
-	def get_builder(self) -> Optional['Builder']:
+	def get_builder(self) -> Optional[AbstractBuilder]:
 		if self.builder is not None:
 			return get_builder(self.builder) if isinstance(self.builder, str) else self.builder
+
+	def build_with(self, *args, **kwargs):
+		builder = self.get_builder()
+		if builder is None:
+			raise ValueError(f'No builder for {self}')
+		return builder.build(*args, **kwargs)
 
 	def create_value(self, base, owner=None):  # TODO: maybe make thread-safe by using a lock
 		try:
@@ -64,16 +69,10 @@ class MachineBase(HyperparameterBase):
 	# 			yield ident, val
 
 
-class Machine(Hyperparameter, MachineBase):
-	pass
-
-
 class machine(hparam):
 	_registration_fn_name = 'register_machine'
 
 
-# class ModifyableBuilder(Builder):
-# 	@staticmethod
-# 	def realize(product, *args, **kwargs):
-# 		return product(*args, **kwargs)
+
+
 

@@ -8,7 +8,7 @@ import logging
 from collections import OrderedDict
 from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, \
 	extract_function_signature, method_wrapper, agnostic, agnosticproperty, \
-	defaultproperty, autoproperty, referenceproperty, smartproperty, cachedproperty, TrackSmart, Tracer
+	defaultproperty, autoproperty, referenceproperty, smartproperty, TrackSmart, Tracer
 
 
 prt = logging.Logger('Hyperparameters')
@@ -25,11 +25,11 @@ class _hyperparameter_property(defaultproperty):
 
 # manual -> cache -> config -> (builder) -> fget -> default
 
-class HyperparameterBase(_hyperparameter_property, autoproperty, cachedproperty, TrackSmart):
-	space = defaultproperty(None)
-	required = defaultproperty(False)
-	hidden = defaultproperty(False)
-	fixed = defaultproperty(False)
+class HyperparameterBase(_hyperparameter_property, autoproperty):
+	# space = defaultproperty(None)
+	# required = defaultproperty(False)
+	# hidden = defaultproperty(False)
+	# fixed = defaultproperty(False)
 
 	@classmethod
 	def extract_from(cls, param: 'HyperparameterBase', **kwargs):
@@ -49,7 +49,25 @@ class HyperparameterBase(_hyperparameter_property, autoproperty, cachedproperty,
 		info.update(kwargs)
 		return cls(**info)
 
-	def copy(self, *, space=unspecified_argument, hidden=unspecified_argument, required=unspecified_argument,
+	def __init__(self, default=unspecified_argument, *, space=None, required=False, hidden=False, fixed=False,
+	             **kwargs):
+		# if space is unspecified_argument:
+		# 	space = self.space
+		# if hidden is unspecified_argument:
+		# 	hidden = self.hidden
+		# if required is unspecified_argument:
+		# 	required = self.required
+		# if fixed is unspecified_argument:
+		# 	fixed = self.fixed
+		super().__init__(default=default, **kwargs)
+		self.space = space
+		self.required = required
+		self.hidden = hidden
+		self.fixed = fixed
+
+
+	def copy(self, *, space=unspecified_argument, hidden=unspecified_argument,
+	         required=unspecified_argument, fixed=unspecified_argument,
 	         **kwargs):
 		if space is unspecified_argument:
 			space = self.space
@@ -57,7 +75,9 @@ class HyperparameterBase(_hyperparameter_property, autoproperty, cachedproperty,
 			hidden = self.hidden
 		if required is unspecified_argument:
 			required = self.required
-		return super().copy(space=space, hidden=hidden, required=required, **kwargs)
+		if fixed is unspecified_argument:
+			fixed = self.fixed
+		return super().copy(space=space, hidden=hidden, required=required, fixed=fixed, **kwargs)
 
 	def __str__(self):
 		name = '' if self.name is None else self.name
@@ -82,27 +102,36 @@ class HyperparameterBase(_hyperparameter_property, autoproperty, cachedproperty,
 	def update_value(self, base, value):
 		return super().update_value(base, self.validate_value(value))
 
-	def _get_cached_value(self, base):
-		if base is self.src:
-			return self.cached_value
-		return super()._get_cached_value(base)
-
-	def _set_cached_value(self, base, name, value):
-		if base is self.src:
-			self.cached_value = value
-		else:
-			super()._set_cached_value(base, name, value)
-
-	def _clear_cache(self, base):
-		if base is self.src:
-			self.cached_value = self.unknown
-		else:
-			super()._clear_cache(base)
+	# def _get_cached_value(self, base):
+	# 	if base is self.src:
+	# 		return self.cached_value
+	# 	return super()._get_cached_value(base)
+	#
+	# def _set_cached_value(self, base, value):
+	# 	if base is self.src:
+	# 		self.cached_value = value
+	# 	else:
+	# 		super()._set_cached_value(base, value)
+	#
+	# def _clear_cache(self, base):
+	# 	if base is self.src:
+	# 		self.cached_value = self.unknown
+	# 	else:
+	# 		super()._clear_cache(base)
 
 	
 class ConfigHyperparameter(HyperparameterBase):
-	aliases = defaultproperty(None)
-	silent = defaultproperty(None)
+	# aliases = defaultproperty(None)
+	# silent = defaultproperty(None)
+
+	def __init__(self, default=unspecified_argument, *, aliases=None, silent=None, **kwargs):
+		# if aliases is unspecified_argument:
+		# 	aliases = self.aliases
+		# if silent is unspecified_argument:
+		# 	silent = self.silent
+		super().__init__(default=default, **kwargs)
+		self.aliases = aliases
+		self.silent = silent
 
 	@classmethod
 	def extract_from(cls, param: 'HyperparameterBase', **kwargs):
@@ -116,21 +145,24 @@ class ConfigHyperparameter(HyperparameterBase):
 		if silent is unspecified_argument:
 			silent = self.silent
 		return super().copy(aliases=aliases, silent=silent, **kwargs)
-	
+
+	def _extract_from_config(self, config, name, aliases, default, silent):
+		# can be changed to use peek or create for extra features
+		return config.pulls(name, *aliases, default=default, silent=silent)
+
 	def create_value(self, base, owner=None):  # TODO: maybe make thread-safe by using a lock
-		config = getattr(base, 'my_config', None)
-		default = config._empty_default if (self.default is self.unknown or self.fget is not None) else self.default
-		
-		if config is None:
-			result = super().create_value(base, owner=owner)
-		else:
-			try:
-				result = config.pulls(self.name, *self.aliases, default=default, silent=self.silent)
-			except config.SearchFailed:
-				result = super().create_value(base, owner=owner)
-			else:
-				result = self.validate_value(result)
-		return result
+		if not isinstance(base, type): # base is and instance
+			config = getattr(base, 'my_config', None)
+			default = config._empty_default if (self.default is self.unknown or self.fget is not None) else self.default
+
+			if config is not None:
+				try:
+					result = self._extract_from_config(config, self.name, self.aliases, default, self.silent)
+				except config.SearchFailed:
+					pass
+				else:
+					return self.validate_value(result)
+		return super().create_value(base, owner=owner)
 
 
 class RefHyperparameter(HyperparameterBase): # TODO: test, a lot
@@ -160,18 +192,10 @@ class RefHyperparameter(HyperparameterBase): # TODO: test, a lot
 		return super().register_with(obj, name, ref=self)
 
 
-class Hyperparameter(ConfigHyperparameter):
-	pass
-
-
 class hparam(_hyperparameter_property):
-	def __init__(self, default=unspecified_argument, *, space=None, cache=None, hidden=None, **info):
+	def __init__(self, default=unspecified_argument, **info):
 		assert 'name' not in info, 'Cannot manually set name in hparam'
 		super().__init__(default=default)
-		self.name = None
-		self.space = space
-		self.cache = cache
-		self.hidden = hidden
 		self.info = info
 
 	_default_base = HyperparameterBase
@@ -193,12 +217,10 @@ class hparam(_hyperparameter_property):
 		kwargs = self.info.copy()
 		if self.default is not self.unknown:
 			kwargs['default'] = self.default
-		kwargs['space'] = self.space
-		kwargs['cache'] = self.cache
-		kwargs['hidden'] = self.hidden
 		kwargs['fget'] = self.fget
 		kwargs['fset'] = self.fset
 		kwargs['fdel'] = self.fdel
+		kwargs['src'] = self.src
 		return kwargs
 
 

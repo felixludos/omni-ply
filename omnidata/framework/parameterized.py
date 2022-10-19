@@ -7,11 +7,11 @@ from pprint import pprint
 import logging
 from collections import OrderedDict
 from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, \
-	extract_function_signature, method_wrapper, agnostic, agnosticproperty, \
-	defaultproperty, autoproperty, referenceproperty, smartproperty, cachedproperty, TrackSmart, Tracer
+	extract_function_signature, method_wrapper, agnostic
 
-from .hyperparameters import _hyperparameter_property, Hyperparameter, HyperparameterBase
-from .machines import Machine, MachineBase
+from .features import Prepared
+from .hyperparameters import _hyperparameter_property, HyperparameterBase
+# from .machines import Machine, MachineBase
 
 
 class ParameterizedBase:
@@ -35,13 +35,16 @@ class ParameterizedBase:
 
 		def __call__(self, name, default=inspect.Parameter.empty):
 			value = getattr(self.base, name, default)
-			if value is default:
+			# if isinstance(value, HyperparameterBase):
+			# 	value = value.get_value(self.base)
+			if value is inspect.Parameter.empty:
 				raise KeyError(name)
+			return value
 
 	@agnostic
 	def fill_hparams(self, fn, args=None, kwargs=None, **finder_kwargs) -> Dict[str, Any]:
 		params = extract_function_signature(fn, args=args, kwargs=kwargs, allow_positional=False,
-		                                    default_fn=self._find_missing_hparam(self, **finder_kwargs))
+		                                    default_fn=self._find_missing_hparam(self), **finder_kwargs)
 
 		return params
 
@@ -86,8 +89,8 @@ class ParameterizedBase:
 		return val
 
 	@agnostic
-	def hyperparameters(self, include_values=False):
-		for key, val in self.named_hyperparameters(include_values=include_values):
+	def hyperparameters(self):
+		for key, val in self.named_hyperparameters():
 			yield val
 
 	@agnostic
@@ -109,32 +112,6 @@ class ParameterizedBase:
 			raise ValueError('Hyperparameters must be set to the class (not an instance)')
 		super().__setattr__(key, value)
 
-
-class MachineParameterized(ParameterizedBase):
-	Machine = MachineBase
-
-	@classmethod
-	def register_machine(cls, name=None, _instance=None, **kwargs):
-		_instance = cls.Machine(name=name, **kwargs) if _instance is None else cls.Machine.extract_from(_instance)
-		if name is None:
-			name = _instance.name
-		return cls._register_hparam(name, _instance)
-
-	@agnostic
-	def machines(self):
-		for key, val in self.named_machines():
-			yield val
-
-	@agnostic
-	def named_machines(self):
-		for key, val in self.named_hyperparameters():
-			if isinstance(val, MachineBase):
-				yield key, val
-
-
-class Parameterized(MachineParameterized):
-	Hyperparameter = Hyperparameter
-	Machine = Machine
 
 
 class inherit_hparams:
