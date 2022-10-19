@@ -81,7 +81,24 @@ class HyperparameterBase(_hyperparameter_property, autoproperty, cachedproperty,
 		
 	def update_value(self, base, value):
 		return super().update_value(base, self.validate_value(value))
-	
+
+	def _get_cached_value(self, base):
+		if base is self.src:
+			return self.cached_value
+		return super()._get_cached_value(base)
+
+	def _set_cached_value(self, base, name, value):
+		if base is self.src:
+			self.cached_value = value
+		else:
+			super()._set_cached_value(base, name, value)
+
+	def _clear_cache(self, base):
+		if base is self.src:
+			self.cached_value = self.unknown
+		else:
+			super()._clear_cache(base)
+
 	
 class ConfigHyperparameter(HyperparameterBase):
 	aliases = defaultproperty(None)

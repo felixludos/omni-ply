@@ -11,7 +11,7 @@ from omnibelt.tricks import auto_methods, dynamic_capture
 import omnifig as fig
 
 from .hyperparameters import HyperparameterBase
-from .parametrized import Parameterized
+from .parameterized import Parameterized
 from . import spaces
 
 prt = logging.Logger('Building')
