@@ -124,14 +124,17 @@ class ConfigHyperparameter(HyperparameterBase):
 	# aliases = defaultproperty(None)
 	# silent = defaultproperty(None)
 
-	def __init__(self, default=unspecified_argument, *, aliases=None, silent=None, **kwargs):
+	def __init__(self, default=unspecified_argument, *, aliases=None, silent=None, no_config_cache=False, **kwargs):
 		# if aliases is unspecified_argument:
 		# 	aliases = self.aliases
 		# if silent is unspecified_argument:
 		# 	silent = self.silent
+		if aliases is None:
+			aliases = {}
 		super().__init__(default=default, **kwargs)
 		self.aliases = aliases
 		self.silent = silent
+		self.no_config_cache = no_config_cache
 
 	@classmethod
 	def extract_from(cls, param: 'HyperparameterBase', **kwargs):
@@ -139,15 +142,20 @@ class ConfigHyperparameter(HyperparameterBase):
 		                            silent=getattr(param, 'silent', None), **kwargs)
 		
 	def copy(self, *, aliases=unspecified_argument, silent=unspecified_argument, required=unspecified_argument,
-	         **kwargs):
+	         no_config_cache=unspecified_argument, **kwargs):
 		if aliases is unspecified_argument:
 			aliases = self.aliases
 		if silent is unspecified_argument:
 			silent = self.silent
-		return super().copy(aliases=aliases, silent=silent, **kwargs)
+		if no_config_cache is unspecified_argument:
+			no_config_cache = self.no_config_cache
+		return super().copy(aliases=aliases, silent=silent, no_config_cache=no_config_cache, **kwargs)
 
-	def _extract_from_config(self, config, name, aliases, default, silent):
+	def _extract_from_config(self, config, name, default):
 		# can be changed to use peek or create for extra features
+
+		aliases = self.aliases.get(self.name, ())
+		silent = self.silent
 		return config.pulls(name, *aliases, default=default, silent=silent)
 
 	def create_value(self, base, owner=None):  # TODO: maybe make thread-safe by using a lock
@@ -157,11 +165,14 @@ class ConfigHyperparameter(HyperparameterBase):
 
 			if config is not None:
 				try:
-					result = self._extract_from_config(config, self.name, self.aliases, default, self.silent)
+					result = self._extract_from_config(config, self.name, default)
 				except config.SearchFailed:
 					pass
 				else:
-					return self.validate_value(result)
+					value = self.validate_value(result)
+					if not self.cache and not self.no_config_cache:
+						self._set_cached_value(base, value)
+					return value
 		return super().create_value(base, owner=owner)
 
 

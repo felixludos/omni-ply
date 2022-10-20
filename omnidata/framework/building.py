@@ -55,7 +55,13 @@ class ConfigBuilder(AbstractBuilder, fig.Configurable):
 			init_capture = dynamic_capture(self.configurable_parents(self.product),
 			                               self.fixer, self.target_name).activate()
 
-			obj = self.product(*args, **kwargs)
+			self.product._my_config = self.config
+
+			target = self.product if self.target_name == '__init__' else getattr(self.product, self.target_name)
+			obj = target(*args, **kwargs)
+
+			del self.product._my_config
+			obj._my_config = self.config
 
 			init_capture.deactivate()
 			return obj
