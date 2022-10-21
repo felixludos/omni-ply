@@ -2,7 +2,7 @@
 from collections import OrderedDict
 import torch
 from torch import nn
-from omnibelt import agnosticmethod, unspecified_argument#, mix_into
+from omnibelt import agnostic, unspecified_argument#, mix_into
 # from .. import util
 from . import abstract
 from .features import Seeded, Prepared
@@ -88,23 +88,23 @@ class Resultable:
 			return super().__contains__(item) or (item == 'score' and super().__contains__(self._score_key))
 
 
-	@agnosticmethod
+	@agnostic
 	def heavy_results(self):
 		return set()
 
 
-	@agnosticmethod
+	@agnostic
 	def score_names(self):
 		return set()
 
 
-	@agnosticmethod
+	@agnostic
 	def filter_heavy(self, info):
 		heavy = self.heavy_results()
 		return {key:val for key, val in info.items() if key not in heavy}
 
 
-	@agnosticmethod
+	@agnostic
 	def _integrate_results(self, info, **kwargs):
 		raise NotImplementedError # TODO
 		if not isinstance(info, self.ResultsContainer):
@@ -113,7 +113,7 @@ class Resultable:
 		return new
 
 
-	@agnosticmethod
+	@agnostic
 	def create_results_container(self, info=None, score_key=None, seed=unspecified_argument, **kwargs):
 		if score_key is None:
 			score_key = self.score_key
@@ -166,7 +166,7 @@ class Resultable:
 
 
 class Computable(Parameterized, Resultable):
-	@agnosticmethod
+	@agnostic
 	def compute(self, source=None, **kwargs):
 		info = self.create_results_container(source=source, **kwargs)
 		self.info = info # TODO: clean up maybe?
@@ -206,7 +206,7 @@ class Model(#Buildable,
 		pass
 
 
-	@agnosticmethod
+	@agnostic
 	def create_fit_results_container(self, **kwargs):
 		return self.create_results_container(**kwargs)
 
@@ -255,7 +255,7 @@ class Trainer(Parameterized, Fitable, Prepared):
 			yield batch
 
 
-	@agnosticmethod
+	@agnostic
 	def create_step_results_container(self, **kwargs):
 		return self.model.create_step_results_container(**kwargs)
 
@@ -297,31 +297,31 @@ class Trainer(Parameterized, Fitable, Prepared):
 
 
 class TrainableModel(Model):
-	@agnosticmethod
+	@agnostic
 	def create_step_results_container(self, **kwargs):
 		return self.create_results_container(**kwargs)
 
 
 	Trainer = Trainer
-	@agnosticmethod
+	@agnostic
 	def fit(self, source, info=None, **kwargs):
 		assert info is None, 'cant merge info (yet)' # TODO
 		trainer = self.Trainer(self)
 		return trainer.fit(source=source, **kwargs)
 
 
-	@agnosticmethod
+	@agnostic
 	def step(self, info, **kwargs):
 		self._step(info, **kwargs)
 		return info
 
 
-	@agnosticmethod
+	@agnostic
 	def _step(self, info):
 		raise NotImplementedError
 
 
-	@agnosticmethod
+	@agnostic
 	def eval_step(self, info, **kwargs):
 		self._step(info, **kwargs)
 		return info
