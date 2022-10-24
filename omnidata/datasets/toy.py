@@ -61,7 +61,7 @@ class SwissRollDataset(SyntheticDataset):
 
 
 	def _prepare(self, *args, **kwargs):
-		lbls = self.generate_mechanism(len(self))
+		lbls = self.sample_mechanism(len(self))
 
 		self.buffers['label'].data = lbls
 		if self._target_theta:
@@ -122,7 +122,7 @@ class HelixDataset(SyntheticDataset):
 
 
 	def _prepare(self, *args, **kwargs):
-		lbls = self.generate_mechanism(len(self))
+		lbls = self.sample_mechanism(len(self))
 
 		self.buffers['label'].data = lbls
 		if self._target_strand:
