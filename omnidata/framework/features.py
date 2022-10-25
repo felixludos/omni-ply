@@ -77,66 +77,6 @@ class DeviceContainer(Device):
 		self._register_deviced_children(**children)
 
 
-class FingerprintBase: # TODO: make exportable
-	def __init__(self, obj):
-		self.obj = obj
-
-	@classmethod
-	def fingerprint_obj(cls, obj, force_str=False): # TODO: fix for recursive objects (using a reference table)
-		if isinstance(obj, Fingerprinted):
-			return obj.fingerprint()
-		if force_str:
-			return str(obj)
-		if isinstance(obj, primitive):
-			return obj
-		if isinstance(obj, (np.ndarray, torch.Tensor)):
-			numels = np.product(obj.shape).item()
-			sel = torch.randint(numels, size=(min(5, numels),),
-			        generator=torch.Generator().manual_seed(16283393149723337453)).tolist()
-			return [obj.sum().item(), obj.reshape(-1)[sel].tolist()]
-		if isinstance(obj, (list, tuple)):
-			return [cls.fingerprint_obj(o) for o in obj]
-		if isinstance(obj, dict):
-			return {cls.fingerprint_obj(k, force_str=True): cls.fingerprint_obj(v) for k, v in obj.items()}
-		raise cls.FingerprintFailure(obj, None)
-
-	def md5_hash(self):
-		raise NotImplementedError
-
-	class FingerprintFailure(Exception):
-		def __init__(self, me, other):
-			super().__init__(f'{me} vs {other}')
-			self.me = me
-			self.other = other
-
-	def check_fingerprint(self, obj, strict=False):
-		match = self.fingerprint() == obj.fingerprint()
-		if not match and strict:
-			raise self.FingerprintFailure(self, obj)
-		return match
-
-	def __eq__(self, other):
-		return isinstance(other, FingerprintBase) and self.md5_hash() == other.md5_hash()
-
-
-class FingerprintedBase:
-	Fingerprint = FingerprintBase
-	def fingerprint(self):
-		return self.Fingerprint(self)
-
-
-
-class Fingerprinted(FingerprintedBase):
-	class Fingerprint(FingerprintBase):
-		def _extract_obj(self):
-			return self.obj._fingerprint_data()
-
-		def md5_hash(self):
-			return md5(self._extract_obj())
-
-	def _fingerprint_data(self):
-		return {'cls': self.__class__.__name__, 'module': self.__module__}
-
 
 
 class SharableAttrs:
@@ -181,8 +121,6 @@ class Prepared: # TODO: add autoprepare using __certify__
 
 	def _prepare(self, *args, **kwargs):
 		pass
-
-
 
 
 

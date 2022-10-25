@@ -191,14 +191,6 @@ class Fitable(Resultable):
 		raise NotImplementedError
 
 
-# from torch import nn
-#
-# class PModel(nn.Module):
-# 	def __init__(self):
-# 		super().__init__()
-# 		self.train()
-# 	pass
-
 
 class Model(#Buildable,
             Parameterized, Fitable, Prepared):
