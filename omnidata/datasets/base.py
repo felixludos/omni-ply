@@ -8,7 +8,7 @@ import torch
 from omnibelt import unspecified_argument, duplicate_instance, md5, agnosticmethod
 import h5py as hf
 
-from ..framework.features import Prepared, Fingerprinted
+from ..features import Prepared, Fingerprinted
 # from .. import util
 from ..framework import base, Rooted, Named, Seeded, Sampler, abstract
 from .buffers import AbstractFixedBuffer, Buffer, BufferView, HDFBuffer, \

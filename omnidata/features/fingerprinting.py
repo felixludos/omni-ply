@@ -1,8 +1,10 @@
 from typing import Union, Any, Callable, Type, Iterable, Iterator, Optional, List, Dict, Tuple, Sequence, Hashable, \
 	NamedTuple, ContextManager
+from pathlib import Path
 import numpy as np
 import torch
 from omnibelt import unspecified_argument, agnosticmethod, md5, primitive, JSONABLE
+from omnibelt import Exportable, ExportManager
 
 # TODO: make exportable
 # .fp -> hash
@@ -16,7 +18,7 @@ class AbstractFingerprinted:
 
 
 
-class AbstractFingerprint(AbstractFingerprinted):
+class AbstractFingerprint(AbstractFingerprinted, Exportable):
 	@property
 	def fingerprint(self):
 		return self
@@ -73,7 +75,7 @@ class AbstractFingerprint(AbstractFingerprinted):
 
 
 class Fingerprinted(AbstractFingerprinted):
-	class Fingerprint(AbstractFingerprint):
+	class Fingerprint(AbstractFingerprint, extensions=['fp', 'fpd']):
 		def __init__(self, src=None, *, data=None, code=None, **kwargs):
 			super().__init__(src=src, **kwargs)
 			self.src = src
@@ -81,9 +83,22 @@ class Fingerprinted(AbstractFingerprinted):
 			self._code = code
 
 		@classmethod
+		def _load_export(cls, path: Path, src: Type['ExportManager']) -> Any:
+			if path.suffix == '.fpd':
+				return cls(data=src.load_export(fmt='json', path=path))
+			return cls(code=path.read_text())
+
+		@staticmethod
+		def _export_payload(payload: 'AbstractFingerprint', path: Path, src: Type['ExportManager']) -> Optional[Path]:
+			if path.suffix == '.fpd':
+				return src.export(payload.data(), fmt='json', path=path)
+			path.write_text(payload.code())
+			return path
+
+		@classmethod
 		def extract_data(cls, obj) -> JSONABLE:
 			if isinstance(obj, Fingerprinted):
-				return obj._fingerprint_data()
+				return obj._fingerprint_data(cls)
 			return super().extract_data(obj)
 
 
@@ -114,7 +129,7 @@ class Fingerprinted(AbstractFingerprinted):
 	def fingerprint(self):
 		return self.Fingerprint(self)
 
-	def _fingerprint_data(self):
+	def _fingerprint_data(self, extractor: Type['AbstractFingerprint']):
 		return {'cls': self.__class__.__name__, 'module': self.__module__}
 
 
