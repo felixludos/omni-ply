@@ -1,4 +1,4 @@
-from omnibelt import unspecified_argument
+from omnibelt import unspecified_argument, agnosticproperty
 
 
 class Named:
@@ -7,17 +7,18 @@ class Named:
 		if name is not unspecified_argument:
 			self.name = name
 
+	class NoNameError(ValueError):
+		pass
 
 	def __str__(self):
+		if self.name is None:
+			raise self.NoNameError('No name specified')
 		return self.name
 
 
-	@property
+	@agnosticproperty
 	def name(self):
-		try:
-			return self._name
-		except AttributeError:
-			return getattr(self.__class__, 'name', self.__class__.__name__)
+		return getattr(self, '_name', None)
 	@name.setter
 	def name(self, name):
 		self._name = name

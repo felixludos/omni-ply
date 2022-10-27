@@ -1,15 +1,14 @@
 from omnibelt import agnostic
+import random
+import numpy as np
 import torch
 
-from .operations import Generator
 
-
-
-def set_seed(seed=None):
+def set_global_seed(seed=None):
 	if seed is None:
 		seed = Seeded.gen_random_seed()
-	# random.seed(seed)
-	# np.random.seed(seed)
+	random.seed(seed)
+	np.random.seed(seed)
 	torch.manual_seed(seed)
 	if torch.cuda.is_available():
 		torch.cuda.manual_seed(seed)
@@ -18,6 +17,7 @@ def set_seed(seed=None):
 
 
 class Seeded:
+	# shared_deterministic_seed = 16283393149723337453
 	_seed = None
 	gen = None
 
@@ -42,12 +42,8 @@ class Seeded:
 		self.gen = self.create_rng(seed=seed)
 
 
-	# @agnosticmethod
-	# def get_master_gen(self):
-
-
 	@agnostic
-	def gen_deterministic_seed(self, base_seed):
+	def _gen_deterministic_seed(self, base_seed):
 		return self.gen_random_seed(torch.Generator().manual_seed(base_seed))
 
 
@@ -99,7 +95,7 @@ def using_rng(seed=None, gen=None, src=None):
 
 
 def gen_deterministic_seed(base_seed):
-	return Seeded.gen_deterministic_seed(base_seed)
+	return Seeded._gen_deterministic_seed(base_seed)
 
 
 
@@ -110,18 +106,6 @@ def gen_random_seed(base_gen=None):
 
 def create_rng(seed=None, base_gen=None):
 	return Seeded.create_rng(seed=seed, base_gen=base_gen)
-
-
-
-class Sampler(Seeded, Generator):
-	def sample(self, *shape, gen=None, **kwargs):
-		if gen is None:
-			gen = self.gen
-		return self._sample(torch.Size(shape), gen=gen, **kwargs)
-
-
-	def _sample(self, shape, gen, **kwargs):
-		raise NotImplementedError
 
 
 

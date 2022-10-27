@@ -1,10 +1,14 @@
 __version__ = "0.1"
 
-
-from .framework import spaces
 from . import util
-# from .datasets import toy, mnist
-from . import datasets
+from .persistent import *
+from .features import *
+from .structure import *
+from .parameters import *
+
+# from .models import *
+from .data import *
+
 
 
 

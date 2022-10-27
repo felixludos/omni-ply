@@ -1,6 +1,10 @@
 
 from collections import OrderedDict, Mapping
+import torch
+from omnibelt import agnostic, unspecified_argument
 
+from .hardware import Device
+from .random import Seeded
 
 
 class AbstractContainer(Mapping):
@@ -45,10 +49,6 @@ class DevicedContainer(Device, Container):
 		for key, val in self.items():
 			if isinstance(val, (Device, torch.Tensor)):
 				self[key] = val.to(device)
-
-
-
-
 
 
 
