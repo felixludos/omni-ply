@@ -1,10 +1,12 @@
 import numpy as np
 # from sklearn.datasets import make_swiss_roll
 import torch
+from omnibelt import unspecified_argument
 
 from ..flavors import SyntheticDataset
 from ...structure import spaces
 
+# TODO: separate dataset from process!
 
 class SwissRollDatasetBase(SyntheticDataset):
 	def __init__(self, n_samples=100, *, noise_std=0., target_theta=True,
@@ -40,15 +42,17 @@ class SwissRollDatasetBase(SyntheticDataset):
 		self.register_buffer('label', space=lbl_space)
 
 
-	def _generate_noise(self, N, seed=None, gen=None):
-		if seed is not None:
-			gen = torch.Generator().manual_seed(seed)
-		if gen is None:
+	def _generate_noise(self, N):
+		return self.noise_std * torch.randn(N, 3, generator=self.gen)
+
+
+	def _generate_labels(self, N):
+		return self.mechanism_space.sample(N, gen=self.gen)
+
+
+	def generate_observation_from_mechanism(self, mechanism, gen=unspecified_argument):
+		if gen is unspecified_argument:
 			gen = self.gen
-		return self.noise_std * torch.randn(N, 3, generator=gen)
-
-
-	def generate_observation_from_mechanism(self, mechanism, seed=None, gen=None):
 		theta = mechanism.narrow(-1,0,1)
 		height = mechanism.narrow(-1,1,1)
 
@@ -61,7 +65,7 @@ class SwissRollDatasetBase(SyntheticDataset):
 
 
 	def _prepare(self, *args, **kwargs):
-		lbls = self.sample_mechanism(len(self))
+		lbls = self.generate_mechanism(len(self))
 
 		self.buffers['label'].data = lbls
 		if self.target_theta:
@@ -103,12 +107,11 @@ class HelixDatasetBase(SyntheticDataset):
 		self.register_buffer('label', space=lbl_space)
 
 
-	def _generate_noise(self, N, seed=None, gen=None):
-		if seed is not None:
-			gen = torch.Generator().manual_seed(seed)
-		if gen is None:
-			gen = self.gen
-		return self.noise_std * torch.randn(N, 3, generator=gen)
+	def _generate_noise(self, N):
+		return self.noise_std * torch.randn(N, 3, generator=self.gen)
+
+	def _generate_labels(self, N):
+		return self.mechanism_space.sample(N, gen=self.gen)
 
 
 	def generate_observation_from_mechanism(self, mechanism, seed=None, gen=None):
@@ -122,7 +125,7 @@ class HelixDatasetBase(SyntheticDataset):
 
 
 	def _prepare(self, *args, **kwargs):
-		lbls = self.sample_mechanism(len(self))
+		lbls = self.generate_mechanism(len(self))
 
 		self.buffers['label'].data = lbls
 		if self.target_strand:

@@ -410,6 +410,10 @@ class DataSource(Batchable, AbstractData, Named):
 		raise NotImplementedError
 
 
+	def iter_named_buffers(self):
+		raise NotImplementedError
+
+
 	def register_buffer(self, name, buffer, **kwargs):
 		raise NotImplementedError
 
@@ -448,7 +452,7 @@ class DataSource(Batchable, AbstractData, Named):
 
 
 	def _prepare(self, *args, **kwargs):
-		for name, buffer in self.iter_buffers(True):
+		for name, buffer in self.iter_named_buffers():
 			buffer.prepare()
 
 
@@ -487,6 +491,11 @@ class SourceView(DataSource, AbstractView):
 		buffer = self.get_buffer(name)
 		data = buffer.get(sel)
 		return data
+
+
+	def _prepare(self, *args, **kwargs):
+		if self.source is not None:
+			self.source.prepare()
 
 
 	def _update(self, sel=None, **kwargs):
@@ -583,10 +592,15 @@ class BufferTable(DataSource):
 		return list(self.buffers.keys())
 
 
-	def iter_buffers(self, items=True): # iterates through buffers
+	def iter_buffers(self):
+		for k, v in self.iter_named_buffers():
+			yield v
+
+
+	def iter_named_buffers(self): # iterates through buffers
 		for k, v in self.buffers.items():
 			if not isinstance(v, str):
-				yield (k,v) if items else v
+				yield k, v
 
 
 	def get_buffer(self, name):
@@ -606,10 +620,10 @@ class BufferTable(DataSource):
 		data = super()._fingerprint_data()
 		if self.is_ready:
 			data['buffers'] = {}
-			for name, buffer in self.iter_buffers():
+			for name, buffer in self.iter_named_buffers():
 				data['buffers'][name] = buffer.fingerprint()
 		return data
-		return {'buffers': {name:buffer.fingerprint() for name, buffer in self.iter_buffers()}, 'ready': self.is_ready,
+		return {'buffers': {name:buffer.fingerprint() for name, buffer in self.iter_named_buffers()}, 'ready': self.is_ready,
 		        **super()._fingerprint_data()}
 
 
@@ -806,7 +820,7 @@ class DataCollection(MultiModed, BufferTable, DataSource):
 
 
 	def _update(self, sel=None, **kwargs):
-		for name, buffer in self.iter_buffers(True):
+		for name, buffer in self.iter_named_buffers(True):
 			buffer.update(sel=sel, **kwargs)
 
 
@@ -897,8 +911,10 @@ class View(Subsetable, CountableView, ReplacementView):
 	pass
 
 
+from .. import Sampler
 
-class Dataset(Subsetable, DataCollection):
+
+class Dataset(Subsetable, DataCollection, Sampler):
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self._subset_src = None
@@ -910,13 +926,25 @@ class Dataset(Subsetable, DataCollection):
 	Batch = Batch
 
 
+	sample_key = None
+
+	def _sample(self, shape, gen, sample_key=unspecified_argument):
+		if sample_key is unspecified_argument:
+			sample_key = self.sample_key
+		N = shape.numel()
+		batch = self.get_batch(shuffle=True, sample_limit=N, batch_size=N, gen=gen)
+		if self.sample_key is None:
+			return batch
+		return batch[sample_key].view(*shape, *self.space_of(sample_key).shape)
+
+
 	# def _fingerprint_data(self):
 	# 	data = super()._fingerprint_data()
 	# 	N = len(self)
 	# 	data['len'] = N
 	# 	if N > 0:
 	# 		sel = torch.randint(N, size=(min(5,N),), generator=self.create_rng(seed=16283393149723337453))
-	# 		for name, buffer in self.iter_buffers(True):
+	# 		for name, buffer in self.iter_named_buffers(True):
 	# 			if self.is_ready:
 	# 				try:
 	# 					data[name] = self.get(name, sel=sel).view(len(sel), -1).sum(-1).tolist()
@@ -927,7 +955,7 @@ class Dataset(Subsetable, DataCollection):
 
 
 	def _length(self):
-		return next(iter(self.iter_buffers(True)))[1].length()
+		return next(iter(self.iter_buffers(True))).length()
 
 
 	def get_subset_src(self, recursive=True):

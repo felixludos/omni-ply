@@ -4,14 +4,14 @@ import h5py as hf
 import torch
 from omnibelt import unspecified_argument, agnostic, md5
 
-from .. import Sampler
-from ..structure import Metric
+from ..structure import Metric, Generator
 from ..persistent import Rooted
 from ..parameters import Parameterized, Builder, ClassBuilder, Buildable
 
 # from .abstract import BufferTransform
 from .base import Dataset, DataSource, DataCollection
 from .buffers import Buffer, BufferView, HDFBuffer
+
 
 
 class BuildableDataset(DataCollection, Buildable):
@@ -27,19 +27,8 @@ class SimpleDataset(Dataset):
 
 
 
-class GenerativeDataset(Dataset, Sampler):
-	sample_key = None
-
-
-	def _sample(self, shape, gen, sample_key=unspecified_argument):
-		if sample_key is unspecified_argument:
-			sample_key = self.sample_key
-		N = shape.numel()
-		batch = self.get_batch(shuffle=True, sample_limit=N, batch_size=N, gen=gen)
-		if self.sample_key is None:
-			return batch
-		return batch[sample_key].view(*shape, *self.space_of(sample_key).shape)
-
+class GenerativeDataset(Dataset, Generator):
+	pass
 
 
 class _ObservationInfo(DataSource):
@@ -58,7 +47,7 @@ class _ObservationInfo(DataSource):
 
 
 
-class ObservationDataset(_ObservationInfo, GenerativeDataset):
+class ObservationDataset(_ObservationInfo, Dataset):
 	sample_key = 'observation'
 
 
@@ -201,6 +190,10 @@ class SyntheticDataset(_SyntheticInfo, LabeledDataset):
 		return self.sample(*shape, gen=gen, sample_key='mechanism')
 
 
+	def generate_mechanism(self, *shape):
+		return self.mechanism_space.sample(*shape, gen=self.gen)
+
+
 	def generate_observation_from_label(self, label, gen=None):
 		return self.generate_observation_from_mechanism(self.transform_to_mechanisms(label), gen=gen)
 
@@ -209,6 +202,15 @@ class SyntheticDataset(_SyntheticInfo, LabeledDataset):
 		raise NotImplementedError
 # Synthetic means the mapping is known (and available, usually only for evaluation)
 # TODO: separate labels and mechanisms
+
+
+
+class ProcessDataset(Dataset):
+
+	process = None # TODO: maybe machine?
+
+	def _prepare(self, *args, **kwargs):
+		raise NotImplementedError
 
 
 
