@@ -4,12 +4,11 @@ from .buffers import Buffer, RemoteBuffer, HDFBuffer, BufferView, ReplacementBuf
 from .base import DataCollection, DataSource, Dataset, Batch
 from .flavors import SimpleDataset, GenerativeDataset, ObservationDataset, \
 	SupervisedDataset, LabeledDataset, SyntheticDataset, \
-	RootedDataset, EncodableDataset, ImageDataset
+	RootedDataset, EncodableDataset, DownloadableDataset, ImageDataset
 
-from .toy import SwissRollDataset, HelixDataset
+from . import toy
 
 
 # TODO: move to foundation
 
-from .mnist import MNIST, FashionMNIST, KMNIST, EMNIST, SVHN, CIFAR10, CIFAR100
-from .disentangling import dSprites, Shapes3D, MPI3D, CelebA
+# from omnilearn.datasets.disentangling import dSprites, Shapes3D, MPI3D, CelebA

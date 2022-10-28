@@ -435,6 +435,8 @@ class DataSource(Batchable, AbstractData, Named):
 
 
 	def get(self, name, sel=None, **kwargs):
+		if not self.is_ready:
+			raise self.NotReady(f'{self} has not been prepared (call .prepare() first)')
 		return super().get(sel=sel, name=name, **kwargs)
 
 

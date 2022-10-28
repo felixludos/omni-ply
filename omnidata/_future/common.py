@@ -3,7 +3,7 @@ from omnibelt import agnosticmethod
 import torch
 
 from omnidata.parameters import abstract
-from omnidata.models.models import Function
+from omnidata.modules.models import Function
 
 
 

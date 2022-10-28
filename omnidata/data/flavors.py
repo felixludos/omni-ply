@@ -7,11 +7,16 @@ from omnibelt import unspecified_argument, agnostic, md5
 from .. import Sampler
 from ..structure import Metric
 from ..persistent import Rooted
+from ..parameters import Parameterized, Builder, ClassBuilder, Buildable
 
-from .abstract import BufferTransform
-
-from .base import Dataset, DataSource, Batch, DataCollection
+# from .abstract import BufferTransform
+from .base import Dataset, DataSource, DataCollection
 from .buffers import Buffer, BufferView, HDFBuffer
+
+
+class BuildableDataset(DataCollection, Buildable):
+	pass
+
 
 
 class SimpleDataset(Dataset):
@@ -266,6 +271,23 @@ class RootedDataset(DataCollection, Rooted):
 
 
 
+class DownloadableDataset(RootedDataset):
+	def __init__(self, download=False, **kwargs):
+		super().__init__(**kwargs)
+		self._auto_download = download
+
+
+	@classmethod
+	def download(cls, **kwargs):
+		raise NotImplementedError
+
+
+	class DatasetNotDownloaded(FileNotFoundError):
+		def __init__(self):
+			super().__init__('use download=True to enable automatic download.')
+
+
+
 class EncodableDataset(ObservationDataset, RootedDataset):
 	def __init__(self, encoder=None, replace_observation_key=None, encoded_key='encoded',
 	             encoded_file_name='aux', encode_on_load=False, save_encoded=False, encode_pbar=None, **kwargs):
@@ -278,9 +300,8 @@ class EncodableDataset(ObservationDataset, RootedDataset):
 		self._encode_pbar = encode_pbar
 		self.encoder = encoder
 
-
 	@property
-	def encoder(self):
+	def encoder(self): # TODO: make this a machine
 		return self._encoder
 	@encoder.setter
 	def encoder(self, encoder):
@@ -404,22 +425,7 @@ class EncodableDataset(ObservationDataset, RootedDataset):
 
 
 
-class ImageDataset(ObservationDataset, RootedDataset):
-	def __init__(self, download=False, **kwargs):
-		super().__init__(**kwargs)
-		self._auto_download = download
-
-
-	@classmethod
-	def download(cls, **kwargs):
-		raise NotImplementedError
-
-
-	class DatasetNotDownloaded(FileNotFoundError):
-		def __init__(self):
-			super().__init__('use download=True to enable automatic download.')
-
-
+class ImageDataset(ObservationDataset):
 	class ImageBuffer(Buffer):
 		def process_image(self, image):
 			if not self.space.as_bytes:
@@ -429,8 +435,6 @@ class ImageDataset(ObservationDataset, RootedDataset):
 
 		def _get(self, *args, **kwargs):
 			return self.process_image(super()._get(*args, **kwargs))
-
-
 
 
 

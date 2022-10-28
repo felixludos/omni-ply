@@ -2,26 +2,26 @@ import numpy as np
 # from sklearn.datasets import make_swiss_roll
 import torch
 
-from .flavors import SyntheticDataset
-from ..structure import spaces
+from ..flavors import SyntheticDataset
+from ...structure import spaces
 
 
-class SwissRollDataset(SyntheticDataset):
-	def __init__(self, n_samples=100, noise=0., target_theta=True,
+class SwissRollDatasetBase(SyntheticDataset):
+	def __init__(self, n_samples=100, *, noise_std=0., target_theta=True,
 	             Ax=np.pi/2, Ay=21., Az=np.pi/2, freq=0.5, tmin=3., tmax=9.,
 	             **kwargs):
 		super().__init__(default_len=n_samples, **kwargs)
 
 		# self.n_samples = n_samples
-		self.noise_std = noise
+		self.noise_std = noise_std
 
-		assert Ax > 0 and Ay > 0 and Az > 0 and freq > 0 and tmax > tmin, f'invalid parameters: ' \
-		                                                                  f'{Ax} {Ay} {Az} {freq} {tmax} {tmin}'
+		assert Ax > 0 and Ay > 0 and Az > 0 and freq > 0 and tmax > tmin, \
+			f'invalid parameters: {Ax} {Ay} {Az} {freq} {tmax} {tmin}'
 		self.Ax, self.Ay, self.Az = Ax, Ay, Az
 		self.freq = freq
 		self.tmin, self.tmax = tmin, tmax
 
-		self._target_theta = target_theta
+		self.target_theta = target_theta
 
 		lbl_space = spaces.Joint(
 			spaces.Bound(min=tmin, max=tmax),
@@ -35,7 +35,7 @@ class SwissRollDataset(SyntheticDataset):
 		)
 
 		self.register_buffer('observation', space=obs_space)
-		if self._target_theta:
+		if self.target_theta:
 			self.register_buffer('target', space=lbl_space[0])
 		self.register_buffer('label', space=lbl_space)
 
@@ -64,7 +64,7 @@ class SwissRollDataset(SyntheticDataset):
 		lbls = self.sample_mechanism(len(self))
 
 		self.buffers['label'].data = lbls
-		if self._target_theta:
+		if self.target_theta:
 			self.buffers['target'].data = lbls.narrow(-1,0,1)
 		self.buffers['observation'].data = self.generate_observation_from_mechanism(lbls)
 
@@ -72,16 +72,16 @@ class SwissRollDataset(SyntheticDataset):
 
 
 
-class HelixDataset(SyntheticDataset):
-	def __init__(self, n_samples=100, n_helix=2, noise=0.,
+class HelixDatasetBase(SyntheticDataset):
+	def __init__(self, n_samples=100, n_helix=2, *, noise_std=0.,
 	             target_strand=False, periodic_strand=False,
 	             Rx=1., Ry=1., Rz=1., w=1.,
 	             **kwargs):
 		super().__init__(default_len=n_samples, **kwargs)
 
 		self.n_helix = n_helix
-		self.noise_std = noise
-		self._target_strand = target_strand
+		self.noise_std = noise_std
+		self.target_strand = target_strand
 
 		self.Rx, self.Ry, self.Rz = Rx, Ry, Rz
 		self.w = int(w) if periodic_strand else w
@@ -98,7 +98,7 @@ class HelixDataset(SyntheticDataset):
 		)
 
 		self.register_buffer('observation', space=obs_space)
-		if self._target_strand:
+		if self.target_strand:
 			self.register_buffer('target', space=lbl_space[-1])
 		self.register_buffer('label', space=lbl_space)
 
@@ -125,7 +125,7 @@ class HelixDataset(SyntheticDataset):
 		lbls = self.sample_mechanism(len(self))
 
 		self.buffers['label'].data = lbls
-		if self._target_strand:
+		if self.target_strand:
 			self.buffers['target'].data = lbls.narrow(-1, 0, 1)
 		self.buffers['observation'].data = self.generate_observation_from_mechanism(lbls)
 

@@ -82,13 +82,13 @@ class Dim(Packable, Measure, Sampler, Fingerprinted):
 		return self.shape.numel()
 
 
-	def _fingerprint_data(self):
+	def _fingerprint_data(self, extractor):
 		return {
 			'min': None if self.min is None else self.min.float().mean().item(),
 			'max': None if self.max is None else self.max.float().mean().item(),
 			'dtype': str(self.dtype),
 			'shape': str(self.shape),
-			**super()._fingerprint_data()
+			**super()._fingerprint_data(extractor)
 		}
 	
 
@@ -151,13 +151,19 @@ class Dim(Packable, Measure, Sampler, Fingerprinted):
 
 
 
-# class Range(Dim):
-# 	def __init__(self, min=None, max=None, shape=(), dtype=None, **kwargs):
-# 		super().__init__(min=min, max=max, shape=shape, dtype=dtype, **kwargs)
-#
-#
-# 	def _sample(self, shape, gen):
-# 		return torch.randint(self.min, self.max, shape, generator=gen)
+class Range(Dim):
+	def __init__(self, min=None, max=None, shape=(), dtype=None, **kwargs):
+		super().__init__(min=min, max=max, shape=shape, dtype=dtype, **kwargs)
+
+
+	def _sample(self, shape, gen):
+		return torch.randint(self.min, self.max, shape, generator=gen)
+
+
+
+class Naturals(Range):
+	def __init__(self, max=None, *, min=0, **kwargs):
+		super().__init__(min=min, max=max, **kwargs)
 
 
 

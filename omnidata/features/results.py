@@ -11,7 +11,7 @@ class AbstractContainer(Mapping):
 	pass
 
 
-class Container(AbstractContainer, OrderedDict): # TODO: instead of inheriting from OrderedDict use Mapping (maybe?)
+class Container(OrderedDict, AbstractContainer): # TODO: instead of inheriting from OrderedDict use Mapping (maybe?)
 							  # http://www.kr41.net/2016/03-23-dont_inherit_python_builtin_dict_type.html
 	def _find_missing(self, key):
 		raise KeyError(key)

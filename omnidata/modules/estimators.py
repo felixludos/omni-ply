@@ -7,9 +7,8 @@ import numpy as np
 from sklearn import metrics
 # from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 
-from omnidata.framework import spaces
-from omnidata.framework.base import Function
-from omnidata.framework.models import Model
+from ..structure import spaces, Function
+from .models import Model
 
 
 class AbstractScikitEstimator(Model, Function):
