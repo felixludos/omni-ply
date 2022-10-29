@@ -4,16 +4,24 @@
 
 from ..structure import spaces, Function, Generator, Sampler
 
+from .base import DataSource
 
-class Process(Function): # TODO: add to data hierarchy (its a source, but unlimited)
+
+
+class GenerativeProcess(DataSource):
+	
+	
+	
+	pass
+
+
+
+class SimpleProcess(Function, GenerativeProcess): # TODO: add to data hierarchy (its a source, but unlimited)
 
 
 
 	pass
 
-
-
-class GenerativeProcess(Process):
 
 
 
