@@ -1,4 +1,4 @@
-from .abstract import AbstractData, AbstractView, AbstractBuffer
+from .old_abstract import AbstractData, AbstractView, AbstractBuffer
 
 from .buffers import Buffer, RemoteBuffer, HDFBuffer, BufferView, ReplacementBuffer, TransformedBuffer, NarrowBuffer
 from .base import DataCollection, DataSource, Dataset, Batch

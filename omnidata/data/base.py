@@ -5,7 +5,7 @@ from omnibelt import unspecified_argument, duplicate_instance, md5, agnosticmeth
 
 
 from ..features import Named, Seeded, Container
-from .abstract import AbstractData, AbstractView, AbstractBuffer
+from .old_abstract import AbstractData, AbstractView, AbstractBuffer
 from .buffers import Buffer, AbstractCountableData, AbstractCountableDataView
 
 

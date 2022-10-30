@@ -8,7 +8,7 @@ from ..persistent import Rooted
 # from ..framework import base, Rooted, DeviceContainer
 from .. import util
 
-from .abstract import AbstractData, AbstractBuffer, AbstractView
+from .old_abstract import AbstractData, AbstractBuffer, AbstractView
 
 
 class TransformableBuffer(AbstractBuffer):
