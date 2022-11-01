@@ -82,13 +82,13 @@ class Dim(Packable, Measure, Sampler, Fingerprinted):
 		return self.shape.numel()
 
 
-	def _fingerprint_data(self, extractor):
+	def _fingerprint_data(self):
 		return {
 			'min': None if self.min is None else self.min.float().mean().item(),
 			'max': None if self.max is None else self.max.float().mean().item(),
 			'dtype': str(self.dtype),
 			'shape': str(self.shape),
-			**super()._fingerprint_data(extractor)
+			**super()._fingerprint_data()
 		}
 	
 

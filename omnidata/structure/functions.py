@@ -28,10 +28,10 @@ class Function(Fingerprinted):
 	# 	raise NotImplementedError
 
 
-	def _fingerprint_data(self, extractor):
-		data = super()._fingerprint_data(extractor)
-		data['din'] = extractor.extract_data(self.din)
-		data['dout'] = extractor.extract_data(self.dout)
+	def _fingerprint_data(self):
+		data = super()._fingerprint_data()
+		data['din'] = self.din
+		data['dout'] = self.dout
 		# if self.din is not None:
 		# 	x = self.din.sample(4, gen=torch.Generator().manual_seed(16283393149723337453))
 		# 	try:
