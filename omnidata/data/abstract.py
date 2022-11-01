@@ -1,4 +1,5 @@
 
+from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
 
 from omnibelt import unspecified_argument, duplicate_instance
 
@@ -28,11 +29,11 @@ class AbstractData(Fingerprinted, Prepared):
 
 class AbstractDataSource(AbstractData):
 
-	def available(self):
+	def available(self) -> Iterator[str]:
 		raise NotImplementedError
 	
 	
-	def loaded(self):
+	def cached(self) -> Iterator[str]:
 		raise NotImplementedError
 	
 
@@ -42,6 +43,16 @@ class AbstractDataSource(AbstractData):
 	
 	pass
 
+
+class AbstractCollection:
+	def materials(self):
+		raise NotImplementedError
+	
+	def named_materials(self):
+		raise NotImplementedError
+	
+	
+	
 
 
 class AbstractMaterial:
