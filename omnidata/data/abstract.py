@@ -127,6 +127,25 @@ class AbstractView(AbstractDataSource):
 
 
 
+class AbstractBatch(AbstractView):
+	@property
+	def size(self):
+		raise NotImplementedError
+	
+	def new(self):
+		raise NotImplementedError
+	
+	
+
+class AbstractProgress:
+	@property
+	def total_samples(self):
+		raise NotImplementedError
+	
+	@property
+	def total_batches(self):
+		raise NotImplementedError
+
 
 
 
