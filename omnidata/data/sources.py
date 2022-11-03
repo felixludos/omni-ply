@@ -1,12 +1,14 @@
+from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
+
 from collections import OrderedDict
 from omnibelt import unspecified_argument, get_printer
 
-from .abstract import AbstractDataSource, AbstractMaterial, AbstractCollection
+from .abstract import AbstractDataRouter, AbstractDataSource, AbstractCollection
 
 prt = get_printer(__file__)
 
 
-class ExpectingDataSource(AbstractDataSource):
+class ExpectingDataRouter(AbstractDataRouter):
 	def __init_subclass__(cls, materials=None, required_materials=None, **kwargs):
 		super().__init_subclass__(**kwargs)
 		if required_materials is not None:
@@ -25,7 +27,7 @@ class ExpectingDataSource(AbstractDataSource):
 
 
 
-class CachedDataSource(AbstractDataSource):
+class CachedDataRouter(AbstractDataRouter):
 	def cached(self) -> Iterator[str]:
 		raise NotImplementedError
 
@@ -55,7 +57,7 @@ class DataSource(AbstractCollection):
 		return self.get_material(key).get_from(source, key)
 	
 	
-	def named_materials(self) -> Iterator[Tuple[str, 'AbstractMaterial']]:
+	def named_materials(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
 		for name in self._registered_materials:
 			yield name, self.get_material(name)
 
@@ -68,7 +70,7 @@ class DataSource(AbstractCollection):
 				return self.get_material(material, default=default)
 		if default is not unspecified_argument:
 			return default
-		raise self.MissingMaterial(key)
+		raise self.MissingMaterial(name)
 
 	def has(self, name):
 		return name in self._registered_materials
@@ -90,7 +92,7 @@ class DataSource(AbstractCollection):
 		self._registered_materials.remove(name)
 	
 	def register_material(self, name, material):
-		if not isinstance(material, AbstractMaterial):
+		if not isinstance(material, AbstractDataSource):
 			prt.warning(f'Expected material for {name} in {self}, got: {material!r}')
 		self._registered_materials[name] = material
 		
@@ -103,34 +105,43 @@ class DataSource(AbstractCollection):
 
 
 
-class AutoDataSource(AbstractDataSource):
-	def __setattr__(self, key, value):
-		if isinstance(value, AbstractCollection):
-			self._register_material_as(value, *value.available())
-		if isinstance(value, AbstractMaterial):
-			self.register_material(key, value)
-		super().__setattr__(key, value)
-
-	def __delattr__(self, name):
-		if name in self._registered_materials:
-			self.remove_material(name)
-		super().__delattr__(name)
+class BranchedDataRouter(AbstractDataRouter):
+	def register_material(self, name, material=None, *, space=None, **kwargs): # TODO: with delimiter for name
+		raise NotImplementedError
+		if material is None:
+			material = self._SimpleMaterial(space=space, **kwargs)
+		elif not isinstance(material, AbstractDataSource):
+			material = self._SimpleMaterial(material, space=space, **kwargs)
+		return super().register_material(name, material)
 
 
+	# def __setattr__(self, key, value):
+	# 	if isinstance(value, AbstractCollection):
+	# 		self._register_multi_material(value, *value.available())
+	# 	if isinstance(value, AbstractMaterial):
+	# 		self.register_material(key, value)
+	# 	super().__setattr__(key, value)
+	#
+	# def __delattr__(self, name):
+	# 	if name in self._registered_materials:
+	# 		self.remove_material(name)
+	# 	super().__delattr__(name)
 
-class TensorDataSource(AbstractDataSource):
+
+
+class TensorDataRouter(AbstractDataRouter):
 	_SimpleMaterial = None
 
 	def register_material(self, name, material=None, *, space=None, **kwargs):
 		if material is None:
 			material = self._SimpleMaterial(space=space, **kwargs)
-		elif not isinstance(material, AbstractMaterial):
+		elif not isinstance(material, AbstractDataSource):
 			material = self._SimpleMaterial(material, space=space, **kwargs)
 		return super().register_material(name, material)
 
 
 
-class AliasedDataSource(AbstractDataSource):
+class AliasedDataRouter(AbstractDataRouter):
 	def register_material_alias(self, name: str, alias: str):
 		self._registered_materials[name] = alias
 	

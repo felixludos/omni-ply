@@ -1,4 +1,3 @@
-
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
 
 from omnibelt import unspecified_argument, duplicate_instance, get_printer
@@ -19,13 +18,18 @@ class AbstractData(Fingerprinted, Prepared):
 		return duplicate_instance(self) # shallow copy
 
 	def get(self, key):
-		return self.get_from(self, key)
+		return self.get_from(None, key)
 
 	def get_from(self, source, key):
 		return self._get_from(source, key)
 
 	@staticmethod
 	def _get_from(source, key):
+		raise NotImplementedError
+		# source[key] = self._get(key)
+
+	@staticmethod
+	def _get(sel):
 		raise NotImplementedError
 
 
@@ -88,43 +92,86 @@ class AbstractCountableData(AbstractData):
 
 
 class AbstractDataSource(AbstractData):
+
+	def __getitem__(self, item):
+		return self.get(item)
+
+	def get_from(self, source, key):
+		return self._get_from(source, key)
+
+	@staticmethod
+	def _get_from(source, key):
+		raise NotImplementedError
+
+	def get(self, key):
+		return self.get_from(self, key)
+
+
+
+class SimpleSource(AbstractDataSource):
+	def _get_from(self, source: 'AbstractSelector', key):
+		source[key] = self._get(key)
+		raise NotImplementedError
+
+	def _get(self, key, sel=None):
+		raise NotImplementedError
+
+
+
+class AbstractDataCollector(AbstractData): # caches results
+	def get(self, key):
+		return self.get_from(self, key)
+
+
+
+class AbstractDataRouter(AbstractDataSource):
 	def _prepare(self, source=None, **kwargs):
 		super()._prepare(source=source, **kwargs)
 		for material in self.materials():
 			material.prepare()
 
-	def register_material(self, name, material):
-		raise NotImplementedError
-	
-	def _register_material_as(self, material, *names):
-		for name in names:
-			self.register_material(name, material)
-	
-	def remove_material(self, name):
-		raise NotImplementedError
-
-	def named_materials(self) -> Iterator[Tuple[str, 'AbstractMaterial']]:
+	def named_materials(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
 		raise NotImplementedError
 
 	def available(self) -> Iterator[str]:
 		for k, _ in self.named_materials():
 			yield k
 
-	def materials(self) -> Iterator['AbstractMaterial']:
+	def materials(self) -> Iterator['AbstractDataSource']:
 		for _, m in self.named_materials():
 			yield m
 
 	class MissingMaterial(KeyError):
 		pass
 
-	def get_material(self, name, default=unspecified_argument):
-		raise NotImplementedError
-
-	def __contains__(self, name):
-		return self.has(name)
 
 	def has(self, key):
 		raise NotImplementedError
+
+	def get_material(self, name, default=unspecified_argument):
+		raise NotImplementedError
+
+	def register_material(self, name, material):
+		raise NotImplementedError
+
+	def _register_multi_material(self, material, *names):
+		for name in names:
+			self.register_material(name, material)
+
+	def remove_material(self, name):
+		raise NotImplementedError
+
+	def __getitem__(self, key):
+		return self.get_material(key)
+
+	def __setitem__(self, key, value):
+		self.register_material(key, value)
+
+	def __delitem__(self, key):
+		self.remove_material(key)
+
+	def __contains__(self, name):
+		return self.has(name)
 
 
 	def _title(self):
@@ -140,19 +187,12 @@ class AbstractDataSource(AbstractData):
 
 
 
-class AbstractMaterial(AbstractData):
-	@staticmethod
-	def _get_from(source, key):
-		raise NotImplementedError
-
-
-
-class AbstractCollection(AbstractMaterial, AbstractDataSource):
+class AbstractCollection(AbstractDataSource, AbstractDataRouter):
 	pass
 	
 	
 
-class AbstractView(AbstractDataSource):
+class AbstractView(AbstractDataRouter):
 	def __init__(self, source=None, **kwargs):
 		super().__init__(**kwargs)
 
@@ -168,6 +208,21 @@ class AbstractView(AbstractDataSource):
 
 	def _title(self):
 		return f'{self.__class__.__name__}{"{" + self.source._title() + "}" if self.source is not None else ""}'
+
+
+# class SelectionView(AbstractView): -> Subset
+# 	def __init__(self, source=None, selection=None, **kwargs):
+# 		super().__init__(source=source, **kwargs)
+
+
+class AbstractSelector:
+	@property
+	def selection(self):
+		raise NotImplementedError
+
+	def compose(self, other: 'AbstractSelector') -> 'AbstractSelector':
+		raise NotImplementedError
+
 
 
 
@@ -221,18 +276,16 @@ class AbstractProgression:
 		raise NotImplementedError
 
 
-
-class AbstractBatchable(AbstractDataSource):
+class AbstractBatchable(AbstractDataRouter):
 	def __iter__(self):
-		return self.progression()
+		return self.iterate()
 
 	Progression = None
-	def progression(self, **kwargs):
+	def iterate(self, **kwargs):
 		return self.Progression(self, **kwargs)
 
 	def batch(self, batch_size, **kwargs):
-		if progress is None:
-			progress = self.progression(batch_size=batch_size, **kwargs)
+		progress = self.iterate(batch_size=batch_size, **kwargs)
 		return progress.current_batch
 
 

@@ -53,6 +53,7 @@ class ProgressionBase(AbstractProgression):
 
 	def next_batch(self):
 		batch = self._create_batch(size=self.batch_size)
+		self.source.validate_selector(batch)
 		self._sample_count += batch.size
 		self._batch_count += 1
 		self._current_batch = batch
