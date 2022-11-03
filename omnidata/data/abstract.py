@@ -87,12 +87,21 @@ class AbstractCountableData(AbstractData):
 
 
 
-
 class AbstractDataSource(AbstractData):
 	def _prepare(self, source=None, **kwargs):
 		super()._prepare(source=source, **kwargs)
 		for material in self.materials():
 			material.prepare()
+
+	def register_material(self, name, material):
+		raise NotImplementedError
+	
+	def _register_material_as(self, material, *names):
+		for name in names:
+			self.register_material(name, material)
+	
+	def remove_material(self, name):
+		raise NotImplementedError
 
 	def named_materials(self) -> Iterator[Tuple[str, 'AbstractMaterial']]:
 		raise NotImplementedError
@@ -105,8 +114,14 @@ class AbstractDataSource(AbstractData):
 		for _, m in self.named_materials():
 			yield m
 
-	def get_material(self, key):
+	class MissingMaterial(KeyError):
+		pass
+
+	def get_material(self, name, default=unspecified_argument):
 		raise NotImplementedError
+
+	def __contains__(self, name):
+		return self.has(name)
 
 	def has(self, key):
 		raise NotImplementedError
@@ -123,53 +138,17 @@ class AbstractDataSource(AbstractData):
 	def view(self, **kwargs):
 		return self.View(self, **kwargs)
 
-	pass
-
-
-class ExpectingDataSource(AbstractDataSource):
-	def __init_subclass__(cls, materials=None, required_materials=None, **kwargs):
-		super().__init_subclass__(**kwargs)
-		if required_materials is not None:
-			raise NotImplementedError
-		if isinstance(materials, str):
-			materials = [materials]
-		base = getattr(cls, '_expecting_materials', [])
-		cls._expecting_materials = base + (materials or [])
-
-
-	def _prepare(self, source=None, **kwargs):
-		super()._prepare(source=source, **kwargs)
-		for material in self._expecting_materials:
-			if not self.has(material):
-				prt.warning(f'Expected material {material!r} not found in {self}')
-
-
-
-class CachedDataSource(AbstractDataSource):
-	def cached(self) -> Iterator[str]:
-		raise NotImplementedError
-
-	def __str__(self):
-		cached = set(self.cached())
-		return f'{self._title()}(' \
-		       f'{", ".join((key if key in cached else "{" + key + "}") for key in self.available())})'
-
 
 
 class AbstractMaterial(AbstractData):
 	@staticmethod
-	def _get_from(source, *keys):
+	def _get_from(source, key):
 		raise NotImplementedError
 
 
 
-class AbstractCollection(AbstractMaterial):
-	def materials(self):
-		raise NotImplementedError
-
-
-	def named_materials(self):
-		raise NotImplementedError
+class AbstractCollection(AbstractMaterial, AbstractDataSource):
+	pass
 	
 	
 
@@ -190,8 +169,6 @@ class AbstractView(AbstractDataSource):
 	def _title(self):
 		return f'{self.__class__.__name__}{"{" + self.source._title() + "}" if self.source is not None else ""}'
 
-	pass
-
 
 
 class AbstractBatch(AbstractView):
@@ -203,7 +180,7 @@ class AbstractBatch(AbstractView):
 		raise NotImplementedError
 
 	@property
-	def progress(self):
+	def progress(self) -> 'AbstractProgress':
 		raise NotImplementedError
 
 	@property
@@ -247,17 +224,16 @@ class AbstractProgression:
 
 class AbstractBatchable(AbstractDataSource):
 	def __iter__(self):
-		return self.create_progression()
+		return self.progression()
 
 	Progression = None
-	def create_progression(self, **kwargs):
+	def progression(self, **kwargs):
 		return self.Progression(self, **kwargs)
 
-	Batch = None
-	def batch(self, progress=None, **kwargs):
+	def batch(self, batch_size, **kwargs):
 		if progress is None:
-			progress = self.create_progression(**kwargs)
-		return self.Batch(progress=progress)
+			progress = self.progression(batch_size=batch_size, **kwargs)
+		return progress.current_batch
 
 
 

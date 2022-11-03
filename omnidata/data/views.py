@@ -16,38 +16,50 @@ class ViewBase(AbstractView):
 	@property
 	def source(self):
 		return self._source
-	@source.setter
-	def source(self, source):
-		self._source = source
-
-
-	pass
+	# @source.setter
+	# def source(self, source):
+	# 	self._source = source
 
 
 
-class BatchBase(ViewBase, AbstractBatch):
-	def __init__(self, source=None, N=None, *, sel=None, progress=None, **kwargs):
-		super().__init__(source=source, **kwargs)
+class CachedView(ViewBase):
+	def cached(self):
+		yield from self.source.cached()
+
+
+
+class BatchBase(AbstractBatch):
+	def __init__(self, progress=None, *, size=None, **kwargs):
+		super().__init__(**kwargs)
 		self._progress = progress
-		self._N = N
-		self._sel = sel
+		self._size = size
+
+	@property
+	def progress(self):
+		return self._progress
 	
 	@property
 	def size(self):
-		if self._sel is None:
-			return self._N
-		return len(self._sel)
+		return self._size
 	
-	class MissingSelectionError(ValueError):
+
+
+class IndexedBatch(BatchBase):
+	def __init__(self, progress=None, *, indices=None, **kwargs):
+		super().__init__(progress=progress, indices=indices, **kwargs)
+		self._indices = indices
+	
+	class MissingIndicesError(ValueError):
 		pass
 	
 	@property
-	def sel(self):
-		if self._sel is None:
-			raise self.MissingSelectionError
-		return self._sel
-
-
-
-
-
+	def indices(self):
+		if self._indices is None:
+			raise self.MissingIndicesError
+		return self._indices
+	
+	@property
+	def size(self):
+		if self._size is None:
+			return len(self.indices)
+		return self._size
