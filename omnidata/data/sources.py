@@ -3,6 +3,9 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 from collections import OrderedDict
 from omnibelt import unspecified_argument, get_printer
 
+import math
+import torch
+
 from ..structure import Generator
 from ..features import Seeded
 from .abstract import AbstractDataRouter, AbstractDataSource, AbstractSelector
@@ -25,7 +28,10 @@ class Shufflable(Seeded):
 
 
 class CountableSource(AbstractDataSource):
-	pass
+	@property
+	def size(self):
+		raise NotImplementedError
+
 
 
 class SelectorSource(AbstractDataSource, AbstractSelector):
@@ -123,7 +129,7 @@ class Splitable(Subsetable):
 		if remaining > 0:
 			nums[-1] += remaining
 
-		indices = self.shuffle_indices(self.size, gen=gen) if shuffle else torch.arange(self.size)
+		indices = self._shuffle_indices(self.size, gen=gen) if shuffle else torch.arange(self.size)
 
 		plan = dict(zip(names, nums))
 		parts = {}

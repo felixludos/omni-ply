@@ -4,11 +4,11 @@ import torch
 
 from ..features import Seeded, Prepared
 
-from .abstract import AbstractView, AbstractBatch, AbstractProgression, AbstractBatchable, AbstractSelector
+from .abstract import AbstractRouterView, AbstractBatch, AbstractProgression, AbstractBatchable, AbstractSelector
 
 
 
-class ViewBase(AbstractView):
+class RouterViewBase(AbstractRouterView):
 	def __init__(self, source=None, **kwargs):
 		super().__init__(source=source, **kwargs)
 		self._source = source
@@ -33,7 +33,7 @@ class IndexSelector(AbstractSelector):
 
 
 
-class IndexView(ViewBase, IndexSelector): # -> Subset
+class IndexView(RouterViewBase, IndexSelector): # -> Subset
 	def validate_selection(self, selection: 'AbstractSelector'):
 		base = self.indices
 		if base is None:
@@ -42,7 +42,7 @@ class IndexView(ViewBase, IndexSelector): # -> Subset
 
 
 
-class BatchableView(ViewBase, AbstractBatchable):
+class BatchableView(RouterViewBase, AbstractBatchable):
 	def iterate(self, **kwargs):
 		if self.Progression is None:
 			return self.source.Progression(self, **kwargs)
@@ -50,7 +50,7 @@ class BatchableView(ViewBase, AbstractBatchable):
 
 
 
-class CachedView(ViewBase):
+class CachedView(RouterViewBase):
 	def __init__(self, source=source, cache_table=None, **kwargs):
 		if cache_table is None:
 			cache_table = self._CacheTable()

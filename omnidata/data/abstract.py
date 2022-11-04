@@ -185,8 +185,7 @@ class AbstractDataRouter(AbstractDataSource):
 		return self.View(self, **kwargs)
 
 
-
-class AbstractView(AbstractDataRouter):
+class AbstractView(AbstractDataSource):
 	def __init__(self, source=None, **kwargs):
 		super().__init__(**kwargs)
 
@@ -194,6 +193,9 @@ class AbstractView(AbstractDataRouter):
 	def source(self):
 		raise NotImplementedError
 
+
+
+class AbstractRouterView(AbstractView, AbstractDataRouter):
 	def available(self) -> Iterator[str]:
 		return self.source.available()
 
@@ -226,7 +228,7 @@ class AbstractSelector:
 
 
 
-class AbstractBatch(AbstractView, AbstractSelector):
+class AbstractBatch(AbstractRouterView, AbstractSelector):
 	def __init__(self, progress, **kwargs):
 		super().__init__(**kwargs)
 
