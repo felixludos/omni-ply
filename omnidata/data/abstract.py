@@ -17,20 +17,20 @@ class AbstractData(Fingerprinted, Prepared):
 	def copy(self):
 		return duplicate_instance(self) # shallow copy
 
-	def get(self, key):
-		return self.get_from(None, key)
-
-	def get_from(self, source, key):
-		return self._get_from(source, key)
-
-	@staticmethod
-	def _get_from(source, key):
-		raise NotImplementedError
-		# source[key] = self._get(key)
-
-	@staticmethod
-	def _get(sel):
-		raise NotImplementedError
+	# def get(self, key):
+	# 	return self.get_from(None, key)
+	#
+	# def get_from(self, source, key):
+	# 	return self._get_from(source, key)
+	#
+	# @staticmethod
+	# def _get_from(source, key):
+	# 	raise NotImplementedError
+	# 	# source[key] = self._get(key)
+	#
+	# @staticmethod
+	# def _get(sel):
+	# 	raise NotImplementedError
 
 
 	def _title(self):
@@ -92,7 +92,6 @@ class AbstractCountableData(AbstractData):
 
 
 class AbstractDataSource(AbstractData):
-
 	def __getitem__(self, item):
 		return self.get(item)
 
@@ -104,23 +103,23 @@ class AbstractDataSource(AbstractData):
 		raise NotImplementedError
 
 	def get(self, key):
-		return self.get_from(self, key)
+		return self.get_from(None, key)
 
 
 
-class SimpleSource(AbstractDataSource):
-	def _get_from(self, source: 'AbstractSelector', key):
-		source[key] = self._get(key)
-		raise NotImplementedError
+# class SimpleSource(AbstractDataSource):
+# 	def _get_from(self, source: 'AbstractSelector', key):
+# 		source[key] = self._get(key)
+# 		raise NotImplementedError
+#
+# 	def _get(self, key, sel=None):
+# 		raise NotImplementedError
 
-	def _get(self, key, sel=None):
-		raise NotImplementedError
 
 
-
-class AbstractDataCollector(AbstractData): # caches results
-	def get(self, key):
-		return self.get_from(self, key)
+# class AbstractDataCollector(AbstractData): # caches results
+# 	def get(self, key):
+# 		return self.get_from(self, key)
 
 
 
@@ -161,9 +160,6 @@ class AbstractDataRouter(AbstractDataSource):
 	def remove_material(self, name):
 		raise NotImplementedError
 
-	def __getitem__(self, key):
-		return self.get_material(key)
-
 	def __setitem__(self, key, value):
 		self.register_material(key, value)
 
@@ -181,16 +177,14 @@ class AbstractDataRouter(AbstractDataSource):
 		return f'{super().__str__()}({", ".join(self.available())})'
 
 
+	def validate_selection(self, selection):
+		return selection
+
 	View = None
 	def view(self, **kwargs):
 		return self.View(self, **kwargs)
 
 
-
-class AbstractCollection(AbstractDataSource, AbstractDataRouter):
-	pass
-	
-	
 
 class AbstractView(AbstractDataRouter):
 	def __init__(self, source=None, **kwargs):
@@ -203,30 +197,36 @@ class AbstractView(AbstractDataRouter):
 	def available(self) -> Iterator[str]:
 		return self.source.available()
 
+	def get_material(self, name, default=unspecified_argument):
+		return self.source.get_material(name, default=default)
+
 	def has(self, key):
 		return self.source.has(key)
 
 	def _title(self):
 		return f'{self.__class__.__name__}{"{" + self.source._title() + "}" if self.source is not None else ""}'
 
+	def validate_selection(self, selection):
+		return self.source.validate_selection(selection)
 
-# class SelectionView(AbstractView): -> Subset
-# 	def __init__(self, source=None, selection=None, **kwargs):
-# 		super().__init__(source=source, **kwargs)
+	def view(self, **kwargs):
+		if self.View is None:
+			return self.source.View(self, **kwargs)
+		return self.View(self, **kwargs)
+
 
 
 class AbstractSelector:
-	@property
-	def selection(self):
-		raise NotImplementedError
+	# @property
+	# def selection(self):
+	# 	raise NotImplementedError
 
 	def compose(self, other: 'AbstractSelector') -> 'AbstractSelector':
 		raise NotImplementedError
 
 
 
-
-class AbstractBatch(AbstractView):
+class AbstractBatch(AbstractView, AbstractSelector):
 	def __init__(self, progress, **kwargs):
 		super().__init__(**kwargs)
 
@@ -276,6 +276,7 @@ class AbstractProgression:
 		raise NotImplementedError
 
 
+
 class AbstractBatchable(AbstractDataRouter):
 	def __iter__(self):
 		return self.iterate()
@@ -287,7 +288,5 @@ class AbstractBatchable(AbstractDataRouter):
 	def batch(self, batch_size, **kwargs):
 		progress = self.iterate(batch_size=batch_size, **kwargs)
 		return progress.current_batch
-
-
 
 

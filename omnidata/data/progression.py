@@ -3,10 +3,10 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 import math
 import torch
 
-from ..features import Seeded, Prepared, ProgressBarred
+from ..features import Prepared, ProgressBarred
 
 from .abstract import AbstractProgression
-
+from .sources import Shufflable
 
 
 class ProgressionBase(AbstractProgression):
@@ -21,7 +21,7 @@ class ProgressionBase(AbstractProgression):
 	@property
 	def current_batch(self):
 		if self._current_batch is None:
-			self._current_batch = self.next_batch()
+			self._current_batch = self._next_batch()
 		return self._current_batch
 
 	@property
@@ -52,6 +52,11 @@ class ProgressionBase(AbstractProgression):
 		return batch
 
 	def next_batch(self):
+		batch = self._next_batch()
+		batch = self.source.validate_selector(batch)
+		return batch
+
+	def _next_batch(self):
 		batch = self._create_batch(size=self.batch_size)
 		self.source.validate_selector(batch)
 		self._sample_count += batch.size
@@ -72,10 +77,10 @@ class BarredProgression(ProgressionBase, ProgressBarred):
 			unit = 'smpl' if self._pbar_samples else 'batch'
 		return super()._create_pbar(unit=unit, **kwargs)
 
-	def next_batch(self):
+	def _next_batch(self):
 		if self._use_pbar and self._pbar is None:
 			self._create_pbar()
-		batch = super().next_batch()
+		batch = super()._next_batch()
 		if self._pbar is not None:
 			self._pbar.update(batch.size if self._pbar_samples else 1)
 		return batch
@@ -135,7 +140,7 @@ class EpochProgression(ProgressionBase, Prepared):
 		Batch = self.source.Batch if self.Batch is None else self.Batch
 		return Batch(progress=self, **kwargs)
 
-	def next_batch(self):
+	def _next_batch(self):
 		if self._selections is None:
 			self._setup()
 
@@ -152,21 +157,10 @@ class EpochProgression(ProgressionBase, Prepared):
 
 
 
-class ShuffleProgression(EpochProgression, Seeded):
+class ShuffleProgression(EpochProgression, Shufflable):
 	def __init__(self, source, *, shuffle_batches=True, **kwargs):
 		super().__init__(source=source, **kwargs)
 		self._shuffle_batches = shuffle_batches
-
-	@staticmethod
-	def _is_big_number(N):
-		return N > 10000000
-
-	def _shuffle_indices(self, N, gen=None):
-		if gen is None:
-			gen = self.gen
-		# TODO: include a warning if cls._is_big_number(N)
-		return torch.randint(N, size=(N,), generator=gen) \
-			if self._is_big_number(N) else torch.randperm(N, generator=gen)
 
 	def _generate_sample_order(self):
 		if self._shuffle_batches:
@@ -214,16 +208,16 @@ class InfiniteProgression(EpochProgression):
 			self._setup()
 		raise self.EndLoop
 
-	def next_batch(self):
+	def _next_batch(self):
 		try:
-			return super().next_batch()
+			return super()._next_batch()
 		except StopIteration:
 			try:
 				self._new_epoch()
 			except self.EndLoop:
 				pass
 			else:
-				return super().next_batch()
+				return super()._next_batch()
 			raise
 
 
@@ -330,10 +324,10 @@ class TrackedProgression(BudgetProgression, BarredProgression): # TODO: add a pr
 			self._create_pbar(total=self.total_samples if self._pbar_samples else self.total_batches)
 
 
-	def next_batch(self):
+	def _next_batch(self):
 		pbar = self._pbar
 		try:
-			batch = super().next_batch()
+			batch = super()._next_batch()
 		except StopIteration:
 			if pbar is not None:
 				pbar.close()
