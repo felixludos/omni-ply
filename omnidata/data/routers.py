@@ -1,12 +1,16 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
 
 from collections import OrderedDict
-from omnibelt import get_printer
+from omnibelt import get_printer, unspecified_argument
 
-from .abstract import AbstractDataRouter, AbstractDataSource
+from .. import util
+from ..structure import Sampler, Generator
+from .abstract import AbstractDataRouter, AbstractDataSource, AbstractBatchable
+from .sources import SpacedSource
 
 
 prt = get_printer(__file__)
+
 
 class ExpectingDataRouter(AbstractDataRouter):
 	def __init_subclass__(cls, materials=None, required_materials=None, **kwargs):
@@ -27,7 +31,7 @@ class ExpectingDataRouter(AbstractDataRouter):
 
 
 
-class DataCollection(AbstractDataRouter):
+class DataCollection(AbstractBatchable, AbstractDataRouter):
 	def __init__(self, *, materials_table=None, **kwargs):
 		if materials_table is None:
 			materials_table = self._MaterialsTable()
@@ -85,12 +89,43 @@ class DataCollection(AbstractDataRouter):
 			prt.warning(f'Expected material for {name} in {self}, got: {material!r}')
 		self._registered_materials[name] = material
 	
-	def rename_buffer(self, current, new=None):
+	def rename_material(self, current, new):
 		material = self.get_material(current, None)
 		if material is not None:
 			self.remove_material(current)
-		if new is not None:
-			self.register_buffer(new, material)
+		self.register_material(new, material)
+
+
+
+class SampleCollection(DataCollection, Sampler):
+	def batch(self, batch_size, gen=None, **kwargs):
+		if gen is None:
+			gen = self.gen
+		return super().batch(batch_size, gen=gen, **kwargs)
+
+	_sample_key = None
+	def _sample(self, shape, gen, sample_key=unspecified_argument):
+		if sample_key is unspecified_argument:
+			sample_key = self._sample_key
+		N = shape.numel()
+		samples = batch[sample_key]
+		return util.split_dim(samples, *shape)
+		return self.sample_material(sample_key, N, gen=gen)
+
+	def sample_material(self, sample, N, gen=None):
+		batch = self.batch(N, gen=gen)
+
+		if sample_key is None:
+			raise NotImplementedError
+			return batch
+
+		pass
+
+
+
+class Generative(SampleCollection):
+	def generate(self, *shape, gen=None):
+		return self.sample(*shape, gen=gen)
 
 
 
@@ -102,6 +137,39 @@ class BranchedDataRouter(DataCollection):
 		elif not isinstance(material, AbstractDataSource):
 			material = self._SimpleMaterial(material, space=space, **kwargs)
 		return super().register_material(name, material)
+
+
+
+class SimpleDataCollection(DataCollection):
+	_SimpleMaterial = None
+	
+	def register_material(self, name, material=None, *, space=None, **kwargs):
+		if material is None:
+			material = self._SimpleMaterial(space=space, **kwargs)
+		elif not isinstance(material, AbstractDataSource):
+			material = self._SimpleMaterial(material, space=space, **kwargs)
+		return super().register_material(name, material)
+
+
+
+class AliasedDataCollection(DataCollection):
+	def register_material_alias(self, name: str, *aliases: str):
+		'''
+		Registers aliases for a material.
+
+		Args:
+			name: original name of the material
+			*aliases: all the new aliases
+
+		Returns:
+
+		'''
+		for alias in aliases:
+			self._registered_materials[alias] = name
+	
+	def has(self, name):
+		alias = self._registered_materials[name]
+		return super().has(name) and (not isinstance(alias, str) or self.has(alias))
 
 
 
@@ -127,29 +195,6 @@ class BranchedDataRouter(DataCollection):
 # 	if name in self._registered_materials:
 # 		self.remove_material(name)
 # 	super().__delattr__(name)
-
-
-
-class SimpleDataCollection(DataCollection):
-	_SimpleMaterial = None
-	
-	def register_material(self, name, material=None, *, space=None, **kwargs):
-		if material is None:
-			material = self._SimpleMaterial(space=space, **kwargs)
-		elif not isinstance(material, AbstractDataSource):
-			material = self._SimpleMaterial(material, space=space, **kwargs)
-		return super().register_material(name, material)
-
-
-
-class AliasedDataCollection(DataCollection):
-	def register_material_alias(self, name: str, alias: str):
-		self._registered_materials[name] = alias
-	
-	def has(self, name):
-		alias = self._registered_materials[name]
-		return super().has(name) and (not isinstance(alias, str) or self.has(alias))
-
 
 
 

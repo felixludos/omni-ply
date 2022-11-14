@@ -9,6 +9,7 @@ import torch
 from ..structure import Generator
 from ..features import Seeded
 from .abstract import AbstractDataRouter, AbstractDataSource, AbstractSelector
+from .views import IndexView
 
 prt = get_printer(__file__)
 
@@ -28,39 +29,44 @@ class Shufflable(Seeded):
 
 
 class CountableSource(AbstractDataSource):
+	class _SizeError(ValueError):
+		def __init__(self, msg=None):
+			if msg is None:
+				msg = 'Size of data source is not known'
+			super().__init__(msg)
+
 	@property
 	def size(self):
-		raise NotImplementedError
+		raise self._SizeError()
 
 
 
-class SelectorSource(AbstractDataSource, AbstractSelector):
-	def get(self, key):
-		return self.get_from(self, key)
-
-
-
-class GenerativeSource(AbstractDataSource, Generator):
-	def _get_from(self, source, key):
-		return self.generate(source.size)
-
-
-
-class TensorSource(AbstractDataSource):
-	def __init__(self, data=None, **kwargs):
+class SpacedSource(AbstractDataSource):
+	def __init__(self, *, space=None, **kwargs):
 		super().__init__(**kwargs)
-		self._data = data
-		
+		self._space = space
+
 	@property
-	def data(self):
-		return self._data
-	@data.setter
-	def data(self, data):
-		self._data = data
-		
-	def _get_from(self, source, key):
-		return self.data[source.indices]
-	
+	def space(self):
+		return self._space
+	@space.setter
+	def space(self, space):
+		self._space = space
+
+
+
+# class SelectorSource(AbstractDataSource, AbstractSelector):
+# 	def get(self, key):
+# 		return self.get_from(self, key)
+
+
+
+# class GenerativeSource(AbstractDataSource, Generator):
+# 	def _get_from(self, source, key):
+# 		return self.generate(source.size)
+
+
+
 
 
 class Subsetable(CountableSource, Shufflable):
@@ -79,7 +85,9 @@ class Subsetable(CountableSource, Shufflable):
 		return part1, part2
 	
 	Subset = None # indexed view
-	def subset(self, cut=None, *, indices=None, shuffle=False, hard_copy=True, gen=None): # TODO: hard copy
+	def subset(self, cut=None, *, indices=None, shuffle=False, hard_copy=True, gen=None):
+		if not hard_copy:
+			raise NotImplementedError # TODO: hard copy
 		if indices is None:
 			assert cut is not None, 'Either cut or indices must be specified'
 			indices, _ = self._split_indices(indices=self._shuffle_indices(self.size, gen=gen) \
@@ -142,7 +150,30 @@ class Splitable(Subsetable):
 		return parts
 
 
-class MultiModed(Splitable):
+
+class TensorSource(CountableSource):
+	def __init__(self, data=None, **kwargs):
+		super().__init__(**kwargs)
+		self._data = data
+
+	@property
+	def size(self):
+		return len(self._data)
+
+	@property
+	def data(self):
+		return self._data
+
+	@data.setter
+	def data(self, data):
+		self._data = data
+
+	def _get_from(self, source, key):
+		return self.data[source.indices]
+
+
+
+class MultiModed(Splitable): # TODO
 	pass
 
 

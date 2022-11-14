@@ -4,7 +4,8 @@ import torch
 
 from ..features import Seeded, Prepared
 
-from .abstract import AbstractRouterView, AbstractBatch, AbstractProgression, AbstractBatchable, AbstractSelector
+from .abstract import AbstractView, AbstractRouterView, AbstractBatch, \
+	AbstractProgression, AbstractBatchable, AbstractSelector
 
 
 
@@ -51,7 +52,7 @@ class BatchableView(RouterViewBase, AbstractBatchable):
 
 
 class CachedView(RouterViewBase):
-	def __init__(self, source=source, cache_table=None, **kwargs):
+	def __init__(self, source=None, cache_table=None, **kwargs):
 		if cache_table is None:
 			cache_table = self._CacheTable()
 		super().__init__(source=source, **kwargs)
@@ -62,7 +63,7 @@ class CachedView(RouterViewBase):
 	def cached(self):
 		yield from self._cache_table.keys()
 
-	def _get_from(source, key):
+	def _get_from(self, source, key):
 		if key in self._cache_table:
 			return self._cache_table[key]
 		return super()._get_from(source, key)
@@ -85,7 +86,7 @@ class BatchBase(AbstractBatch):
 	
 
 
-class IndexedBatch(BatchBase, IndicesView):
+class IndexBatch(BatchBase, IndexView):
 	def __init__(self, progress=None, *, indices=None, **kwargs):
 		super().__init__(progress=progress, indices=indices, **kwargs)
 		self._indices = indices
@@ -105,13 +106,10 @@ class IndexedBatch(BatchBase, IndicesView):
 		return self._size
 	
 	
-	def compose(self, other: 'IndexedBatch') -> 'IndexedBatch':
+	def compose(self, other: 'IndexBatch') -> 'IndexBatch':
 		return self.indices[other.indices]
 
 
-
-class Batch(CachedView, BatchBase):
-	pass
 
 
 

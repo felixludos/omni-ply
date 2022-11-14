@@ -132,7 +132,7 @@ class Quantizer:
 
 
 
-class Sampler(Seeded, Generator):
+class Sampler(Seeded):
 	def sample(self, *shape, gen=None, **kwargs):
 		if gen is None:
 			gen = self.gen

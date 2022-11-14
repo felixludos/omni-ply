@@ -3,7 +3,7 @@ from omnibelt import smartproperty
 
 from .abstract import AbstractDataSource, AbstractView
 from .routers import DataCollection
-
+from .sources import SpacedSource
 
 
 class material(smartproperty):
@@ -32,6 +32,8 @@ class material(smartproperty):
 		names = self.names if len(self.names) else (name,)
 		reg_fn = getattr(obj, self._registration_fn_name)
 		kwargs = self._get_registration_args(obj)
+		if 'include_key' not in kwargs:
+			kwargs['include_key'] = True
 		if reg_fn is None:
 			assert len(names) == 1, 'Cannot register multiple names without a registration function'
 			if self._default_base is None:
@@ -44,23 +46,15 @@ class material(smartproperty):
 
 
 
-class MaterialSource(AbstractView):
-	def __init__(self, source, space=None, fget=None, **kwargs):
+class MaterialSource(SpacedSource, AbstractDataSource):
+	def __init__(self, source, *, fget=None, include_key=False, **kwargs):
 		super().__init__(**kwargs)
-		self.space = space
-		self._source = source
+		self.include_key = include_key
 		self.fget = fget
-
-	@property
-	def source(self):
-		return self._source
-
-	@property
-	def _get_fn(self):
-		return self.fget.__get__(self.source, self.source.__class__)
+		self.getter = self.fget.__get__(source, source.__class__)
 
 	def _get_from(self, source, key):
-		return self._get_fn(source, key)
+		return self.getter(source, key) if self.include_key else self.getter(source)
 
 
 
@@ -79,8 +73,6 @@ class Materialed(DataCollection):
 		for name in names:
 			self.register_material(name, mat)
 		return mat
-
-	pass
 
 
 

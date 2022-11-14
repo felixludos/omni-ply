@@ -147,6 +147,9 @@ class AbstractDataRouter(AbstractDataSource):
 	def has(self, key):
 		raise NotImplementedError
 
+	def space_of(self, name):
+		return self.get_material(name).space
+
 	def get_material(self, name, default=unspecified_argument):
 		raise NotImplementedError
 

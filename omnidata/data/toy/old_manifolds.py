@@ -3,24 +3,18 @@ import numpy as np
 import torch
 from omnibelt import unspecified_argument
 
-# from ..flavors import SyntheticDataset
-from ..materials import Materialed, material
+from ..flavors import SyntheticDataset
 from ...structure import spaces
-from ...features import Seeded
-
-from ..flavors import Synthetic
-from ..common import Datastream
-
-
 
 # TODO: separate dataset from process!
 
-class SwissRoll(Materialed, Synthetic, Datastream, Seeded):
-	def __init__(self, *, noise_std=0., target_theta=True,
+class SwissRollDatasetBase(SyntheticDataset):
+	def __init__(self, n_samples=100, *, noise_std=0., target_theta=True,
 	             Ax=np.pi/2, Ay=21., Az=np.pi/2, freq=0.5, tmin=3., tmax=9.,
 	             **kwargs):
-		super().__init__(**kwargs)
+		super().__init__(default_len=n_samples, **kwargs)
 
+		# self.n_samples = n_samples
 		self.noise_std = noise_std
 
 		assert Ax > 0 and Ay > 0 and Az > 0 and freq > 0 and tmax > tmin, \
@@ -35,23 +29,30 @@ class SwissRoll(Materialed, Synthetic, Datastream, Seeded):
 			spaces.Bound(min=tmin, max=tmax),
 			spaces.Bound(min=0., max=1.),
 		)
-		self.label_space = lbl_space
-		self.target_space = lbl_space[0] if self.target_theta else lbl_space
 
 		obs_space = spaces.Joint(
 			spaces.Bound(min=-Ax * tmax, max=Ax * tmax),
 			spaces.Bound(min=0., max=self.Ay),
 			spaces.Bound(min=-Az * tmax, max=Az * tmax),
 		)
-		self.observation_space = obs_space
+
+		self.register_buffer('observation', space=obs_space)
+		if self.target_theta:
+			self.register_buffer('target', space=lbl_space[0])
+		self.register_buffer('label', space=lbl_space)
+
 
 	def _generate_noise(self, N):
 		return self.noise_std * torch.randn(N, 3, generator=self.gen)
 
-	def generate_mechanism(self, N):
-		return self.get_material('label').space.sample(N, gen=self.gen)
 
-	def generate_observation_from_mechanism(self, mechanism):
+	def _generate_labels(self, N):
+		return self.mechanism_space.sample(N, gen=self.gen)
+
+
+	def generate_observation_from_mechanism(self, mechanism, gen=unspecified_argument):
+		if gen is unspecified_argument:
+			gen = self.gen
 		theta = mechanism.narrow(-1,0,1)
 		height = mechanism.narrow(-1,1,1)
 
@@ -59,26 +60,23 @@ class SwissRoll(Materialed, Synthetic, Datastream, Seeded):
 			self.Ax * theta * theta.mul(self.freq*np.pi).cos(),
 			self.Ay * height,
 			self.Az * theta * theta.mul(self.freq*np.pi).sin(),
-		], -1) + self._generate_noise(len(theta))
+		], -1) + self._generate_noise(len(theta), seed=seed, gen=gen)
 		return pts
 
-	@material('mechanism')
-	def get_mechanism(self, src):
-		return self.generate_mechanism(src.size)
 
-	@material('target')
-	def get_target(self, src):
-		return src['label'].narrow(-1,0,1) if self.target_theta else src['label']
+	def _prepare(self, *args, **kwargs):
+		lbls = self.generate_mechanism(len(self))
 
-	@material('observation')
-	def get_observation(self, src):
-		return self.generate_observation_from_mechanism(src['label'])
+		self.buffers['label'].data = lbls
+		if self.target_theta:
+			self.buffers['target'].data = lbls.narrow(-1,0,1)
+		self.buffers['observation'].data = self.generate_observation_from_mechanism(lbls)
 
+		super()._prepare(*args, **kwargs)
 
 
 
-
-class Helix(SyntheticDataset):
+class HelixDatasetBase(SyntheticDataset):
 	def __init__(self, n_samples=100, n_helix=2, *, noise_std=0.,
 	             target_strand=False, periodic_strand=False,
 	             Rx=1., Ry=1., Rz=1., w=1.,

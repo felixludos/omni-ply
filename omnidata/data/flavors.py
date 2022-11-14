@@ -4,18 +4,19 @@ import h5py as hf
 import torch
 from omnibelt import unspecified_argument, agnostic, md5
 
-from ..structure import Metric, Generator
+from ..structure import Metric, Generator, Sampler
 from ..persistent import Rooted
 from ..parameters import Parameterized, Builder, ClassBuilder, Buildable
 
 # from .abstract import BufferTransform
-from .base import Dataset, DataSource, DataCollection
-from .buffers import Buffer, BufferView, HDFBuffer
+# from .base import Dataset, DataSource, DataCollection
+# from .buffers import Buffer, BufferView, HDFBuffer
+from .routers import AbstractDataRouter
+from .common import Dataset
 
 
-
-class BuildableDataset(DataCollection, Buildable):
-	pass
+# class BuildableDataset(DataCollection, Buildable):
+# 	pass
 
 
 
@@ -23,37 +24,45 @@ class SimpleDataset(Dataset):
 	_is_ready = True
 
 	def __init__(self, **data):
-		super().__init__(data=data)
+		super().__init__()
+		self._register_init_data(data)
+
+	def _register_init_data(self, data):
+		for k, v in data.items():
+			self.register_material(k, v)
 
 
 
-class GenerativeDataset(Dataset, Generator):
-	pass
+class SampleableDataset(Dataset, Sampler):
+	sample_key = None
+	def _sample(self, shape, gen, sample_key=unspecified_argument):
+		if sample_key is unspecified_argument:
+			sample_key = self.sample_key
+		N = shape.numel()
+		batch = self.batch(N)
+		if self.sample_key is None:
+			return batch
+		return batch[sample_key].view(*shape, *self.space_of(sample_key).shape)
 
 
-class _ObservationInfo(DataSource):
+
+class Observation(AbstractDataRouter):
 	@property
 	def din(self):
 		return self.observation_space
-
 
 	@property
 	def observation_space(self):
 		return self.space_of('observation')
 
 
-	def get_observation(self, sel=None, **kwargs):
-		return self.get('observation', sel=sel, **kwargs)
-
-
-
-class ObservationDataset(_ObservationInfo, Dataset):
+class ObservationDataset(Observation, AbstractDataRouter):
 	sample_key = 'observation'
 
 
-	class Batch(_ObservationInfo, Dataset.Batch):
+	class Batch(Observation, Dataset.Batch):
 		pass
-	class View(_ObservationInfo, Dataset.View):
+	class View(Observation, Dataset.View):
 		pass
 
 
@@ -62,7 +71,7 @@ class ObservationDataset(_ObservationInfo, Dataset):
 
 
 
-class _SupervisionInfo(_ObservationInfo, Metric):
+class _SupervisionInfo(Observation, Metric):
 	@property
 	def dout(self):
 		return self.target_space
