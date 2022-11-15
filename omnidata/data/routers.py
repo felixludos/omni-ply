@@ -97,35 +97,31 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 
 
 
-class SampleCollection(DataCollection, Sampler):
-	def batch(self, batch_size, gen=None, **kwargs):
-		if gen is None:
-			gen = self.gen
-		return super().batch(batch_size, gen=gen, **kwargs)
+class SampleCollection(AbstractBatchable, Sampler):
+	# def batch(self, batch_size, gen=None, **kwargs):
+	# 	if gen is None:
+	# 		gen = self.gen
+	# 	return super().batch(batch_size, gen=gen, **kwargs)
 
 	_sample_key = None
 	def _sample(self, shape, gen, sample_key=unspecified_argument):
 		if sample_key is unspecified_argument:
 			sample_key = self._sample_key
 		N = shape.numel()
-		samples = batch[sample_key]
+		samples = self.sample_material(sample_key, N, gen=gen)
 		return util.split_dim(samples, *shape)
-		return self.sample_material(sample_key, N, gen=gen)
 
-	def sample_material(self, sample, N, gen=None):
-		batch = self.batch(N, gen=gen)
-
-		if sample_key is None:
-			raise NotImplementedError
-			return batch
-
-		pass
+	def sample_material(self, key, N, gen=None):
+		if gen is None:
+			return self.get_from(key, N)
+		with self.using_rng(gen=gen):
+			return self.get_from(key, N)
 
 
 
-class Generative(SampleCollection):
-	def generate(self, *shape, gen=None):
-		return self.sample(*shape, gen=gen)
+# class Generative(SampleCollection):
+# 	def generate(self, *shape, gen=None):
+# 		return self.sample(*shape, gen=gen)
 
 
 

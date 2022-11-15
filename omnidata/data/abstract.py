@@ -10,7 +10,7 @@ from ..persistent import Fingerprinted
 prt = get_printer(__file__)
 
 
-class AbstractData(Fingerprinted, Prepared):
+class AbstractData(Prepared): # TODO: make fingerprinted
 	def _prepare(self, source=None, **kwargs):
 		pass
 
@@ -82,32 +82,33 @@ class AbstractCountableData(AbstractData):
 		return self.length()
 
 
-	def _fingerprint_data(self):
-		try:
-			N = len(self)
-		except self.UnknownCount:
-			N = None
-		return {'len': N, **super()._fingerprint_data()}
+	# def _fingerprint_data(self):
+	# 	try:
+	# 		N = len(self)
+	# 	except self.UnknownCount:
+	# 		N = None
+	# 	return {'len': N, **super()._fingerprint_data()}
 
 
 
 class AbstractDataSource(AbstractData):
 	def __getitem__(self, item):
-		return self.get(item)
+		return self.get(None, item)
 
 	@classmethod
-	def _parse_source(cls, source):
+	def _parse_selection(cls, source):
 		raise NotImplementedError
 
+	def get(self, source, key):
+		return self.get_from(self._parse_selection(source), key)
+
 	def get_from(self, source, key):
-		return self._get_from(self._parse_source(source), key)
+		return self._get_from(source, key)
 
 	@staticmethod
 	def _get_from(source, key):
 		raise NotImplementedError
 
-	def get(self, key):
-		return self.get_from(None, key)
 
 
 

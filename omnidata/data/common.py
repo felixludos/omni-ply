@@ -2,11 +2,11 @@
 
 from .routers import DataCollection, SimpleDataCollection, BranchedDataRouter, AliasedDataCollection
 from .views import IndexView, CachedView, BatchBase, IndexBatch, BatchableView
-from .sources import Subsetable, Splitable, TensorSource, SpacedSource
+from .sources import Subsetable, Splitable, TensorSource, SpacedSource, BatchableSource
 from .progression import TrackedProgression, BarredProgression
 
 
-class Buffer(TensorSource, SpacedSource):
+class Buffer(TensorSource, SpacedSource, BatchableSource):
 	pass
 
 
@@ -19,8 +19,9 @@ class Buffer(TensorSource, SpacedSource):
 
 class Datastream(DataCollection): # not size (but batchable)
 	class Progression(BarredProgression):
-		class Batch(BatchableView, CachedView, BatchBase):
-			pass
+		pass
+	class Batch(BatchableView, CachedView, BatchBase):
+		pass
 	class View(BatchableView):
 		pass
 
@@ -44,8 +45,9 @@ class Dataset(Splitable, DataCollection):
 
 	_SimpleMaterial = Buffer
 	class Progression(TrackedProgression):
-		class Batch(BatchableView, CachedView, IndexBatch):
-			pass
+		pass
+	class Batch(BatchableView, CachedView, IndexBatch):
+		pass
 	class View(BatchableView, IndexView):
 		pass
 	Subset = View

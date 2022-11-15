@@ -8,8 +8,8 @@ import torch
 
 from ..structure import Generator
 from ..features import Seeded
-from .abstract import AbstractDataRouter, AbstractDataSource, AbstractSelector
-from .views import IndexView
+from .abstract import AbstractDataRouter, AbstractDataSource, AbstractSelector, AbstractBatchable
+from .views import IndexView, BatchBase
 
 prt = get_printer(__file__)
 
@@ -25,6 +25,21 @@ class Shufflable(Seeded):
 		# TODO: include a warning if cls._is_big_number(N)
 		return torch.randint(N, size=(N,), generator=gen) \
 			if self._is_big_number(N) else torch.randperm(N, generator=gen)
+
+
+
+class BatchableSource(AbstractBatchable):
+	Batch = BatchBase
+	@classmethod
+	def _parse_selection(cls, source):
+		if isinstance(source, AbstractSelector):
+			return source
+		if isinstance(source, int):
+			return cls.Batch(size=source)
+		if isinstance(source, Iterable):
+			return cls.Batch(indices=source)
+		raise NotImplementedError(source)
+
 
 
 
@@ -52,6 +67,31 @@ class SpacedSource(AbstractDataSource):
 	@space.setter
 	def space(self, space):
 		self._space = space
+
+
+
+class SingleSource(AbstractDataSource):
+	def _get_from(self, source, key):
+		return self._get(source)
+
+	@staticmethod
+	def _get(source):
+		raise NotImplementedError
+
+	pass
+
+
+
+class SampleSource(SingleSource, Sampler):
+
+	_sample_key = None
+	def _sample(self, shape, gen):
+		if sample_key is unspecified_argument:
+			sample_key = self._sample_key
+		N = shape.numel()
+		samples = self.sample_material(sample_key, N, gen=gen)
+		return util.split_dim(samples, *shape)
+
 
 
 
@@ -168,7 +208,7 @@ class TensorSource(CountableSource):
 	def data(self, data):
 		self._data = data
 
-	def _get_from(self, source, key):
+	def _get_from(self, source, key=None):
 		return self.data[source.indices]
 
 
