@@ -95,8 +95,12 @@ class AbstractDataSource(AbstractData):
 	def __getitem__(self, item):
 		return self.get(item)
 
+	@classmethod
+	def _parse_source(cls, source):
+		raise NotImplementedError
+
 	def get_from(self, source, key):
-		return self._get_from(source, key)
+		return self._get_from(self._parse_source(source), key)
 
 	@staticmethod
 	def _get_from(source, key):

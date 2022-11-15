@@ -10,8 +10,10 @@ from .sources import Shufflable
 
 
 class ProgressionBase(AbstractProgression):
-	def __init__(self, source, batch_size, **kwargs):
+	def __init__(self, source, batch_size, batch_cls=None, **kwargs):
 		super().__init__(**kwargs)
+		if batch_cls is not None:
+			self.Batch = batch_cls
 		self._current_batch = None
 		self._source = source
 		self._batch_size = batch_size
