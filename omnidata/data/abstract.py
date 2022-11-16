@@ -93,23 +93,24 @@ class AbstractCountableData(AbstractData):
 
 class AbstractDataSource(AbstractData):
 	def __getitem__(self, item):
-		return self.get(None, item)
+		return self.get(self, item)
 
 	@classmethod
 	def _parse_selection(cls, source):
 		raise NotImplementedError
 
-	def get(self, source, key):
+	def get(self, source, key=None):
 		return self.get_from(self._parse_selection(source), key)
 
 	def get_from(self, source, key):
 		return self._get_from(source, key)
 
 	@staticmethod
-	def _get_from(source, key):
+	def _get_from(source, key=None):
 		raise NotImplementedError
 
-
+	def space_of(self, key):
+		raise NotImplementedError
 
 
 # class SimpleSource(AbstractDataSource):

@@ -44,8 +44,12 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 		new = super().copy()
 		new._registered_materials = new._registered_materials.copy()
 		return new
-	
-	
+
+
+	def space_of(self, key):
+		return self.get_material(key).space
+
+
 	def _get_from(self, source, key):
 		return self.get_material(key).get_from(source, key)
 	
@@ -56,7 +60,7 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 	
 	def get_material(self, name, default=unspecified_argument):
 		if name in self._registered_materials:
-			material = getattr(self, name, unspecified_argument)
+			material = self._registered_materials.get(name, unspecified_argument)
 			if material is not unspecified_argument:
 				return material
 			if isinstance(material, str):
@@ -88,6 +92,7 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 		if not isinstance(material, AbstractDataSource):
 			prt.warning(f'Expected material for {name} in {self}, got: {material!r}')
 		self._registered_materials[name] = material
+		return material
 	
 	def rename_material(self, current, new):
 		material = self.get_material(current, None)
@@ -97,46 +102,13 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 
 
 
-class SampleCollection(AbstractBatchable, Sampler):
-	# def batch(self, batch_size, gen=None, **kwargs):
-	# 	if gen is None:
-	# 		gen = self.gen
-	# 	return super().batch(batch_size, gen=gen, **kwargs)
-
-	_sample_key = None
-	def _sample(self, shape, gen, sample_key=unspecified_argument):
-		if sample_key is unspecified_argument:
-			sample_key = self._sample_key
-		N = shape.numel()
-		samples = self.sample_material(sample_key, N, gen=gen)
-		return util.split_dim(samples, *shape)
-
-	def sample_material(self, key, N, gen=None):
-		if gen is None:
-			return self.get_from(key, N)
-		with self.using_rng(gen=gen):
-			return self.get_from(key, N)
-
-
-
-# class Generative(SampleCollection):
-# 	def generate(self, *shape, gen=None):
-# 		return self.sample(*shape, gen=gen)
-
-
-
 class BranchedDataRouter(DataCollection):
 	def register_material(self, name, material=None, *, space=None, **kwargs): # TODO: with delimiter for name
 		raise NotImplementedError
-		if material is None:
-			material = self._SimpleMaterial(space=space, **kwargs)
-		elif not isinstance(material, AbstractDataSource):
-			material = self._SimpleMaterial(material, space=space, **kwargs)
-		return super().register_material(name, material)
 
 
 
-class SimpleDataCollection(DataCollection):
+class SimpleCollection(DataCollection):
 	_SimpleMaterial = None
 	
 	def register_material(self, name, material=None, *, space=None, **kwargs):
@@ -148,7 +120,7 @@ class SimpleDataCollection(DataCollection):
 
 
 
-class AliasedDataCollection(DataCollection):
+class AliasedCollection(DataCollection):
 	def register_material_alias(self, name: str, *aliases: str):
 		'''
 		Registers aliases for a material.

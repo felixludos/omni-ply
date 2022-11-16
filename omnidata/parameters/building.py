@@ -265,11 +265,17 @@ class RegistryBuilderBase(MultiBuilderBase):
 class ClassBuilderBase(RegistryBuilderBase):
 	'''Automatically register subclasses and add them to the product_registry.'''
 
-	def __init_subclass__(cls, ident=None, is_default=False, **kwargs):
+	_class_builder_delimiter = '/'
+	_class_builder_terms = ()
+	def __init_subclass__(cls, ident=None, is_default=False, as_branch=False, **kwargs):
 		super().__init_subclass__(**kwargs)
 		if ident is not None:
-			cls.ident = ident
-			cls.register_product(ident, cls, is_default=is_default)
+			if as_branch:
+				cls._class_builder_terms = (*cls._class_builder_terms, ident)
+			else:
+				addr = cls._class_builder_delimiter.join((*cls._class_builder_terms, ident))
+				cls.ident = addr
+				cls.register_product(addr, cls, is_default=is_default)
 
 
 

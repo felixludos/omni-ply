@@ -69,8 +69,8 @@ class ProgressionBase(AbstractProgression):
 
 
 class BarredProgression(ProgressionBase, ProgressBarred):
-	def __init__(self, use_pbar=False, pbar_samples=True, **kwargs):
-		super().__init__(**kwargs)
+	def __init__(self, source, use_pbar=False, pbar_samples=True, **kwargs):
+		super().__init__(source=source, **kwargs)
 		self._use_pbar = use_pbar
 		self._pbar_samples = pbar_samples
 
@@ -149,7 +149,7 @@ class EpochProgression(ProgressionBase, Prepared):
 		idx = self._sel_index
 		if idx >= len(self._selections):
 			raise StopIteration
-		batch = self._create_batch(sel=self._selections[idx])
+		batch = self._create_batch(indices=self._selections[idx])
 		self._sel_index += 1
 
 		self._sample_count += batch.size

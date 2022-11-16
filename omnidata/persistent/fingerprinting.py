@@ -6,8 +6,6 @@ from omnibelt import unspecified_argument, agnosticmethod, md5, primitive, JSONA
 from omnibelt import Exportable, ExportManager
 
 
-from ..structure import Extractor
-
 # TODO: make exportable
 # .fp -> hash
 # .fpd -> data
@@ -20,7 +18,7 @@ class AbstractFingerprinted:
 
 
 
-class AbstractFingerprint(AbstractFingerprinted, Exportable, Extractor):
+class AbstractFingerprint(AbstractFingerprinted, Exportable):
 	@property
 	def fingerprint(self):
 		return self

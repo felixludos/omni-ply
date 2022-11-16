@@ -32,7 +32,7 @@ class Decoder:
 
 class Generator:
 	@agnostic
-	def generate(self, *shape, gen=None):
+	def generate(self, N):
 		raise NotImplementedError
 
 

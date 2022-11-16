@@ -72,9 +72,13 @@ class CachedView(RouterViewBase):
 
 class BatchBase(AbstractBatch):
 	def __init__(self, progress=None, *, size=None, **kwargs):
-		super().__init__(**kwargs)
+		super().__init__(progress=progress, **kwargs)
 		self._progress = progress
 		self._size = size
+
+	# @classmethod
+	# def _parse_selection(cls, source):
+	# 	return source
 
 	@property
 	def progress(self):
