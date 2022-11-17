@@ -3,31 +3,35 @@ import numpy as np
 import torch
 from omnibelt import unspecified_argument
 
-# from ..flavors import SyntheticDataset
 from ..materials import Materialed, material
-from ...parameters import hparam, inherit_hparams, Buildable
 from ...structure import spaces, Decoder, Generator, NormalDistribution
 from ...features import Seeded
+from ...parameters import hparam, inherit_hparams
 
 from ..flavors import Synthetic
-from ..common import Datastream
+from ..top import Datastream
 
 
-class ManifoldStream(Materialed, Synthetic, Datastream, Seeded, Decoder, Generator):
+class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 	class Batch(Synthetic, Datastream.Batch):
 		pass
 	class View(Synthetic, Datastream.View):
 		pass
 
-	# @material('target')
-	@material('mechanism')
-	def get_mechanism(self, src):
-		return self.generate_mechanism(src.size)
+	def _prepare(self, **kwargs):
+		super()._prepare(**kwargs)
+		self.get_material('observation').space = self.observation_space
+		self.get_material('target').space = self.target_space
+		self.get_material('mechanism').space = self.mechanism_space
 
 	@material('observation')
 	def get_observation(self, src):
 		return self.generate_observation_from_mechanism(src['mechanism'])
 
+	@material('target')
+	@material('mechanism')
+	def get_mechanism(self, src):
+		return self.generate_mechanism(src.size)
 
 	def generate(self, N): # generates observations
 		return self.generate_observation_from_mechanism(self.generate_mechanism(N))
@@ -56,9 +60,7 @@ class Stochastic(ManifoldStream):
 
 
 class Noisy(Stochastic):
-	def __init__(self, noise_std=0., **kwargs):
-		super().__init__(**kwargs)
-		self.noise_std = noise_std
+	noise_std = hparam(0., space=spaces.HalfBound(min=0.), alias='noise-std')
 
 	def _decode_distrib_from_mean(self, mean):
 		return NormalDistribution(mean, self.noise_std * torch.ones_like(mean))
@@ -66,30 +68,40 @@ class Noisy(Stochastic):
 
 
 class SwissRoll(ManifoldStream):
-	def __init__(self, *, Ax=np.pi/2, Ay=21., Az=np.pi/2, freq=0.5, tmin=3., tmax=9., **kwargs):
-		super().__init__(**kwargs)
+	Ax = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
+	Ay = hparam(21., space=spaces.HalfBound(min=0.))
+	Az = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
 
-		assert Ax > 0 and Ay > 0 and Az > 0 and freq > 0 and tmax > tmin, \
-			f'invalid parameters: {Ax} {Ay} {Az} {freq} {tmax} {tmin}'
-		self.Ax, self.Ay, self.Az = Ax, Ay, Az
-		self.freq = freq
-		self.tmin, self.tmax = tmin, tmax
+	freq = hparam(0.5, space=spaces.HalfBound(min=0.))
+	tmin = hparam(3., space=spaces.HalfBound(min=0.))
+	tmax = hparam(9., space=spaces.HalfBound(min=0.))
 
-		# self.target_theta = target_theta
 
-		mechanism_space = spaces.Joint(
-			spaces.Bound(min=tmin, max=tmax),
+	@hparam(hidden=True)
+	def mechanism_space(self):
+		return spaces.Joint(
+			spaces.Bound(min=self.tmin, max=self.tmax),
 			spaces.Bound(min=0., max=1.),
 		)
-		self.mechanism_space = mechanism_space
-		# self.target_space = lbl_space[0] #if self.target_theta else lbl_space
 
-		obs_space = spaces.Joint(
-			spaces.Bound(min=-Ax * tmax, max=Ax * tmax),
+	@hparam(hidden=True)
+	def target_space(self):
+		return self.mechanism_space[0]
+
+	@hparam(hidden=True)
+	def observation_space(self):
+		# assert Ax > 0 and Ay > 0 and Az > 0 and freq > 0 and tmax > tmin, \
+		# 	f'invalid parameters: {Ax} {Ay} {Az} {freq} {tmax} {tmin}'
+		return spaces.Joint(
+			spaces.Bound(min=-self.Ax * self.tmax, max=self.Ax * self.tmax),
 			spaces.Bound(min=0., max=self.Ay),
-			spaces.Bound(min=-Az * tmax, max=Az * tmax),
+			spaces.Bound(min=-self.Az * self.tmax, max=self.Az * self.tmax),
 		)
-		self.observation_space = obs_space
+
+
+	@material('target')
+	def get_target(self, src):
+		return src['mechanism'].narrow(-1,0,1) #if self.target_theta else src['mechanism']
 
 
 	def decode(self, mechanism):
@@ -106,28 +118,40 @@ class SwissRoll(ManifoldStream):
 
 
 class Helix(ManifoldStream):
-	def __init__(self, n_helix=2, *, periodic_strand=False, Rx=1., Ry=1., Rz=1., w=1., **kwargs):
-		super().__init__(**kwargs)
+	n_helix = hparam(2, space=spaces.Naturals(), alias='n-helix')
 
-		self.n_helix = n_helix
-		# self.target_strand = target_strand
+	periodic_strand = hparam(False, space=spaces.Binary())
 
-		self.Rx, self.Ry, self.Rz = Rx, Ry, Rz
-		self.w = int(w) if periodic_strand else w
+	Rx = hparam(1., space=spaces.HalfBound(min=0.))
+	Ry = hparam(1., space=spaces.HalfBound(min=0.))
+	Rz = hparam(1., space=spaces.HalfBound(min=0.))
 
-		mechanism_space = spaces.Joint(
-			spaces.Periodic(min=-1., max=1.) if periodic_strand else spaces.Bound(min=-1., max=1.),
-			spaces.Categorical(n=n_helix),
+	w = hparam(1., space=spaces.HalfBound(min=0.))
+
+
+	@hparam(hidden=True)
+	def mechanism_space(self):
+		return spaces.Joint(
+			spaces.Periodic(min=-1., max=1.) if self.periodic_strand else spaces.Bound(min=-1., max=1.),
+			spaces.Categorical(n=self.n_helix),
 		)
-		self.mechanism_space = mechanism_space
-		# self.target_space = lbl_space[-1] #if self.target_strand else lbl_space
 
-		obs_space = spaces.Joint(
-			spaces.Bound(min=-Rx, max=Rx),
-			spaces.Bound(min=-Ry, max=Ry),
-			spaces.Bound(min=-Rz, max=Rz),
+	@hparam(hidden=True)
+	def target_space(self):
+		return self.mechanism_space[-1]
+
+	@hparam(hidden=True)
+	def observation_space(self):
+		return spaces.Joint(
+			spaces.Bound(min=-self.Rx, max=self.Rx),
+			spaces.Bound(min=-self.Ry, max=self.Ry),
+			spaces.Bound(min=-self.Rz, max=self.Rz),
 		)
-		self.observation_space = obs_space
+
+
+	@material('target')
+	def get_target(self, src):
+		return src['mechanism'].narrow(-1,1,1).long() #if self.target_strand else src['mechanism']
 
 
 	def decode(self, mechanism):
@@ -141,28 +165,67 @@ class Helix(ManifoldStream):
 
 
 
-class SimpleSwissRoll(SwissRoll):
-	def __init__(self, **kwargs):
-		super().__init__(**kwargs)
-		self.target_space = self.mechanism_space[0]
-
-	@material('target')
-	def get_target(self, src):
-		return src['mechanism'].narrow(-1,0,1) #if self.target_theta else src['mechanism']
-
-
-
-class SimpleHelix(Helix):
-	def __init__(self, n_helix=2, **kwargs):
-		super().__init__(n_helix=n_helix, **kwargs)
-		self.target_space = self.mechanism_space[-1]
-
-
-	@material('target')
-	def get_target(self, src):
-		return src['mechanism'].narrow(-1,1,1).long() #if self.target_strand else src['mechanism']
-
-
+# class SwissRoll(ManifoldStream):
+# 	def __init__(self, *, Ax=np.pi/2, Ay=21., Az=np.pi/2, freq=0.5, tmin=3., tmax=9., **kwargs):
+# 		super().__init__(**kwargs)
+#
+# 		assert Ax > 0 and Ay > 0 and Az > 0 and freq > 0 and tmax > tmin, \
+# 			f'invalid parameters: {Ax} {Ay} {Az} {freq} {tmax} {tmin}'
+# 		self.Ax, self.Ay, self.Az = Ax, Ay, Az
+# 		self.freq = freq
+# 		self.tmin, self.tmax = tmin, tmax
+#
+# 		# self.target_theta = target_theta
+#
+# 		mechanism_space = spaces.Joint(
+# 			spaces.Bound(min=tmin, max=tmax),
+# 			spaces.Bound(min=0., max=1.),
+# 		)
+# 		self.mechanism_space = mechanism_space
+# 		# self.target_space = lbl_space[0] #if self.target_theta else lbl_space
+#
+# 		obs_space = spaces.Joint(
+# 			spaces.Bound(min=-Ax * tmax, max=Ax * tmax),
+# 			spaces.Bound(min=0., max=self.Ay),
+# 			spaces.Bound(min=-Az * tmax, max=Az * tmax),
+# 		)
+# 		self.observation_space = obs_space
+#
+#
+#
+# class Helix(ManifoldStream):
+# 	def __init__(self, n_helix=2, *, periodic_strand=False, Rx=1., Ry=1., Rz=1., w=1., **kwargs):
+# 		super().__init__(**kwargs)
+#
+# 		self.n_helix = n_helix
+# 		# self.target_strand = target_strand
+#
+# 		self.Rx, self.Ry, self.Rz = Rx, Ry, Rz
+# 		self.w = int(w) if periodic_strand else w
+#
+# 		mechanism_space = spaces.Joint(
+# 			spaces.Periodic(min=-1., max=1.) if periodic_strand else spaces.Bound(min=-1., max=1.),
+# 			spaces.Categorical(n=n_helix),
+# 		)
+# 		self.mechanism_space = mechanism_space
+# 		# self.target_space = lbl_space[-1] #if self.target_strand else lbl_space
+#
+# 		obs_space = spaces.Joint(
+# 			spaces.Bound(min=-Rx, max=Rx),
+# 			spaces.Bound(min=-Ry, max=Ry),
+# 			spaces.Bound(min=-Rz, max=Rz),
+# 		)
+# 		self.observation_space = obs_space
+#
+#
+# 	def decode(self, mechanism):
+# 		z = mechanism.narrow(-1, 0, 1)
+# 		n = mechanism.narrow(-1, 1, 1)
+# 		theta = z.mul(self.w).add(n.div(self.n_helix) * 2).mul(np.pi)
+#
+# 		amp = torch.as_tensor([self.Rx, self.Ry, self.Rz]).float().to(n.device)
+# 		pts = amp.unsqueeze(0) * torch.cat([theta.cos(), theta.sin(), z], -1)
+# 		return pts
 
 
 

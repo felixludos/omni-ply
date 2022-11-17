@@ -63,27 +63,40 @@ class CachedView(RouterViewBase):
 	def cached(self):
 		yield from self._cache_table.keys()
 
-	def _get_from(self, source, key):
+	def clear_cache(self):
+		self._cache_table.clear()
+
+	def __str__(self):
+		cached = set(self.cached())
+		return f'{self._title()}(' \
+		       f'{", ".join((key if key in cached else "{" + key + "}") for key in self.available())})'
+
+	def _get_from(self, source, key=None):
 		if key in self._cache_table:
 			return self._cache_table[key]
-		return super()._get_from(source, key)
+		out = super()._get_from(source, key)
+		if out is not None:
+			self._cache_table[key] = out
+		return out
 
 
 
-class BatchBase(AbstractBatch):
+class BatchBase(AbstractBatch, RouterViewBase):
 	def __init__(self, progress=None, *, size=None, **kwargs):
 		super().__init__(progress=progress, **kwargs)
 		self._progress = progress
 		self._size = size
 
-	# @classmethod
-	# def _parse_selection(cls, source):
-	# 	return source
+	@property
+	def source(self):
+		if self._source is None:
+			return self.progress.source
+		return self._source
 
 	@property
 	def progress(self):
 		return self._progress
-	
+
 	@property
 	def size(self):
 		return self._size
@@ -91,10 +104,6 @@ class BatchBase(AbstractBatch):
 
 
 class IndexBatch(BatchBase, IndexView):
-	def __init__(self, progress=None, *, indices=None, **kwargs):
-		super().__init__(progress=progress, indices=indices, **kwargs)
-		self._indices = indices
-	
 	class MissingIndicesError(ValueError): pass
 	
 	@property
@@ -102,7 +111,7 @@ class IndexBatch(BatchBase, IndexView):
 		if self._indices is None:
 			raise self.MissingIndicesError
 		return self._indices
-	
+
 	@property
 	def size(self):
 		if self._size is None:

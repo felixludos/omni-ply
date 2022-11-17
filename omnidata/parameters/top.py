@@ -5,7 +5,7 @@ from ..features import Prepared
 from .hyperparameters import ConfigHyperparameter
 from .building import ConfigBuilder, AutoBuilder, BuildableBase, ModifiableProduct, \
 	MultiBuilderBase, RegistryBuilderBase, ClassBuilderBase
-from .parameterized import ParameterizedBase
+from .parameterized import ParameterizedBase, ModifiableParameterized
 from .machines import MachineBase
 
 
@@ -60,7 +60,7 @@ class PreparedParameterized(MachineParameterized, Prepared):
 		self.reset_hparams()
 
 
-class Parameterized(PreparedParameterized):
+class Parameterized(ModifiableParameterized, PreparedParameterized):
 	Hyperparameter = Hyperparameter
 	Machine = Machine
 

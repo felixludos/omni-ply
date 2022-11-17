@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from omnibelt import smartproperty
 
-from .abstract import AbstractDataSource, AbstractView
+from .abstract import AbstractDataSource
 from .routers import DataCollection
 from .sources import SpacedSource
 
@@ -41,8 +41,7 @@ class material:
 	def register_with(self, obj):
 		reg_fn = getattr(obj, self._registration_fn_name)
 		kwargs = self._get_registration_args(obj)
-		if 'include_key' not in kwargs:
-			kwargs['include_key'] = True
+
 		if reg_fn is None:
 			raise NotImplementedError
 		reg_fn(self.name, **kwargs)
@@ -61,7 +60,7 @@ class material:
 
 
 
-class MaterialSource(SpacedSource, AbstractDataSource):
+class MaterialSource(SpacedSource):
 	def __init__(self, source, *, fget=None, include_key=False, **kwargs):
 		super().__init__(**kwargs)
 		self._source = source

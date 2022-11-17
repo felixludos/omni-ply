@@ -11,42 +11,33 @@ from ..parameters import Parameterized, Builder, ClassBuilder, Buildable
 # from .abstract import BufferTransform
 # from .base import Dataset, DataSource, DataCollection
 # from .buffers import Buffer, BufferView, HDFBuffer
-from .routers import AbstractDataRouter
-from .sources import SampleSource
-from .common import Dataset
-
-
-# class BuildableDataset(DataCollection, Buildable):
-# 	pass
+from .routers import Observation, Supervised, Labeled, Synthetic
+from .top import Dataset, Datastream
 
 
 
-class SimpleDataset(Dataset):
-	_is_ready = True
+class Sampledstream(Dataset, Datastream): # Datastream -> Dataset
+	_StreamTable = Dataset._MaterialsTable
 
-	def __init__(self, **data):
-		super().__init__()
-		self._register_init_data(data)
+	def __init__(self, n_samples, *args, stream_table=None, default_len=None, **kwargs):
+		if default_len is None:
+			default_len = n_samples
+		if stream_table is None:
+			stream_table = self._StreamTable()
+		super().__init__(*args, default_len=default_len, **kwargs)
+		self._n_samples = n_samples
+		self._stream_materials = stream_table
 
-	def _register_init_data(self, data):
-		for k, v in data.items():
-			self.register_material(k, v)
+	def _prepare(self, **kwargs):
+		out = super()._prepare( **kwargs)
 
-
-
-class Observation(SampleSource, AbstractDataRouter):
-	_sample_key = 'observation'
-
-	@property
-	def din(self):
-		return self.observation_space
-
-	@property
-	def observation_space(self):
-		return self.space_of('observation')
-	@observation_space.setter
-	def observation_space(self, space):
-		self.get_material('observation').space = space
+		# replacing stream with fixed samples
+		n_samples = len(self)
+		batch = self.Batch(source=self, size=n_samples) # mostly for caching
+		for key, material in self.named_materials():
+			self._stream_materials[key] = material
+			self.register_material(key, batch[key], space=material.space)
+		return out
 
 
 
@@ -58,48 +49,11 @@ class ObservationDataset(Observation, Dataset):
 
 
 
-class Supervised(Observation, Metric):
-	@property
-	def dout(self):
-		return self.target_space
-
-
-	@property
-	def target_space(self):
-		return self.space_of('target')
-	@target_space.setter
-	def target_space(self, space):
-		self.get_material('target').space = space
-
-
-	def difference(self, a, b, standardize=None):
-		return self.dout.difference(a, b, standardize=standardize)
-
-
-	def measure(self, a, b, standardize=None):
-		return self.dout.measure(a, b, standardize=standardize)
-
-
-	def distance(self, a, b, standardize=None):
-		return self.dout.distance(a, b, standardize=standardize)
-
-
-
 class SupervisedDataset(Supervised, ObservationDataset):
 	class Batch(Supervised, ObservationDataset.Batch):
 		pass
 	class View(Supervised, ObservationDataset.View):
 		pass
-
-
-
-class Labeled(Supervised):
-	@property
-	def label_space(self):
-		return self.space_of('label')
-	@label_space.setter
-	def label_space(self, space):
-		self.get_material('label').space = space
 
 
 
@@ -122,31 +76,6 @@ class LabeledDataset(Labeled, SupervisedDataset):
 
 # Labeled means there exists a deterministic mapping from labels to observations
 # (not including possible subsequent additive noise)
-
-
-
-class Synthetic(Labeled): # TODO: include auto alias
-	_distinct_mechanisms = True
-
-
-	@property
-	def mechanism_space(self):
-		return self.space_of('mechanism')
-	@mechanism_space.setter
-	def mechanism_space(self, space):
-		self.get_material('mechanism').space = space
-
-
-	def transform_to_mechanisms(self, data):
-		if not self._distinct_mechanisms:
-			return data
-		return self.mechanism_space.transform(data, self.label_space)
-
-
-	def transform_to_labels(self, data):
-		if not self._distinct_mechanisms:
-			return data
-		return self.label_space.transform(data, self.mechanism_space)
 
 
 

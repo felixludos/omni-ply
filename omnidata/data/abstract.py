@@ -11,30 +11,15 @@ prt = get_printer(__file__)
 
 
 class AbstractData(Prepared): # TODO: make fingerprinted
-	def _prepare(self, source=None, **kwargs):
+	def _prepare(self, **kwargs):
 		pass
 
 	def copy(self):
 		return duplicate_instance(self) # shallow copy
 
-	# def get(self, key):
-	# 	return self.get_from(None, key)
-	#
-	# def get_from(self, source, key):
-	# 	return self._get_from(source, key)
-	#
-	# @staticmethod
-	# def _get_from(source, key):
-	# 	raise NotImplementedError
-	# 	# source[key] = self._get(key)
-	#
-	# @staticmethod
-	# def _get(sel):
-	# 	raise NotImplementedError
-
 
 	def _title(self):
-		raise NotImplementedError
+		return self.__class__.__name__
 
 
 	def __str__(self):
@@ -47,39 +32,12 @@ class AbstractData(Prepared): # TODO: make fingerprinted
 
 
 class AbstractCountableData(AbstractData):
-	def __init__(self, default_len=None, **kwargs):
-		super().__init__(**kwargs)
-		self._default_len = default_len
-
-
-	def __str__(self):
-		return f'{super().__str__()}[{self.size}]'
-
-
-	class UnknownCount(TypeError):
-		def __init__(self):
-			super().__init__('did you forget to provide a "default_len" in __init__?')
-
-
-	def _length(self):
-		raise NotImplementedError
-
-
-	def length(self):
-		if self.is_ready:
-			return self._length()
-		if self._default_len is not None:
-			return self._default_len
-		raise self.UnknownCount()
-
+	def _title(self):
+		return f'{super()._title()}[{self.size}]'
 
 	@property
 	def size(self):
-		return self.length()
-
-
-	def __len__(self):
-		return self.length()
+		raise NotImplementedError
 
 
 	# def _fingerprint_data(self):
@@ -93,7 +51,7 @@ class AbstractCountableData(AbstractData):
 
 class AbstractDataSource(AbstractData):
 	def __getitem__(self, item):
-		return self.get(self, item)
+		return self.get_from(self, item)
 
 	@classmethod
 	def _parse_selection(cls, source):
@@ -111,6 +69,9 @@ class AbstractDataSource(AbstractData):
 
 	def space_of(self, key):
 		raise NotImplementedError
+
+	def validate_selection(self, selection):
+		return selection
 
 
 # class SimpleSource(AbstractDataSource):
@@ -146,6 +107,9 @@ class AbstractDataRouter(AbstractDataSource):
 		for _, m in self.named_materials():
 			yield m
 
+	def __len__(self):
+		raise NotImplementedError # number of materials (not number of samples! -> size)
+
 	class MissingMaterial(KeyError):
 		pass
 
@@ -179,15 +143,9 @@ class AbstractDataRouter(AbstractDataSource):
 		return self.has(name)
 
 
-	def _title(self):
-		return self.__class__.__name__
-
 	def __str__(self):
 		return f'{super().__str__()}({", ".join(self.available())})'
 
-
-	def validate_selection(self, selection):
-		return selection
 
 	View = None
 	def view(self, **kwargs):
@@ -198,9 +156,22 @@ class AbstractView(AbstractDataSource):
 	def __init__(self, source=None, **kwargs):
 		super().__init__(**kwargs)
 
+	def __len__(self):
+		return len(self.source)
+
+	def _prepare(self, **kwargs):
+		super()._prepare(**kwargs)
+		self.source.prepare()
+
+	def _title(self):
+		return f'{super()._title()}{"{" + self.source._title() + "}" if self.source is not None else ""}'
+
 	@property
 	def source(self):
 		raise NotImplementedError
+
+	def _get_from(self, source, key=None):
+		return self.source.get_from(source, key)
 
 
 
@@ -213,9 +184,6 @@ class AbstractRouterView(AbstractView, AbstractDataRouter):
 
 	def has(self, key):
 		return self.source.has(key)
-
-	def _title(self):
-		return f'{self.__class__.__name__}{"{" + self.source._title() + "}" if self.source is not None else ""}'
 
 	def validate_selection(self, selection):
 		return self.source.validate_selection(selection)
@@ -237,13 +205,9 @@ class AbstractSelector:
 
 
 
-class AbstractBatch(AbstractRouterView, AbstractSelector):
+class AbstractBatch(AbstractRouterView, AbstractCountableData, AbstractSelector):
 	def __init__(self, progress, **kwargs):
 		super().__init__(**kwargs)
-
-	@property
-	def size(self):
-		raise NotImplementedError
 
 	@property
 	def progress(self) -> 'AbstractProgress':
@@ -294,6 +258,8 @@ class AbstractBatchable(AbstractDataRouter):
 
 	Progression = None
 	def iterate(self, **kwargs):
+		if not self.is_ready:
+			prt.warning(f'{self} is not ready (call prepare() first)')
 		return self.Progression(self, **kwargs)
 
 	def batch(self, batch_size, **kwargs):

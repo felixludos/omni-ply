@@ -7,7 +7,7 @@ from pprint import pprint
 import logging
 from collections import OrderedDict
 from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, \
-	extract_function_signature, method_wrapper, agnostic
+	extract_function_signature, method_wrapper, agnostic, Modifiable
 
 from .abstract import AbstractParameterized
 from .hyperparameters import _hyperparameter_property, HyperparameterBase
@@ -105,6 +105,15 @@ class ParameterizedBase(AbstractParameterized):
 			cls.register_hparam(name, cls.get_hparam(name))
 			cls._registered_hparams.discard(name)
 			cls._registered_hparams.insert(0, name)
+
+
+class ModifiableParameterized(ParameterizedBase, Modifiable):
+	@classmethod
+	def inject_mods(cls, *mods, name=None):
+		product = super().inject_mods(*mods, name=name)
+		product.inherit_hparams(*[key for src in [*reversed(mods), cls]
+		                          for key, param in src.named_hyperparameters()])
+		return product
 
 
 

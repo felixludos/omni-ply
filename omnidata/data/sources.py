@@ -9,11 +9,16 @@ import torch
 from ..structure import Generator, Sampler
 from .. import util
 from ..features import Seeded
+from ..parameters import Buildable
 from .abstract import AbstractDataRouter, AbstractDataSource, \
 	AbstractSelector, AbstractBatchable, AbstractCountableData
 from .views import IndexView, BatchBase
 
 prt = get_printer(__file__)
+
+
+class BuildableData(AbstractDataSource, Buildable):
+	pass
 
 
 class Shufflable(Seeded):
@@ -203,6 +208,10 @@ class TensorSource(AbstractCountableData, AbstractDataSource):
 		self._data = data
 
 	@property
+	def is_ready(self):
+		return self._data is not None
+
+	@property
 	def size(self):
 		return len(self._data)
 
@@ -218,7 +227,7 @@ class TensorSource(AbstractCountableData, AbstractDataSource):
 
 
 
-class MultiModed(Splitable): # TODO
+class MultiModed(Splitable): # TODO: splitting datasets into modes
 	pass
 
 

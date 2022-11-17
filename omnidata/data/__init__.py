@@ -5,8 +5,9 @@
 # 	SupervisedDataset, LabeledDataset, SyntheticDataset, \
 # 	RootedDataset, EncodableDataset, DownloadableDataset, ImageDataset
 
-from .common import Datastream, Buffer, Dataset
+from .top import Datastream, Buffer, Dataset, Sampledstream
 from . import toy
+from toy import SwissRollDataset, HelixDataset, SwissRoll, Helix
 
 
 # TODO: move to foundation

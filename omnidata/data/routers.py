@@ -4,9 +4,9 @@ from collections import OrderedDict
 from omnibelt import get_printer, unspecified_argument
 
 from .. import util
-from ..structure import Sampler, Generator
-from .abstract import AbstractDataRouter, AbstractDataSource, AbstractBatchable
-from .sources import SpacedSource
+from ..structure import Metric, Sampler, Generator
+from .abstract import AbstractDataRouter, AbstractDataSource, AbstractBatchable, AbstractCountableData
+from .sources import SpacedSource, SampleSource
 
 
 prt = get_printer(__file__)
@@ -39,7 +39,12 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 		self._registered_materials = materials_table
 	
 	_MaterialsTable = OrderedDict
-	
+
+
+	def __len__(self):
+		return len(self._registered_materials)
+
+
 	def copy(self):
 		new = super().copy()
 		new._registered_materials = new._registered_materials.copy()
@@ -50,7 +55,7 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 		return self.get_material(key).space
 
 
-	def _get_from(self, source, key):
+	def _get_from(self, source, key=None):
 		return self.get_material(key).get_from(source, key)
 	
 	
@@ -101,6 +106,26 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 		self.register_material(new, material)
 
 
+class CountableDataRouter(AbstractCountableData, AbstractDataRouter):
+	def __init__(self, default_len=None, **kwargs):
+		super().__init__(**kwargs)
+		self._default_len = default_len
+
+	class UnknownCount(TypeError):
+		def __init__(self):
+			super().__init__('did you forget to provide a "default_len" in __init__?')
+
+	@property
+	def size(self):
+		if self.is_ready:
+			return len(next(self.materials()))
+		if self._default_len is not None:
+			return self._default_len
+		raise self.UnknownCount()
+
+
+
+
 
 class BranchedDataRouter(DataCollection):
 	def register_material(self, name, material=None, *, space=None, **kwargs): # TODO: with delimiter for name
@@ -108,7 +133,7 @@ class BranchedDataRouter(DataCollection):
 
 
 
-class SimpleCollection(DataCollection):
+class AutoCollection(DataCollection):
 	_SimpleMaterial = None
 	
 	def register_material(self, name, material=None, *, space=None, **kwargs):
@@ -167,6 +192,81 @@ class AliasedCollection(DataCollection):
 
 
 
+class Observation(SampleSource, AbstractDataRouter):
+	_sample_key = 'observation'
+
+	@property
+	def din(self):
+		return self.observation_space
+
+	@property
+	def observation_space(self):
+		return self.space_of('observation')
+	@observation_space.setter
+	def observation_space(self, space):
+		self.get_material('observation').space = space
+
+
+
+class Supervised(Observation, Metric):
+	@property
+	def dout(self):
+		return self.target_space
+
+
+	@property
+	def target_space(self):
+		return self.space_of('target')
+	@target_space.setter
+	def target_space(self, space):
+		self.get_material('target').space = space
+
+
+	def difference(self, a, b, standardize=None):
+		return self.dout.difference(a, b, standardize=standardize)
+
+
+	def measure(self, a, b, standardize=None):
+		return self.dout.measure(a, b, standardize=standardize)
+
+
+	def distance(self, a, b, standardize=None):
+		return self.dout.distance(a, b, standardize=standardize)
+
+
+
+class Labeled(Supervised):
+	@property
+	def label_space(self):
+		return self.space_of('label')
+	@label_space.setter
+	def label_space(self, space):
+		self.get_material('label').space = space
+
+
+
+class Synthetic(Labeled): # TODO: include auto alias
+	_distinct_mechanisms = True
+
+
+	@property
+	def mechanism_space(self):
+		return self.space_of('mechanism')
+	@mechanism_space.setter
+	def mechanism_space(self, space):
+		self.get_material('mechanism').space = space
+
+
+	def transform_to_mechanisms(self, data):
+		if not self._distinct_mechanisms:
+			return data
+		return self.mechanism_space.transform(data, self.label_space)
+
+
+	def transform_to_labels(self, data):
+		if not self._distinct_mechanisms:
+			return data
+		return self.label_space.transform(data, self.mechanism_space)
 
 
 

@@ -867,7 +867,7 @@ class Joint(Dim):
 			
 			out = getattr(dim, method)(*args, **kwargs)
 			if B is None:
-				B = out.size(0) if len(out.size()) > 1 else 1
+				B = out.size(0) #if len(out.size()) > 1 else 1
 			out = out.view(B, -1)
 			if self._is_dense:
 				out = out.float()

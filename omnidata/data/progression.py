@@ -50,17 +50,15 @@ class ProgressionBase(AbstractProgression):
 	Batch = None
 	def _create_batch(self, **kwargs):
 		Batch = self.source.Batch if self.Batch is None else self.Batch
-		batch = Batch(progress=self, **kwargs)
-		return batch
+		return Batch(progress=self, **kwargs)
 
 	def next_batch(self):
 		batch = self._next_batch()
-		batch = self.source.validate_selector(batch)
 		return batch
 
 	def _next_batch(self):
 		batch = self._create_batch(size=self.batch_size)
-		self.source.validate_selector(batch)
+		batch = self.source.validate_selection(batch)
 		self._sample_count += batch.size
 		self._batch_count += 1
 		self._current_batch = batch
@@ -138,9 +136,9 @@ class EpochProgression(ProgressionBase, Prepared):
 		self.prepare()
 		self._generate_selections(self._generate_sample_order())
 
-	def _create_batch(self, **kwargs):
-		Batch = self.source.Batch if self.Batch is None else self.Batch
-		return Batch(progress=self, **kwargs)
+	# def _create_batch(self, **kwargs):
+	# 	Batch = self.source.Batch if self.Batch is None else self.Batch
+	# 	return Batch(progress=self, **kwargs)
 
 	def _next_batch(self):
 		if self._selections is None:
@@ -150,6 +148,7 @@ class EpochProgression(ProgressionBase, Prepared):
 		if idx >= len(self._selections):
 			raise StopIteration
 		batch = self._create_batch(indices=self._selections[idx])
+		batch = self.source.validate_selection(batch)
 		self._sel_index += 1
 
 		self._sample_count += batch.size
