@@ -4,13 +4,9 @@ import h5py as hf
 import torch
 from omnibelt import unspecified_argument, agnostic, md5
 
-from ..structure import Metric, Generator, Sampler
-from ..persistent import Rooted
-from ..parameters import Parameterized, Builder, ClassBuilder, Buildable
+from ..structure import spaces
+from ..parameters import hparam
 
-# from .abstract import BufferTransform
-# from .base import Dataset, DataSource, DataCollection
-# from .buffers import Buffer, BufferView, HDFBuffer
 from .routers import Observation, Supervised, Labeled, Synthetic
 from .top import Dataset, Datastream
 
@@ -19,20 +15,22 @@ from .top import Dataset, Datastream
 class Sampledstream(Dataset, Datastream): # Datastream -> Dataset
 	_StreamTable = Dataset._MaterialsTable
 
+	n_samples = hparam(100, space=spaces.Naturals())
+
 	def __init__(self, n_samples, *args, stream_table=None, default_len=None, **kwargs):
 		if default_len is None:
 			default_len = n_samples
 		if stream_table is None:
 			stream_table = self._StreamTable()
 		super().__init__(*args, default_len=default_len, **kwargs)
-		self._n_samples = n_samples
+		self.n_samples = n_samples
 		self._stream_materials = stream_table
 
 	def _prepare(self, **kwargs):
 		out = super()._prepare( **kwargs)
 
 		# replacing stream with fixed samples
-		n_samples = len(self)
+		n_samples = self.n_samples
 		batch = self.Batch(source=self, size=n_samples) # mostly for caching
 		for key, material in self.named_materials():
 			self._stream_materials[key] = material

@@ -78,9 +78,7 @@ class Materialed(DataCollection):
 	def __init_subclass__(cls, inherit_materials=None, **kwargs):
 		super().__init_subclass__(**kwargs)
 		table = cls._auto_material_table()
-		prev = getattr(cls, '_auto_materials', None)
-		if prev is not None:
-			table.extend(prev)
+		table.extend(cls._inherited_auto_materials())
 		for key, val in cls.__dict__.items():
 			if isinstance(val, material):
 				table.append(val)
@@ -93,6 +91,14 @@ class Materialed(DataCollection):
 	def _auto_registration(self):
 		for mat in self._auto_materials:
 			mat.register_with(self)
+
+	@classmethod
+	def _inherited_auto_materials(cls):
+		for base in cls.__bases__:
+			if issubclass(base, Materialed):
+				yield from base._inherited_auto_materials()
+			if cls._auto_materials is not None:
+				yield from cls._auto_materials
 
 	Material = MaterialSource
 	def _register_auto_material(self, *names, **kwargs):

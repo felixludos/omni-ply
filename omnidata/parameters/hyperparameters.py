@@ -155,9 +155,8 @@ class ConfigHyperparameter(HyperparameterBase):
 	def create_value(self, base, owner=None):  # TODO: maybe make thread-safe by using a lock
 		if not isinstance(base, type): # base is and instance
 			config = getattr(base, 'my_config', None)
-			default = config._empty_default if (self.default is self.unknown or self.fget is not None) else self.default
-
 			if config is not None:
+				default = config._empty_default if (self.default is self.unknown or self.fget is not None) else self.default
 				try:
 					result = self._extract_from_config(config, self.name, default)
 				except config.SearchFailed:

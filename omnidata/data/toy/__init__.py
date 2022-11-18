@@ -1,2 +1,1 @@
-# from .top import SwissRollDataset, HelixDataset
-from .manifolds import SwissRoll, Helix
+from .manifolds import SwissRoll, SwissRollDataset, Helix, HelixDataset

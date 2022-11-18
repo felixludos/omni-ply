@@ -118,7 +118,7 @@ class CountableDataRouter(AbstractCountableData, AbstractDataRouter):
 	@property
 	def size(self):
 		if self.is_ready:
-			return len(next(self.materials()))
+			return next(self.materials()).size
 		if self._default_len is not None:
 			return self._default_len
 		raise self.UnknownCount()

@@ -1,14 +1,13 @@
 import numpy as np
-# from sklearn.datasets import make_swiss_roll
 import torch
-from omnibelt import unspecified_argument
+# from sklearn.datasets import make_swiss_roll
 
 from ..materials import Materialed, material
 from ...structure import spaces, Decoder, Generator, NormalDistribution
 from ...features import Seeded
 from ...parameters import hparam, inherit_hparams
 
-from ..flavors import Synthetic
+from ..flavors import Synthetic, Sampledstream
 from ..top import Datastream
 
 
@@ -60,7 +59,7 @@ class Stochastic(ManifoldStream):
 
 
 class Noisy(Stochastic):
-	noise_std = hparam(0., space=spaces.HalfBound(min=0.), alias='noise-std')
+	noise_std = hparam(0., space=spaces.HalfBound(min=0.))
 
 	def _decode_distrib_from_mean(self, mean):
 		return NormalDistribution(mean, self.noise_std * torch.ones_like(mean))
@@ -117,8 +116,14 @@ class SwissRoll(ManifoldStream):
 
 
 
+@inherit_hparams('n_samples', 'Ax', 'Ay', 'Az', 'freq', 'tmin', 'tmax')
+class SwissRollDataset(Sampledstream, SwissRoll):
+	pass
+
+
+
 class Helix(ManifoldStream):
-	n_helix = hparam(2, space=spaces.Naturals(), alias='n-helix')
+	n_helix = hparam(2, space=spaces.Naturals())
 
 	periodic_strand = hparam(False, space=spaces.Binary())
 
@@ -165,67 +170,9 @@ class Helix(ManifoldStream):
 
 
 
-# class SwissRoll(ManifoldStream):
-# 	def __init__(self, *, Ax=np.pi/2, Ay=21., Az=np.pi/2, freq=0.5, tmin=3., tmax=9., **kwargs):
-# 		super().__init__(**kwargs)
-#
-# 		assert Ax > 0 and Ay > 0 and Az > 0 and freq > 0 and tmax > tmin, \
-# 			f'invalid parameters: {Ax} {Ay} {Az} {freq} {tmax} {tmin}'
-# 		self.Ax, self.Ay, self.Az = Ax, Ay, Az
-# 		self.freq = freq
-# 		self.tmin, self.tmax = tmin, tmax
-#
-# 		# self.target_theta = target_theta
-#
-# 		mechanism_space = spaces.Joint(
-# 			spaces.Bound(min=tmin, max=tmax),
-# 			spaces.Bound(min=0., max=1.),
-# 		)
-# 		self.mechanism_space = mechanism_space
-# 		# self.target_space = lbl_space[0] #if self.target_theta else lbl_space
-#
-# 		obs_space = spaces.Joint(
-# 			spaces.Bound(min=-Ax * tmax, max=Ax * tmax),
-# 			spaces.Bound(min=0., max=self.Ay),
-# 			spaces.Bound(min=-Az * tmax, max=Az * tmax),
-# 		)
-# 		self.observation_space = obs_space
-#
-#
-#
-# class Helix(ManifoldStream):
-# 	def __init__(self, n_helix=2, *, periodic_strand=False, Rx=1., Ry=1., Rz=1., w=1., **kwargs):
-# 		super().__init__(**kwargs)
-#
-# 		self.n_helix = n_helix
-# 		# self.target_strand = target_strand
-#
-# 		self.Rx, self.Ry, self.Rz = Rx, Ry, Rz
-# 		self.w = int(w) if periodic_strand else w
-#
-# 		mechanism_space = spaces.Joint(
-# 			spaces.Periodic(min=-1., max=1.) if periodic_strand else spaces.Bound(min=-1., max=1.),
-# 			spaces.Categorical(n=n_helix),
-# 		)
-# 		self.mechanism_space = mechanism_space
-# 		# self.target_space = lbl_space[-1] #if self.target_strand else lbl_space
-#
-# 		obs_space = spaces.Joint(
-# 			spaces.Bound(min=-Rx, max=Rx),
-# 			spaces.Bound(min=-Ry, max=Ry),
-# 			spaces.Bound(min=-Rz, max=Rz),
-# 		)
-# 		self.observation_space = obs_space
-#
-#
-# 	def decode(self, mechanism):
-# 		z = mechanism.narrow(-1, 0, 1)
-# 		n = mechanism.narrow(-1, 1, 1)
-# 		theta = z.mul(self.w).add(n.div(self.n_helix) * 2).mul(np.pi)
-#
-# 		amp = torch.as_tensor([self.Rx, self.Ry, self.Rz]).float().to(n.device)
-# 		pts = amp.unsqueeze(0) * torch.cat([theta.cos(), theta.sin(), z], -1)
-# 		return pts
+@inherit_hparams('n_samples', 'n_helix', 'periodic_strand', 'Rx', 'Ry', 'Rz', 'w')
+class HelixDataset(Sampledstream, Helix):
+	pass
 
 
 

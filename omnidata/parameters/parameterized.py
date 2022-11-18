@@ -102,9 +102,9 @@ class ParameterizedBase(AbstractParameterized):
 	@classmethod
 	def inherit_hparams(cls, *names):
 		for name in reversed(names):
+			if name in cls._registered_hparams:
+				cls._registered_hparams.insert(0, name)
 			cls.register_hparam(name, cls.get_hparam(name))
-			cls._registered_hparams.discard(name)
-			cls._registered_hparams.insert(0, name)
 
 
 class ModifiableParameterized(ParameterizedBase, Modifiable):
