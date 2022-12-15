@@ -59,7 +59,7 @@ class Stochastic(ManifoldStream):
 
 
 class Noisy(Stochastic):
-	noise_std = hparam(0., space=spaces.HalfBound(min=0.))
+	noise_std = hparam(0., space=spaces.HalfBound(min=0.))#, alias='noise-std')
 
 	def _decode_distrib_from_mean(self, mean):
 		return NormalDistribution(mean, self.noise_std * torch.ones_like(mean))

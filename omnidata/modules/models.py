@@ -4,20 +4,17 @@ import torch
 from torch import nn
 from omnibelt import agnostic, unspecified_argument#, mix_into
 # from .. import util
-from omnidata.parameters import abstract
-from .features import Seeded, Prepared
-from omnidata.parameters.hyperparameters import hparam
-from omnidata.parameters.parameterized import inherit_hparams
-from omnidata.parameters.machines import machine
-from omnidata.parameters.top import Parameterized
-from .base import Function, Container
+
+from ..parameters import machine, Parameterized
+from ..features import Prepared
+
+from .interfaces import Fitable
 
 
 # class ModelBuilder:
 # 	@agnosticmethod
 # 	def build(self, dataset):
 # 		raise NotImplementedError
-
 
 
 # class ModelBuilder:
@@ -42,7 +39,6 @@ from .base import Function, Container
 #
 # 	def build(self):
 # 		raise NotImplementedError
-
 
 
 # class Buildable(ModuleParametrized): # TODO: unify building and hparams - they should be shared
@@ -85,32 +81,6 @@ from .base import Function, Container
 
 
 
-class Computable(Parameterized, Resultable):
-	@agnostic
-	def compute(self, source=None, **kwargs):
-		info = self.create_results_container(source=source, **kwargs)
-		self.info = info # TODO: clean up maybe?
-		out = self._compute(info)
-		if hasattr(self, 'info'):
-			del self.info
-		return out
-
-
-	@staticmethod
-	def _compute(info):
-		raise NotImplementedError
-
-
-
-class Fitable(Resultable):
-	def fit(self, source, **kwargs):
-		raise NotImplementedError
-
-
-	def evaluate(self, source, **kwargs):
-		raise NotImplementedError
-
-
 
 class Model(#Buildable,
             Parameterized, Fitable, Prepared):
@@ -118,7 +88,7 @@ class Model(#Buildable,
 		pass
 
 
-	@agnostic
+	# @agnostic
 	def create_fit_results_container(self, **kwargs):
 		return self.create_results_container(**kwargs)
 
