@@ -4,13 +4,13 @@ from omnibelt import unspecified_argument, duplicate_instance, get_printer
 
 
 from ..features import Prepared
-from ..persistent import Fingerprinted
+from ..persistent import AbstractFingerprinted
 
 
 prt = get_printer(__file__)
 
 
-class AbstractData(Prepared): # TODO: make fingerprinted
+class AbstractData(Prepared, AbstractFingerprinted): # TODO: make fingerprinted
 	def _prepare(self, **kwargs):
 		pass
 

@@ -2,6 +2,8 @@
 from omnibelt import agnostic, unspecified_argument
 
 from ..features import Prepared
+from ..persistent import AbstractFingerprinted, Fingerprinted
+
 from .hyperparameters import ConfigHyperparameter
 from .building import ConfigBuilder, AutoBuilder, BuildableBase, ModifiableProduct, \
 	MultiBuilderBase, RegistryBuilderBase, ClassBuilderBase
@@ -60,7 +62,16 @@ class PreparedParameterized(MachineParameterized, Prepared):
 		self.reset_hparams()
 
 
-class Parameterized(ModifiableParameterized, PreparedParameterized):
+class FingerprintedParameterized(MachineParameterized, Fingerprinted):
+	def _fingerprint_data(self):
+		data = super()._fingerprint_data()
+		# data.clear()
+		hparams = {k: getattr(self, k) for k, _ in self.named_hyperparameters()}
+		data.update(hparams)
+		return data
+
+
+class Parameterized(ModifiableParameterized, PreparedParameterized, FingerprintedParameterized):
 	Hyperparameter = Hyperparameter
 	Machine = Machine
 

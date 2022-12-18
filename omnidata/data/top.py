@@ -1,4 +1,5 @@
 
+# from ..persistent import Fingerprinted
 
 from .routers import DataCollection, AutoCollection, BranchedDataRouter, AliasedCollection, CountableDataRouter
 from .views import IndexView, CachedView, BatchBase, IndexBatch, BatchableView
@@ -15,7 +16,8 @@ class Buffer(TensorSource, SpacedSource, BatchableSource, BuildableData):
 	Batch = Batch
 
 
-class _FeaturedDataRouter(AutoCollection, AliasedCollection, BatchableSource, Materialed, DataCollection, BuildableData):
+class _FeaturedDataRouter(AutoCollection, AliasedCollection, BatchableSource,
+                          Materialed, DataCollection, BuildableData):
 	_SimpleMaterial = Buffer
 
 

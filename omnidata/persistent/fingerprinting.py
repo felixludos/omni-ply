@@ -19,6 +19,9 @@ class AbstractFingerprinted:
 
 
 class AbstractFingerprint(AbstractFingerprinted, Exportable):
+	def __init__(self, src=None, **kwargs):
+		super().__init__(**kwargs)
+
 	@property
 	def fingerprint(self):
 		return self
@@ -76,6 +79,8 @@ class AbstractFingerprint(AbstractFingerprinted, Exportable):
 			raise self.UnknownObjectError(obj)
 		return self.code() == obj.code()
 
+	def __str__(self):
+		return f'{self.__class__.__name__}({self.code()})'
 
 
 class Fingerprinted(AbstractFingerprinted):

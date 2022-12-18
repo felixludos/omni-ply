@@ -59,6 +59,12 @@ class SourceContainer(Container):
 		self.source = source
 
 
+	def merge(self, info: 'Container'):
+		if isinstance(info, SourceContainer) and info.source is not None:
+			self.source = info.source
+		return super().merge(info)
+
+
 	def new_source(self, source):
 		self.clear()
 		self.source = source
@@ -84,6 +90,12 @@ class ScoreContainer(Container):
 			self._score_key = score_key
 
 
+	def merge(self, info: 'Container'):
+		if isinstance(info, ScoreContainer) and info._score_key is not None:
+			self._score_key = info._score_key
+		return super().merge(info)
+
+
 	class NoScoreKeyError(Exception):
 		pass
 
@@ -99,15 +111,6 @@ class ScoreContainer(Container):
 	def __contains__(self, item):
 		return super().__contains__(item) or (item == 'score' and super().__contains__(self._score_key))
 
-
-
-class Resultable:
-	class ResultsContainer(SourceContainer, ScoreContainer):
-		pass
-
-
-	def create_results_container(self, **kwargs):
-		return self.ResultsContainer(**kwargs)
 
 
 
