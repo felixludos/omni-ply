@@ -130,28 +130,28 @@ class Epoched(AbstractCountableData, Batchable, Seeded): # TODO: check Seeded an
 	
 	
 	@classmethod
-	def shuffle_indices(cls, N, gen=None):
+	def shuffle_indices(cls, N, rng=None):
 		# if seed is not None and gen is None:
 		# 	gen = torch.Generator()
 		# 	gen.manual_seed(seed)
 		# TODO: include a warning if cls._is_big_number(N)
-		return torch.randint(N, size=(N,), generator=gen) \
-			if cls._is_big_number(N) else torch.randperm(N, generator=gen)
+		return torch.randint(N, size=(N,), generator=rng) \
+			if cls._is_big_number(N) else torch.randperm(N, generator=rng)
 
 
 	def generate_selections(self, sel=None, sample_limit=None, batch_size=None, shuffle=True,
-	                        strict_batch_size=None, gen=None, **kwargs):
+	                        strict_batch_size=None, rng=None, **kwargs):
 		if batch_size is None:
 			batch_size = self.batch_size
 		if strict_batch_size is None:
 			strict_batch_size = self._force_batch_size
-		if gen is None:
-			gen = self.gen
+		if rng is None:
+			rng = self.rng
 			
 		if sel is None:
 			sel = torch.arange(self.size)
 		if shuffle:
-			sel = sel[self.shuffle_indices(len(sel), gen=gen)]
+			sel = sel[self.shuffle_indices(len(sel), gen=rng)]
 		order = sel
 		if sample_limit is not None and len(order) > sample_limit:
 			order = order[:max(sample_limit, batch_size) if strict_batch_size else sample_limit]

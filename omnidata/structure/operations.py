@@ -133,11 +133,9 @@ class Quantizer:
 
 
 class Sampler(Seeded):
-	def sample(self, *shape, gen=None, **kwargs):
-		if gen is None:
-			gen = self.gen
-		return self._sample(torch.Size(shape), gen=gen, **kwargs)
+	def sample(self, *shape, **kwargs):
+		return self._sample(torch.Size(shape), **kwargs)
 
 
-	def _sample(self, shape, gen, **kwargs):
+	def _sample(self, shape, **kwargs):
 		raise NotImplementedError

@@ -26,12 +26,12 @@ class Shufflable(Seeded):
 	def _is_big_number(N):
 		return N > 10000000
 
-	def _shuffle_indices(self, N, gen=None):
-		if gen is None:
-			gen = self.gen
+	def _shuffle_indices(self, N, rng=None):
+		if rng is None:
+			rng = self.rng
 		# TODO: include a warning if cls._is_big_number(N)
-		return torch.randint(N, size=(N,), generator=gen) \
-			if self._is_big_number(N) else torch.randperm(N, generator=gen)
+		return torch.randint(N, size=(N,), generator=rng) \
+			if self._is_big_number(N) else torch.randperm(N, generator=rng)
 
 
 
@@ -90,18 +90,15 @@ class SingleSource(AbstractDataSource):
 
 class SampleSource(AbstractDataSource, Sampler):
 	_sample_key = None
-	def _sample(self, shape, gen, *, sample_key=None):
+	def _sample(self, shape, *, sample_key=None):
 		if sample_key is unspecified_argument:
 			sample_key = self._sample_key
 		N = shape.numel()
-		samples = self.sample_material(sample_key, N, gen=gen)
+		samples = self.sample_material(sample_key, N)
 		return util.split_dim(samples, *shape)
 
-	def sample_material(self, key, N, gen=None):
-		if gen is None:
-			return self.get_from(N, key)
-		with self.using_rng(gen=gen):
-			return self.get_from(key, N)
+	def sample_material(self, N, key):
+		return self.get_from(N, key)
 
 
 
@@ -136,21 +133,21 @@ class Subsetable(AbstractCountableData, AbstractDataSource, Shufflable):
 		return part1, part2
 	
 	Subset = None # indexed view
-	def subset(self, cut=None, *, indices=None, shuffle=False, hard_copy=True, gen=None):
+	def subset(self, cut=None, *, indices=None, shuffle=False, hard_copy=True, rng=None):
 		if not hard_copy:
 			raise NotImplementedError # TODO: hard copy
 		if indices is None:
 			assert cut is not None, 'Either cut or indices must be specified'
-			indices, _ = self._split_indices(indices=self._shuffle_indices(self.size, gen=gen) \
+			indices, _ = self._split_indices(indices=self._shuffle_indices(self.size, rng=rng) \
 				if shuffle else torch.arange(self.size), cut=cut)
 		return self.Subset(indices=indices)
 	
 
 
 class Splitable(Subsetable):
-	def split(self, splits, shuffle=False, gen=None):
-		if gen is None:
-			gen = self.gen
+	def split(self, splits, shuffle=False, rng=None):
+		if rng is None:
+			rng = self.rng
 		auto_name = isinstance(splits, (list, tuple, set))
 		if auto_name:
 			named_cuts = [(f'part{i}', r) for i, r in enumerate(splits)]
@@ -188,7 +185,7 @@ class Splitable(Subsetable):
 		if remaining > 0:
 			nums[-1] += remaining
 
-		indices = self._shuffle_indices(self.size, gen=gen) if shuffle else torch.arange(self.size)
+		indices = self._shuffle_indices(self.size, rng=rng) if shuffle else torch.arange(self.size)
 
 		plan = dict(zip(names, nums))
 		parts = {}

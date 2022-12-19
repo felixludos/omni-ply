@@ -89,7 +89,7 @@ class BarredProgression(ProgressionBase, ProgressBarred):
 		if self._pbar is not None:
 			self._pbar.set_description(desc)
 
-
+# TODO: progress for streams with budget
 
 class EpochProgression(ProgressionBase, Prepared):
 	def __init__(self, source, *, epoch_size=None, strict_batch_size=True, **kwargs):

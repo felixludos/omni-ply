@@ -36,7 +36,7 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 		return self.generate_observation_from_mechanism(self.generate_mechanism(N))
 
 	def generate_mechanism(self, N):
-		return self.space_of('mechanism').sample(N, gen=self.gen)
+		return self.space_of('mechanism').sample(N)
 
 	def generate_observation_from_mechanism(self, mechanism):
 		return self.decode(mechanism)

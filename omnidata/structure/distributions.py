@@ -110,9 +110,9 @@ class NormalDistribution(Distribution, distrib.Normal):
 		super().__init__(loc=loc, scale=scale, **kwargs)
 
 
-	def _sample(self, shape, gen):
+	def _sample(self, shape):
 		shape = self._extended_shape(shape)
-		noise = torch.randn(*shape, generator=gen)
+		noise = torch.randn(*shape, generator=self.rng)
 		return noise.mul(self.scale) + self.loc
 
 
@@ -125,9 +125,9 @@ class CategoricalDistribution(Distribution, distrib.Categorical):
 		return self._param.argmax(-1)
 
 
-	def _sample(self, shape, gen):
+	def _sample(self, shape):
 		probs_2d = self.probs.reshape(-1, self._num_events)
-		samples_2d = torch.multinomial(probs_2d, shape.numel(), True, generator=gen).T
+		samples_2d = torch.multinomial(probs_2d, shape.numel(), True, generator=self.rng).T
 		return samples_2d.reshape(self._extended_shape(shape))
 
 

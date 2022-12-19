@@ -257,10 +257,11 @@ class AbstractBatchable(AbstractDataRouter):
 		return self.iterate()
 
 	Progression = None
-	def iterate(self, **kwargs):
-		if not self.is_ready:
-			prt.warning(f'{self} is not ready (call prepare() first)')
-		return self.Progression(self, **kwargs)
+	def iterate(self, batch_size, **kwargs):
+		self.prepare()
+		# if not self.is_ready:
+		# 	prt.warning(f'{self} is not ready (call prepare() first)')
+		return self.Progression(source=self, batch_size=batch_size, **kwargs)
 
 	def batch(self, batch_size, **kwargs):
 		progress = self.iterate(batch_size=batch_size, **kwargs)

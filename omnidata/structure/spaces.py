@@ -14,6 +14,7 @@ from .metrics import Measure, Lp, L2, L1
 
 
 # TODO: include dtypes
+# TODO: equality testing
 
 
 class Dim(Packable, Measure, Sampler, Fingerprinted):
@@ -92,8 +93,8 @@ class Dim(Packable, Measure, Sampler, Fingerprinted):
 		}
 	
 
-	def sample(self, *shape, gen=None):
-		samples = super().sample(*shape, gen=gen)
+	def sample(self, *shape):
+		samples = super().sample(*shape)
 		if self.dtype is not None:
 			samples = samples.to(self.dtype)
 		return samples
@@ -156,8 +157,8 @@ class Range(Dim):
 		super().__init__(min=min, max=max, shape=shape, dtype=dtype, **kwargs)
 
 
-	def _sample(self, shape, gen):
-		return torch.randint(self.min, self.max, shape, generator=gen)
+	def _sample(self, shape):
+		return torch.randint(self.min, self.max, shape, generator=self.rng)
 
 
 
@@ -168,12 +169,12 @@ class Naturals(Range):
 
 
 class Continuous(Dim):
-	def _sample(self, shape, gen):
-		return self.unstandardize(self._sample_prior(torch.Size([*shape, *self.shape]), gen))
+	def _sample(self, shape):
+		return self.unstandardize(self._sample_prior(torch.Size([*shape, *self.shape])))
 
 
-	def _sample_prior(self, shape, gen):
-		return torch.randn(*shape, generator=gen)
+	def _sample_prior(self, shape):
+		return torch.randn(*shape, generator=self.rng)
 
 
 	def distance(self, x, y, standardize=None):
@@ -262,8 +263,8 @@ class Bound(Continuous):
 		return f'{self.__class__.__name__}({terms}min={self.min.mean().item():.3g}, max={self.max.mean().item():.3g})'
 
 
-	def _sample_prior(self, shape, gen):
-		return torch.rand(*shape, generator=gen)
+	def _sample_prior(self, shape):
+		return torch.rand(*shape, generator=self.rng)
 
 
 	def standardize(self, vals):
@@ -426,16 +427,11 @@ class Simplex(LebesgueSurface, Bound, L1):
 		return super(Surface, self).distance(x, y, standardize=standardize)
 
 
-	def _sample(self, shape, gen):  # from Donald B. Rubin, The Bayesian bootstrap Ann. Statist. 9, 1981, 130-134.
+	def _sample(self, shape):  # from Donald B. Rubin, The Bayesian bootstrap Ann. Statist. 9, 1981, 130-134.
 		# discussed in https://cs.stackexchange.com/questions/3227/uniform-sampling-from-a-simplex
 
-		sqz = False
-		if N is None:
-			sqz = True
-			N = 1
-
 		extra_shape = [*shape, *self.shape]
-		raw = super()._sample(shape, gen).view(*extra_shape)
+		raw = super()._sample(shape).view(*extra_shape)
 
 		dim = self.dim
 		extra_shape[dim] = 1
@@ -706,8 +702,8 @@ class Categorical(Dim):
 		return torch.Size((*self.shape, self.n))
 
 
-	def _sample(self, shape, gen):
-		samples = torch.randint(self.n, size=(*shape, *self.shape), generator=gen)
+	def _sample(self, shape):
+		samples = torch.randint(self.n, size=(*shape, *self.shape), generator=self.rng)
 		return samples
 
 
@@ -841,7 +837,7 @@ class Joint(Dim):
 
 
 	def _fingerprint_data(self):
-		return {'dims': [self.fingerprint_obj(dim) for dim in self.dims], **super()._fingerprint_data()}
+		return {'dims': self.dims, **super()._fingerprint_data()}
 	
 
 	@property
@@ -894,8 +890,8 @@ class Joint(Dim):
 		return self._dispatch('compress', vals, use_expanded=True)
 
 
-	def _sample(self, shape, gen):
-		return self._dispatch('_sample', shape=shape, gen=gen)
+	def _sample(self, shape):
+		return self._dispatch('_sample', shape=shape)
 
 
 	def distance(self, x, y, standardize=None, scale=None):
