@@ -164,7 +164,7 @@ class AbstractView(AbstractDataSource):
 		self.source.prepare()
 
 	def _title(self):
-		return f'{super()._title()}{"{" + self.source._title() + "}" if self.source is not None else ""}'
+		return f'{super()._title()}{"<" + self.source._title() + ">" if self.source is not None else ""}'
 
 	@property
 	def source(self):
@@ -243,6 +243,7 @@ class AbstractProgression:
 	def source(self):
 		raise NotImplementedError
 
+	@property
 	def done(self):
 		raise NotImplementedError
 

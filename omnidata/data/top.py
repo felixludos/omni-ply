@@ -29,13 +29,10 @@ class Batchable(AbstractBatchable, Parameterized):
 	@with_hparams
 	def iterate(self, batch_size, sample_limit=None, batch_limit=None,
 	            strict_limit=False, strict_batch_size=False,
-				shuffle=None, shuffle_batches=False,
 	            use_pbar=False, pbar_samples=True, **kwargs):
-		if shuffle is None:
-			shuffle = shuffle_batches
 		return super().iterate(batch_size=batch_size, sample_limit=sample_limit, batch_limit=batch_limit,
 		                       strict_limit=strict_limit, strict_batch_size=strict_batch_size,
-		                       shuffle=shuffle, use_pbar=use_pbar, pbar_samples=pbar_samples, **kwargs)
+		                       use_pbar=use_pbar, pbar_samples=pbar_samples, **kwargs)
 
 
 class Epoched(Batchable):
@@ -44,10 +41,12 @@ class Epoched(Batchable):
 	epoch_limit = hparam(inherit=True)
 
 	@with_hparams
-	def iterate(self, batch_size, epochs=None, epoch_limit=None, **kwargs):
+	def iterate(self, batch_size, epochs=None, epoch_limit=None, shuffle=None, shuffle_batches=False, **kwargs):
 		if epoch_limit is None:
 			epoch_limit = epochs
-		return super().iterate(batch_size=batch_size, epochs=epoch_limit, **kwargs)
+		if shuffle is None:
+			shuffle = shuffle_batches
+		return super().iterate(batch_size=batch_size, epochs=epoch_limit, shuffle=shuffle, **kwargs)
 
 
 
