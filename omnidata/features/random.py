@@ -179,6 +179,9 @@ class RNG: # descriptor
 	def __get__(self, obj, owner=None):
 		return self.manager.get_personal_rng(obj)
 
+	def __set__(self, obj, value):
+		self.manager.replace_personal_rng(obj, rng=value)
+
 	def reset(self, obj): # TODO
 		self.manager.clear_personal_rng(obj)
 
@@ -192,10 +195,12 @@ class Seeded:
 	rng = RNG() # access only when needed (rather than passing as argument)
 	_seed = None
 
-	def __init__(self, *args, rng=None, seed=unspecified_argument, **kwargs):
+	def __init__(self, *args, rng=unspecified_argument, seed=unspecified_argument, **kwargs):
 		super().__init__(*args, **kwargs)
 		if seed is not unspecified_argument:
 			self._seed = seed
+		if rng is not unspecified_argument:
+			self.rng = rng
 
 	def force_rng(self, seed=unspecified_argument, *, rng=None):
 		return self._get_rng().force_rng(seed=seed, rng=rng)

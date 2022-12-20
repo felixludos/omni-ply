@@ -36,7 +36,8 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 		return self.generate_observation_from_mechanism(self.generate_mechanism(N))
 
 	def generate_mechanism(self, N):
-		return self.space_of('mechanism').sample(N)
+		with self.force_rng(rng=self.rng):
+			return self.space_of('mechanism').sample(N)
 
 	def generate_observation_from_mechanism(self, mechanism):
 		return self.decode(mechanism)
@@ -48,7 +49,8 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 
 class Stochastic(ManifoldStream):
 	def generate_observation_from_mechanism(self, mechanism):
-		return self.decode_distrib(mechanism).sample()
+		with self.force_rng(rng=self.rng):
+			return self.decode_distrib(mechanism).sample()
 
 	def _decode_distrib_from_mean(self, mean):
 		raise NotImplementedError

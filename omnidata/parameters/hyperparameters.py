@@ -169,6 +169,17 @@ class ConfigHyperparameter(HyperparameterBase):
 		return super().create_value(base, owner=owner)
 
 
+
+class InheritableHyperparameter(HyperparameterBase):
+	def __init__(self, default=unspecified_argument, *, inherit=False, **kwargs):
+		super().__init__(default=default, **kwargs)
+		self.inherit = inherit
+
+	@classmethod
+	def extract_from(cls, param: 'HyperparameterBase', **kwargs):
+		return super().extract_from(param, inherit=getattr(param, 'inherit', False), **kwargs)
+
+
 class RefHyperparameter(HyperparameterBase): # TODO: test, a lot
 	name = referenceproperty('ref')
 	default = referenceproperty('ref')

@@ -9,6 +9,30 @@ from .abstract import AbstractProgression
 from .sources import Shufflable
 
 
+class AbstractBudgetProgression(AbstractProgression):
+
+	@property
+	def total_samples(self) -> Optional[int]:
+		raise NotImplementedError
+
+	@property
+	def total_batches(self) -> Optional[int]:
+		raise NotImplementedError
+
+	@property
+	def remaining_samples(self):
+		raise NotImplementedError
+
+	@property
+	def remaining_batches(self):
+		raise NotImplementedError
+
+	@property
+	def done(self):
+		raise NotImplementedError
+
+
+
 class ProgressionBase(AbstractProgression):
 	def __init__(self, source, batch_size, batch_cls=None, **kwargs):
 		super().__init__(**kwargs)
@@ -20,10 +44,13 @@ class ProgressionBase(AbstractProgression):
 		self._sample_count = 0
 		self._batch_count = 0
 
+	def get_batch(self):
+		if self._current_batch is None:
+			return self._next_batch()
+		return self._current_batch
+
 	@property
 	def current_batch(self):
-		if self._current_batch is None:
-			self._current_batch = self._next_batch()
 		return self._current_batch
 
 	@property
@@ -159,9 +186,9 @@ class EpochProgression(ProgressionBase, Prepared):
 
 
 class ShuffleProgression(EpochProgression, Shufflable):
-	def __init__(self, source, *, shuffle_batches=True, **kwargs):
+	def __init__(self, source, *, shuffle=False, **kwargs):
 		super().__init__(source=source, **kwargs)
-		self._shuffle_batches = shuffle_batches
+		self._shuffle_batches = shuffle
 
 	def _generate_sample_order(self):
 		if self._shuffle_batches:
@@ -204,10 +231,10 @@ class InfiniteProgression(EpochProgression):
 		pass
 
 	def _new_epoch(self):
-		if self._infinite:
-			self._completed_epochs += 1
-			self._setup()
-		raise self.EndLoop
+		if self.done:
+			raise self.EndLoop
+		self._completed_epochs += 1
+		self._setup()
 
 	def _next_batch(self):
 		try:
@@ -221,22 +248,98 @@ class InfiniteProgression(EpochProgression):
 				return super()._next_batch()
 			raise
 
+	@property
+	def done(self):
+		return not self._infinite
 
 
-class BudgetProgression(InfiniteProgression):
-	def __init__(self, source, epochs=None, sample_limit=None, batch_limit=None, strict_limit=True, **kwargs):
+
+class BudgetProgression(InfiniteProgression, AbstractBudgetProgression, Prepared):
+	def __init__(self, source, sample_limit=None, batch_limit=None, strict_limit=True, **kwargs):
 		super().__init__(source=source, **kwargs)
-		self._epochs = epochs
 		self._sample_limit = sample_limit
 		self._batch_limit = batch_limit
 		self._strict_limit = strict_limit
 		self._total_samples = None
 		self._total_batches = None
+
+	def _prepare(self, *args, **kwargs):
+		super()._prepare(*args, **kwargs)
+		self._total_samples, self._total_batches = self.compute_budget(
+			samples_per_batch=self.batch_size,
+			strict_batch_size=self._strict_batch_size,
+			sample_limit=self._sample_limit,
+			batch_limit=self._batch_limit, strict_limit=self._strict_limit
+		)
+
+	@staticmethod
+	def compute_budget(samples_per_batch, strict_batch_size=True,
+	                   sample_limit=None, batch_limit=None, strict_limit=True):
+		if sample_limit is None and batch_limit is None:
+			return None, None  # infinite
+
+		total_samples = None
+		if batch_limit is not None:
+			total_samples = batch_limit * samples_per_batch
+		if sample_limit is not None:
+			total = sample_limit - (sample_limit % samples_per_batch)
+			remainder = sample_limit % samples_per_batch
+			if remainder > 0:
+				if strict_limit and not strict_batch_size:
+					total += remainder
+				elif not strict_limit:
+					total += samples_per_batch
+			if total_samples is None or total < total_samples:
+				total_samples = total
+
+		total_batches = total_samples // samples_per_batch
+		remainder = total_samples % samples_per_batch
+		if not strict_batch_size and remainder > 0:
+			total_batches += 1
+
+		return total_samples, total_batches
+
+
+	@property
+	def total_samples(self) -> Optional[int]:
+		return self._total_samples
+
+	@property
+	def total_batches(self) -> Optional[int]:
+		return self._total_batches
+
+	@property
+	def remaining_samples(self):
+		if self._total_samples is None:
+			return float('inf')
+		return self._total_samples - self.sample_count
+
+	@property
+	def remaining_batches(self):
+		if self._total_batches is None:
+			return float('inf')
+		return self._total_batches - self.batch_count
+
+	def _next_batch(self):
+		if self.done:
+			raise StopIteration
+		return super()._next_batch()
+
+	@property
+	def done(self):
+		return self.remaining_samples <= 0 or self.remaining_batches <= 0
+
+
+
+class EpochBudgetProgression(BudgetProgression, AbstractBudgetProgression):
+	def __init__(self, source, *, epochs=None, **kwargs):
+		super().__init__(source=source, **kwargs)
+		self._epochs = epochs
 		self._full_epochs = None
 
 	def _prepare(self, *args, **kwargs):
 		super()._prepare(*args, **kwargs)
-		self._total_samples, self._total_batches, self._full_epochs = self.compute_budget(
+		self._total_samples, self._total_batches, self._full_epochs = self.compute_epoch_budget(
 			dataset_size=self.epoch_size, samples_per_batch=self.batch_size,
 			strict_batch_size=self._strict_batch_size,
 			epochs=self._epochs, sample_limit=self._sample_limit,
@@ -244,7 +347,7 @@ class BudgetProgression(InfiniteProgression):
 		)
 
 	@staticmethod
-	def compute_budget(dataset_size, samples_per_batch, strict_batch_size=True,
+	def compute_epoch_budget(dataset_size, samples_per_batch, strict_batch_size=True,
 	                   epochs=None, sample_limit=None, batch_limit=None, strict_limit=True):
 		if epochs is None and sample_limit is None and batch_limit is None:
 			return None, None, None  # infinite
@@ -263,10 +366,11 @@ class BudgetProgression(InfiniteProgression):
 			remainder = sample_limit % samples_per_epoch
 			total += samples_per_batch * (remainder // samples_per_batch)
 			remainder = remainder % samples_per_batch
-			if strict_limit and not strict_batch_size:
-				total += remainder
-			elif not strict_limit:
-				total += samples_per_batch
+			if remainder > 0:
+				if strict_limit and not strict_batch_size:
+					total += remainder
+				elif not strict_limit:
+					total += samples_per_batch
 			if total_samples is None or total < total_samples:
 				total_samples = total
 
@@ -281,14 +385,6 @@ class BudgetProgression(InfiniteProgression):
 
 
 	@property
-	def total_samples(self) -> Optional[int]:
-		return self._total_samples
-
-	@property
-	def total_batches(self) -> Optional[int]:
-		return self._total_batches
-
-	@property
 	def full_epochs(self) -> Optional[int]:
 		return self._full_epochs
 
@@ -299,26 +395,9 @@ class BudgetProgression(InfiniteProgression):
 			return float('inf')
 		return self._full_epochs - self.current_epoch
 
-	@property
-	def remaining_samples(self):
-		if self._total_samples is None:
-			return float('inf')
-		return self._total_samples - self.sample_count
-
-	@property
-	def remaining_batches(self):
-		if self._total_batches is None:
-			return float('inf')
-		return self._total_batches - self.batch_count
 
 
-	@property
-	def done(self):
-		return self.remaining_samples <= 0 or self.remaining_batches <= 0
-
-
-
-class TrackedProgression(BudgetProgression, BarredProgression): # TODO: add a progress bar
+class TrackedProgression(ShuffleProgression, BarredProgression, AbstractBudgetProgression): # TODO: add a progress bar
 	def _prepare(self, *args, **kwargs):
 		super()._prepare(*args, **kwargs)
 		if self._use_pbar:
@@ -340,10 +419,13 @@ class TrackedProgression(BudgetProgression, BarredProgression): # TODO: add a pr
 
 
 
+class StreamProgression(TrackedProgression, BudgetProgression):
+	pass
 
 
 
-
+class SetProgression(TrackedProgression, EpochBudgetProgression):
+	pass
 
 
 

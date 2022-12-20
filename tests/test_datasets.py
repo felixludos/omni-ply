@@ -1,6 +1,8 @@
-
 import sys, os
 import yaml
+
+import torch
+
 import omnidata as od
 from omnidata import toy
 
@@ -9,7 +11,7 @@ dataset = None
 def _init_default_dataset():
 	global dataset
 	if dataset is None:
-		dataset = toy.SwissRollDataset(100, seed=16283393149723337453)
+		dataset = toy.SwissRollDataset(100, batch_size=5, seed=16283393149723337453)
 	return dataset
 
 def _cmp_dicts(d1, d2):
@@ -41,11 +43,12 @@ def test_dataset_init():
 def test_dataset_fingerprint():
 	dataset = _init_default_dataset()
 
-	assert dataset.fingerprint.code() == '7ecef17fca79acae08a429ec6fb26544'
+	assert dataset.fingerprint.code() == 'dbe51ff6144ae53dadb46e33553c1a3d'
 
 	assert _cmp_dicts(dataset.fingerprint.data(),
 	                  {'cls': 'SwissRollDataset',
 	                   'module': 'omnidata.data.toy.manifolds',
+	                   'batch_size': 5,
 	                   'tmax': 9.0, 'tmin': 3.0, 'freq': 0.5,
 	                   'Az': 1.5707963267948966, 'Ay': 21.0, 'Ax': 1.5707963267948966,
 	                   'n_samples': 100
@@ -63,12 +66,39 @@ def test_dataset_prepare():
 
 
 def test_dataset_iteration():
-	dataset = _init_default_dataset()
+	# dataset = _init_default_dataset()
+
+	dataset = toy.SwissRollDataset(12, batch_size=5).prepare()
+
+	# loader = dataset.iterate(epochs=1).prepare()
+	# assert loader.remaining_batches == 3
+	#
+	# batch = loader.current_batch
+	# assert str(batch) == 'Batch[5]{SwissRollDataset[12]}({observation}, {target}, {mechanism})'
+	#
+	# assert batch.progress is loader
+	#
+	# assert loader.batch_count == 1
+	# assert loader.sample_count == 5
+	# assert loader.current_epoch == 1
+	#
+	# assert loader.remaining_samples == 7
+	# assert loader.remaining_batches == 2
 
 
-	progression = dataset.iterate()
+	loader = dataset.iterate(sample_limit=15).prepare()
+	assert tuple(batch.size for batch in loader) == (5, 5, 2, 5)
 
-	assert len(progression) == 10
+	loader = dataset.iterate(sample_limit=16, strict_batch_size=True).prepare()
+	assert tuple(batch.size for batch in loader) == (5, 5, 5, 5)
+
+	loader = dataset.iterate(sample_limit=16, strict_batch_size=True, strict_limit=True).prepare()
+	assert tuple(batch.size for batch in loader) == (5, 5, 5)
+
+	# loader = dataset.iterate(batch_limit=5, strict_batch_limit=True).prepare()
+
+
+
 
 
 	pass
@@ -86,19 +116,19 @@ def test_dataset_batch():
 	assert len(buffers) == len(batch)
 	assert buffers == ('mechanism', 'observation', 'target')
 
-	assert str(batch.observation_space) \
+	assert str(batch.space_of('observation')) \
 	       == 'Joint(Bound(min=-14.1, max=14.1), Bound(min=0, max=21), Bound(min=-14.1, max=14.1))'
-	assert str(batch.target_space) == 'Bound(min=3, max=9)'
-	assert str(batch.mechanism_space) == 'Joint(Bound(min=3, max=9), Bound(min=0, max=1))'
+	assert str(batch.space_of('target')) == 'Bound(min=3, max=9)'
+	assert str(batch.space_of('mechanism')) == 'Joint(Bound(min=3, max=9), Bound(min=0, max=1))'
 
 	assert tuple(batch.cached()) == ()
 
 	obs = batch['observation']
 	assert obs.shape == (10, 3)
-	assert obs.dtype == 'float32'
-	assert obs.sum().item() == 100.31050872802734
+	assert obs.dtype == torch.float32
+	assert obs.sum().item() == 92.62188720703125
 
-	assert tuple(sorted(batch.cached())) == ('mechanism', 'observation')
+	assert tuple(sorted(batch.cached())) == ('observation',)
 
 
 

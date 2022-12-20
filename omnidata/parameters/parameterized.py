@@ -9,6 +9,8 @@ from collections import OrderedDict
 from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSet, \
 	extract_function_signature, method_wrapper, agnostic, Modifiable
 
+from ..persistent import AbstractFingerprinted, Fingerprinted
+
 from .abstract import AbstractParameterized
 from .hyperparameters import _hyperparameter_property, HyperparameterBase
 
@@ -58,8 +60,7 @@ class ParameterizedBase(AbstractParameterized):
 
 	@classmethod
 	def _register_hparam(cls, name, param):
-		if not getattr(param, 'hidden', False):
-			cls._registered_hparams.add(name)
+		cls._registered_hparams.add(name)
 		assert name is not None, f'No name provided for {param}'
 		setattr(cls, name, param)
 		return param
@@ -88,32 +89,70 @@ class ParameterizedBase(AbstractParameterized):
 		return val
 
 	@agnostic
-	def hyperparameters(self):
-		for key, val in self.named_hyperparameters():
+	def hyperparameters(self, *, hidden=False):
+		for key, val in self.named_hyperparameters(hidden=hidden):
 			yield val
 
 	@agnostic
-	def named_hyperparameters(self):
+	def named_hyperparameters(self, *, hidden=False):
 		for key in self._registered_hparams:
 			val = inspect.getattr_static(self, key, None)
-			if val is not None:
+			if val is not None and (hidden or not getattr(val, 'hidden', False)):
 				yield key, val
+
+	# @classmethod
+	# def inherit_hparams(cls, *names):
+	# 	for name in names:
+	# 		if name not in cls._registered_hparams:
+	# 			cls.register_hparam(name, cls.get_hparam(name))
+	# 	for name in reversed(names):
+	# 		cls._registered_hparams.remove(name)
+	# 		cls._registered_hparams.insert(0, name)
+
+
+class InheritableParameterized(ParameterizedBase):
+	_num_inheritable_hparams = 0
+	def __init_subclass__(cls, skip_inheritable_hparams=False, **kwargs):
+		prev = cls._registered_hparams
+		super().__init_subclass__(**kwargs)
+		if not skip_inheritable_hparams and prev is not None:
+			inheritable = [key for key in prev if getattr(cls.get_hparam(key), 'inherit', False)]
+			cls._num_inheritable_hparams = 0
+			cls.inherit_hparams(*inheritable)
+			cls._num_inheritable_hparams = len(inheritable)
+
 
 	@classmethod
 	def inherit_hparams(cls, *names):
 		for name in reversed(names):
-			if name in cls._registered_hparams:
-				cls._registered_hparams.insert(0, name)
-			cls.register_hparam(name, cls.get_hparam(name))
+			if name not in cls._registered_hparams:
+				cls.register_hparam(name, cls.get_hparam(name))
+				cls._registered_hparams.remove(name)
+				cls._registered_hparams.insert(cls._num_inheritable_hparams, name)
 
 
-class ModifiableParameterized(ParameterizedBase, Modifiable):
+
+class ModifiableParameterized(InheritableParameterized, Modifiable):
 	@classmethod
 	def inject_mods(cls, *mods, name=None):
 		product = super().inject_mods(*mods, name=name)
 		product.inherit_hparams(*[key for src in [*reversed(mods), cls]
 		                          for key, param in src.named_hyperparameters()])
 		return product
+
+
+
+class FingerprintedParameterized(ParameterizedBase, Fingerprinted):
+	def _fingerprint_data(self):
+		data = super()._fingerprint_data()
+		hparams = {}
+		for k, val in self.named_hyperparameters():
+			try:
+				hparams[k] = getattr(self, k)
+			except val.MissingValueError:
+				pass
+		data.update(hparams)
+		return data
 
 
 
@@ -142,7 +181,7 @@ class with_hparams(method_wrapper):
 	@staticmethod
 	def process_args(args, kwargs, owner, instance, fn):
 		base = owner if instance is None else instance
-		return base.fill_hparams(fn, args, kwargs)
+		return (), base.fill_hparams(fn, args, kwargs)
 
 
 

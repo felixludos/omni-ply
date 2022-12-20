@@ -15,7 +15,7 @@ from .top import Dataset, Datastream
 class Sampledstream(Dataset, Datastream): # Datastream -> Dataset
 	_StreamTable = Dataset._MaterialsTable
 
-	n_samples = hparam(100, space=spaces.Naturals())
+	n_samples = hparam(required=True, space=spaces.Naturals(), inherit=True)
 
 	def __init__(self, n_samples, *args, stream_table=None, default_len=None, **kwargs):
 		if default_len is None:

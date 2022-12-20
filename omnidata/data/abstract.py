@@ -229,6 +229,9 @@ class AbstractProgression:
 	def __next__(self):
 		return self.next_batch()
 
+	def get_batch(self): # gets current if it exists, otherwise returns next one
+		raise NotImplementedError
+
 	@property
 	def current_batch(self):
 		raise NotImplementedError
@@ -254,7 +257,7 @@ class AbstractProgression:
 
 class AbstractBatchable(AbstractDataRouter):
 	def __iter__(self):
-		return self.iterate()
+		return self.iterate(64)
 
 	Progression = None
 	def iterate(self, batch_size, **kwargs):
@@ -265,6 +268,6 @@ class AbstractBatchable(AbstractDataRouter):
 
 	def batch(self, batch_size, **kwargs):
 		progress = self.iterate(batch_size=batch_size, **kwargs)
-		return progress.current_batch
+		return progress.get_batch()
 
 
