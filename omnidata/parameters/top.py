@@ -77,7 +77,7 @@ class Builder(ModifiableProduct, BasicBuilder, inheritable_auto_methods=['produc
 class Buildable(BuildableBase, Builder):
 	pass
 
-class MultiBuilder(Builder, MultiBuilderBase, wrap_existing=True):
+class MultiBuilder(Builder, MultiBuilderBase, BasicBuilder, wrap_existing=True):
 	@agnostic
 	def product_base(self, *args, **kwargs):
 		return super(ModifiableProduct, self).product(*args, **kwargs)

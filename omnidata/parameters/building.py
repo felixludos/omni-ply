@@ -2,7 +2,7 @@ from typing import Dict, Tuple, Optional, Any, Callable, Type
 
 import logging
 from omnibelt import unspecified_argument, Class_Registry, agnostic, Modifiable, inject_modifiers
-from omnibelt.tricks import auto_methods, dynamic_capture
+from omnibelt.tricks import auto_methods, dynamic_capture, extract_function_signature
 import omnifig as fig
 
 from .abstract import AbstractBuilder
@@ -68,6 +68,8 @@ class ConfigBuilder(BuilderBase, fig.Configurable):
 
 
 class ModifiableProduct(BuilderBase):
+	_product_mods = ()
+
 	@staticmethod
 	def _modify_product(product, *mods, name=None):
 		if issubclass(product, Modifiable):
@@ -79,18 +81,34 @@ class ModifiableProduct(BuilderBase):
 		raise NotImplementedError
 
 	@agnostic
-	def product(self, *args, mods=None, **kwargs) -> Type:
-		if mods is None:
-			mods = []
-		return self._modify_product(self.product_base(*args, **kwargs), *mods)
+	def modded(self, *mods):
+		self._product_mods = [*self._product_mods, *mods]
+		return self
+
+	@agnostic
+	def vanilla(self):
+		self._product_mods = ()
+		return self
+
+	@agnostic
+	def mods(self):
+		yield from self._product_mods
+
+	@agnostic
+	def product(self, *args, **kwargs) -> Type:
+		return self._modify_product(self.product_base(*args, **kwargs), *self._product_mods)
 
 
 # @fig.creator('build')
-class BuilderCreator(fig.ConfigNode.DefaultCreator):
+class BuildCreator(fig.ConfigNode.DefaultCreator): # creates using build() instead of __init__()
 	@staticmethod
 	def _modify_component(component, modifiers=()):
 		if issubclass(component, ModifiableProduct):
-			return component._modify_product(component, *modifiers)
+			cls = component.cls
+			mods = [mod.cls for mod in modifiers]
+			return cls.modded(*mods)
+		elif len(modifiers):
+			raise NotImplementedError(f'Builders must subclass ModifiableProduct to use modifiers')
 		return super()._modify_component(component, modifiers=modifiers)
 
 	def _create_component(self, config, args: Tuple, kwargs: Dict[str, Any], silent: bool = None) -> Any:
@@ -112,12 +130,16 @@ class BuilderCreator(fig.ConfigNode.DefaultCreator):
 		else:
 			raise NotImplementedError(f'Cannot create component of type {cls!r}')
 
+		if isinstance(cls, ModifiableProduct):
+			cls.vanilla()
+
 		config._trace = None
 		return obj
 
 
-class AutoBuilder(BuilderBase, auto_methods,
-                  inheritable_auto_methods=['__init__', 'build', 'product', 'validate']):
+
+class AutoBuilder(BuilderBase, auto_methods, wrap_mro_until=True,
+                  inheritable_auto_methods=['build', 'product', 'validate']): # TODO: buildable should include __init__
 
 	class MissingArgumentsError(TypeError):
 		def __init__(self, src, method, missing, *, msg=None):
@@ -134,7 +156,10 @@ class AutoBuilder(BuilderBase, auto_methods,
 	                      args: Tuple, kwargs: Dict[str, Any]):
 		# base = (cls if method.__name__ == '__init__' else src) if self is None else self
 		base = src if self is None else self
-		fixed_args, fixed_kwargs, missing = base.fill_hparams(method, args=args, kwargs=kwargs, include_missing=True)
+		fixed_args, fixed_kwargs, missing = extract_function_signature(method, args=args, kwargs=kwargs,
+		                                                               allow_positional=True, include_missing=True,
+		                                                               default_fn=base._find_missing_hparam(base))
+		# fixed_args, fixed_kwargs, missing = base.fill_hparams(method, args=args, kwargs=kwargs, include_missing=True)
 		if len(missing):
 			raise base.MissingArgumentsError(src, method, missing)
 		return method(*fixed_args, **fixed_kwargs)
@@ -151,7 +176,7 @@ class MultiBuilderBase(BuilderBase):
 	def __init_subclass__(cls, _register_ident=False, **kwargs):
 		super().__init_subclass__(**kwargs)
 		if _register_ident:
-			cls._register_hparam('ident', cls._IdentParameter(required=True))
+			cls._register_hparam('ident', cls._IdentParameter(name='ident', required=True))
 
 	class NoProductFound(KeyError):
 		pass
@@ -186,6 +211,11 @@ class RegistryBuilderBase(MultiBuilderBase):
 	Product_Registry = Class_Registry
 	_product_registry: Product_Registry = None
 	_registration_node = None
+
+	def __init__(self, ident=None, **kwargs):
+		if ident is None:
+			ident = self.ident
+		super().__init__(ident=ident, **kwargs)
 
 
 	class _IdentParameter(MultiBuilderBase.Hyperparameter):
@@ -256,7 +286,7 @@ class RegistryBuilderBase(MultiBuilderBase):
 		return {ident: entry.cls for ident, entry in self._registration_node._product_registry.items()}
 
 	@agnostic
-	def product(self, ident, **kwargs):
+	def product(self, ident, **kwargs): # <------------------
 		entry = self.find_product_entry(ident)
 		return entry.cls
 

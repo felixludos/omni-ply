@@ -18,7 +18,8 @@ def _init_default_datastream():
 		datastream = toy.Helix(batch_size=5, seed=16283393149723337453)
 	return datastream
 
-def test_dataset_init():
+
+def test_datastream_init():
 	datastream = _init_default_datastream()
 
 	assert str(datastream) == 'Helix(observation, target, mechanism)'
@@ -37,7 +38,7 @@ def test_dataset_init():
 	assert datastream.mechanism_space.shape == (2,)
 
 
-def test_dataset_fingerprint():
+def test_datastream_fingerprint():
 	datastream = _init_default_datastream()
 
 	assert datastream.fingerprint.code() == '29651650ed8ece4495eac57522f93c07'
@@ -54,7 +55,7 @@ def test_dataset_fingerprint():
 	                   'w': 1.0})
 
 
-def test_dataset_prepare():
+def test_datastream_prepare():
 	datastream = _init_default_datastream()
 
 	assert datastream.is_ready == False
@@ -64,7 +65,7 @@ def test_dataset_prepare():
 	assert datastream.is_ready == True
 
 
-def test_dataset_iteration():
+def test_datastream_iteration():
 	datastream = toy.Helix(batch_size=5).prepare()
 
 	loader = datastream.iterate(batch_limit=3).prepare()
@@ -108,8 +109,7 @@ def test_dataset_iteration():
 	assert loader.sample_count == 16
 
 
-
-def test_dataset_batch():
+def test_datastream_batch():
 	datastream = _init_default_datastream()
 
 	batch = datastream.batch(10)
