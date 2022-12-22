@@ -30,7 +30,6 @@ class AbstractData(Prepared, AbstractFingerprinted): # TODO: make fingerprinted
 		return str(self)
 
 
-
 class AbstractCountableData(AbstractData):
 	def _title(self):
 		return f'{super()._title()}[{self.size}]'
@@ -40,25 +39,16 @@ class AbstractCountableData(AbstractData):
 		raise NotImplementedError
 
 
-	# def _fingerprint_data(self):
-	# 	try:
-	# 		N = len(self)
-	# 	except self.UnknownCount:
-	# 		N = None
-	# 	return {'len': N, **super()._fingerprint_data()}
-
-
-
 class AbstractDataSource(AbstractData):
 	def __getitem__(self, item):
 		return self.get_from(self, item)
 
 	@classmethod
 	def _parse_selection(cls, source):
-		raise NotImplementedError
+		return source
 
-	def get(self, source, key=None):
-		return self.get_from(self._parse_selection(source), key)
+	def get(self, source):
+		raise NotImplementedError
 
 	def get_from(self, source, key):
 		return self._get_from(source, key)
@@ -72,22 +62,6 @@ class AbstractDataSource(AbstractData):
 
 	def validate_selection(self, selection):
 		return selection
-
-
-# class SimpleSource(AbstractDataSource):
-# 	def _get_from(self, source: 'AbstractSelector', key):
-# 		source[key] = self._get(key)
-# 		raise NotImplementedError
-#
-# 	def _get(self, key, sel=None):
-# 		raise NotImplementedError
-
-
-
-# class AbstractDataCollector(AbstractData): # caches results
-# 	def get(self, key):
-# 		return self.get_from(self, key)
-
 
 
 class AbstractDataRouter(AbstractDataSource):
@@ -113,6 +87,14 @@ class AbstractDataRouter(AbstractDataSource):
 	class MissingMaterial(KeyError):
 		pass
 
+
+	def get(self, key, default=unspecified_argument):
+		try:
+			return self.get_from(self._parse_selection(self), key)
+		except self.MissingMaterial:
+			if default is unspecified_argument:
+				raise
+			return default
 
 	def has(self, key):
 		raise NotImplementedError
@@ -144,7 +126,7 @@ class AbstractDataRouter(AbstractDataSource):
 
 
 	def __str__(self):
-		return f'{super().__str__()}({", ".join(self.available())})'
+		return f'{super().__str__()}({", ".join(map(str,self.available()))})'
 
 
 	View = None
@@ -176,6 +158,9 @@ class AbstractView(AbstractDataSource):
 
 
 class AbstractRouterView(AbstractView, AbstractDataRouter):
+	def named_materials(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
+		yield from self.source.named_materials()
+
 	def available(self) -> Iterator[str]:
 		return self.source.available()
 
@@ -194,18 +179,33 @@ class AbstractRouterView(AbstractView, AbstractDataRouter):
 		return self.View(self, **kwargs)
 
 
+class AbstractCountableRouterView(AbstractRouterView, AbstractCountableData):
+	pass
+
 
 class AbstractSelector:
-	# @property
-	# def selection(self):
-	# 	raise NotImplementedError
-
 	def compose(self, other: 'AbstractSelector') -> 'AbstractSelector':
 		raise NotImplementedError
 
 
+# class AbstractSelectorView(AbstractSelector, AbstractView):
+# 	pass
 
-class AbstractBatch(AbstractRouterView, AbstractCountableData, AbstractSelector):
+
+class AbstractIndexedData(AbstractCountableData):
+	def __init__(self, *, indices=None, **kwargs):
+		super().__init__(**kwargs)
+
+	@property
+	def size(self):
+		return len(self.indices)
+
+	@property
+	def indices(self):
+		raise NotImplementedError
+
+
+class AbstractBatch(AbstractSelector, AbstractRouterView):
 	def __init__(self, progress, **kwargs):
 		super().__init__(**kwargs)
 
@@ -256,19 +256,19 @@ class AbstractProgression:
 
 
 
-class AbstractBatchable(AbstractDataRouter):
+class AbstractBatchable(AbstractDataSource):
 	def __iter__(self):
-		return self.iterate(64)
+		return self.iterate()
 
-	Progression = None
-	def iterate(self, batch_size, **kwargs):
-		self.prepare()
-		# if not self.is_ready:
-		# 	prt.warning(f'{self} is not ready (call prepare() first)')
-		return self.Progression(source=self, batch_size=batch_size, **kwargs)
+	def __next__(self):
+		return self.batch()
 
-	def batch(self, batch_size, **kwargs):
+	def iterate(self, batch_size=None, **kwargs):
+		raise NotImplementedError
+
+	def batch(self, batch_size=None, **kwargs):
 		progress = self.iterate(batch_size=batch_size, **kwargs)
 		return progress.get_batch()
+
 
 

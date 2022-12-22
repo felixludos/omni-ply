@@ -14,8 +14,8 @@ from ..top import Datastream
 class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 	class Batch(Synthetic, Datastream.Batch):
 		pass
-	class View(Synthetic, Datastream.View):
-		pass
+	# class View(Synthetic, Datastream.View):
+	# 	pass
 
 	def _prepare(self, **kwargs):
 		super()._prepare(**kwargs)

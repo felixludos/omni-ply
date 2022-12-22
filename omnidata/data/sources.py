@@ -12,7 +12,7 @@ from ..features import Seeded
 from ..parameters import Buildable
 from .abstract import AbstractDataRouter, AbstractDataSource, \
 	AbstractSelector, AbstractBatchable, AbstractCountableData
-from .views import IndexView, BatchBase
+from .views import SizeSelector, IndexSelector
 
 prt = get_printer(__file__)
 
@@ -26,41 +26,15 @@ class Shufflable(Seeded):
 	def _is_big_number(N):
 		return N > 10000000
 
-	def _shuffle_indices(self, N, rng=None):
-		if rng is None:
-			rng = self.rng
+	def _shuffle_indices(self, N):
 		# TODO: include a warning if cls._is_big_number(N)
-		return torch.randint(N, size=(N,), generator=rng) \
-			if self._is_big_number(N) else torch.randperm(N, generator=rng)
+		return torch.randint(N, size=(N,), generator=self.rng) \
+			if self._is_big_number(N) else torch.randperm(N, generator=self.rng)
 
 
 
 class BatchableSource(AbstractBatchable):
-	Batch = BatchBase
-	@classmethod
-	def _parse_selection(cls, source):
-		if isinstance(source, AbstractSelector):
-			return source
-		if source is None:
-			return cls.Batch()
-		if isinstance(source, int):
-			return cls.Batch(size=source)
-		if isinstance(source, Iterable):
-			return cls.Batch(indices=source)
-		raise NotImplementedError(source)
-
-
-
-# class CountableSource(AbstractCountableData, AbstractDataSource):
-# 	class _SizeError(ValueError):
-# 		def __init__(self, msg=None):
-# 			if msg is None:
-# 				msg = 'Size of data source is not known'
-# 			super().__init__(msg)
-#
-# 	@property
-# 	def size(self):
-# 		raise self._SizeError()
+	Batch = None
 
 
 
@@ -117,7 +91,7 @@ class SampleSource(AbstractDataSource, Sampler):
 
 
 
-class Subsetable(AbstractCountableData, AbstractDataSource, Shufflable):
+class Subsetable(AbstractDataSource, AbstractCountableData, Shufflable):
 	@staticmethod
 	def _split_indices(indices, cut):
 		assert cut != 0
@@ -133,21 +107,20 @@ class Subsetable(AbstractCountableData, AbstractDataSource, Shufflable):
 		return part1, part2
 	
 	Subset = None # indexed view
-	def subset(self, cut=None, *, indices=None, shuffle=False, hard_copy=True, rng=None):
-		if not hard_copy:
-			raise NotImplementedError # TODO: hard copy
+	def subset(self, cut=None, *, indices=None, shuffle=False):
+		# if not hard_copy:
+		# 	raise NotImplementedError # TODO: hard copy
 		if indices is None:
 			assert cut is not None, 'Either cut or indices must be specified'
-			indices, _ = self._split_indices(indices=self._shuffle_indices(self.size, rng=rng) \
+			indices, _ = self._split_indices(indices=self._shuffle_indices(self.size) \
 				if shuffle else torch.arange(self.size), cut=cut)
-		return self.Subset(indices=indices)
+		indices = self.validate_selection(indices)
+		return self.Subset(source=self, indices=indices)
 	
 
 
 class Splitable(Subsetable):
-	def split(self, splits, shuffle=False, rng=None):
-		if rng is None:
-			rng = self.rng
+	def split(self, splits, shuffle=False):
 		auto_name = isinstance(splits, (list, tuple, set))
 		if auto_name:
 			named_cuts = [(f'part{i}', r) for i, r in enumerate(splits)]
@@ -185,7 +158,7 @@ class Splitable(Subsetable):
 		if remaining > 0:
 			nums[-1] += remaining
 
-		indices = self._shuffle_indices(self.size, rng=rng) if shuffle else torch.arange(self.size)
+		indices = self._shuffle_indices(self.size) if shuffle else torch.arange(self.size)
 
 		plan = dict(zip(names, nums))
 		parts = {}
@@ -220,6 +193,8 @@ class TensorSource(AbstractCountableData, AbstractDataSource):
 		self._data = data
 
 	def _get_from(self, source, key=None):
+		if source is None or not isinstance(source, IndexSelector):
+			return self._data[:source.size] if isinstance(source, SizeSelector) else self._data
 		return self.data[source.indices]
 
 

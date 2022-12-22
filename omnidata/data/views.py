@@ -4,12 +4,12 @@ import torch
 
 from ..features import Seeded, Prepared
 
-from .abstract import AbstractView, AbstractRouterView, AbstractBatch, \
-	AbstractProgression, AbstractBatchable, AbstractSelector
+from .abstract import AbstractView, AbstractRouterView, AbstractBatch, AbstractIndexedData, \
+	AbstractProgression, AbstractBatchable, AbstractSelector, AbstractCountableData, AbstractCountableRouterView
 
 
 
-class RouterViewBase(AbstractRouterView):
+class ViewBase(AbstractView):
 	def __init__(self, source=None, **kwargs):
 		super().__init__(source=source, **kwargs)
 		self._source = source
@@ -20,38 +20,57 @@ class RouterViewBase(AbstractRouterView):
 
 
 
-class IndexSelector(AbstractSelector):
-	def __init__(self, *, indices=None, **kwargs):
+class RouterViewBase(ViewBase, AbstractRouterView):
+	pass
+
+
+
+class SizeSelector(AbstractSelector, AbstractCountableData):
+	def __init__(self, size, **kwargs):
 		super().__init__(**kwargs)
+		self._size = size
+
+	@property
+	def size(self):
+		return self._size
+
+	def compose(self, other: 'AbstractSelector') -> 'AbstractSelector':
+		if isinstance(other, SizeSelector):
+			self._size = min(self._size, other._size)
+		return self
+
+
+
+class IndexSelector(SizeSelector, AbstractIndexedData):
+	def __init__(self, indices, *, size=None, **kwargs):
+		super().__init__(indices=indices, size=size, **kwargs)
 		self._indices = indices
-		
+
 	@property
 	def indices(self):
 		return self._indices
-	
+
+	@property
+	def size(self):
+		if self._size is None:
+			return len(self.indices)
+		return self._size
+
 	def compose(self, other: 'AbstractSelector') -> 'AbstractSelector':
-		return self.indices[other.indices]
+		# TODO: check case where other is just the indices directly
+		if isinstance(other, IndexSelector) and other.indices is not None:
+			self._indices = other.indices[self.indices]
+		return self
 
 
 
-class IndexView(RouterViewBase, IndexSelector): # -> Subset
+class IndexView(IndexSelector, AbstractCountableRouterView, AbstractIndexedData): # -> Subset
 	def validate_selection(self, selection: 'AbstractSelector'):
-		base = self.indices
-		if base is None:
-			return selection
-		return super().validate_selection(self.compose(selection))
+		return super().validate_selection(selection.compose(self))
 
 
 
-class BatchableView(RouterViewBase, AbstractBatchable):
-	def iterate(self, **kwargs):
-		if self.Progression is None:
-			return self.source.Progression(self, **kwargs)
-		return self.Progression(self, **kwargs)
-
-
-
-class CachedView(RouterViewBase):
+class CachedView(AbstractRouterView):
 	def __init__(self, source=None, cache_table=None, **kwargs):
 		if cache_table is None:
 			cache_table = self._CacheTable()
@@ -81,46 +100,23 @@ class CachedView(RouterViewBase):
 
 
 
-class BatchBase(AbstractBatch, RouterViewBase):
-	def __init__(self, progress=None, *, size=None, **kwargs):
-		super().__init__(progress=progress, **kwargs)
-		self._progress = progress
-		self._size = size
 
-	@property
-	def source(self):
-		if self._source is None:
-			return self.progress.source
-		return self._source
+# class MissingIndicesError(ValueError): pass
 
-	@property
-	def progress(self):
-		return self._progress
+# @property
+# def indices(self):
+# 	if self._indices is None:
+# 		raise self.MissingIndicesError
+# 	return self._indices
+#
+# @property
+# def size(self):
+# 	if self._size is None:
+# 		return len(self.indices)
+# 	return self._size
 
-	@property
-	def size(self):
-		return self._size
-	
-
-
-class IndexBatch(BatchBase, IndexView):
-	class MissingIndicesError(ValueError): pass
-	
-	@property
-	def indices(self):
-		if self._indices is None:
-			raise self.MissingIndicesError
-		return self._indices
-
-	@property
-	def size(self):
-		if self._size is None:
-			return len(self.indices)
-		return self._size
-	
-	
-	def compose(self, other: 'IndexBatch') -> 'IndexBatch':
-		return self.indices[other.indices]
+# def compose(self, other: 'IndexBatch') -> 'IndexBatch':
+# 	return self.indices[other.indices]
 
 
 

@@ -12,22 +12,22 @@ from .sources import SpacedSource, SampleSource
 prt = get_printer(__file__)
 
 
-class ExpectingDataRouter(AbstractDataRouter):
-	def __init_subclass__(cls, materials=None, required_materials=None, **kwargs):
-		super().__init_subclass__(**kwargs)
-		if required_materials is not None:
-			raise NotImplementedError
-		if isinstance(materials, str):
-			materials = [materials]
-		base = getattr(cls, '_expecting_materials', [])
-		cls._expecting_materials = base + (materials or [])
-
-
-	def _prepare(self, source=None, **kwargs):
-		super()._prepare(source=source, **kwargs)
-		for material in self._expecting_materials:
-			if not self.has(material):
-				prt.warning(f'Expected material {material!r} not found in {self}')
+# class ExpectingDataRouter(AbstractDataRouter): # TODO: future feature
+# 	def __init_subclass__(cls, materials=None, required_materials=None, **kwargs):
+# 		super().__init_subclass__(**kwargs)
+# 		if required_materials is not None:
+# 			raise NotImplementedError
+# 		if isinstance(materials, str):
+# 			materials = [materials]
+# 		base = getattr(cls, '_expecting_materials', [])
+# 		cls._expecting_materials = base + (materials or [])
+#
+#
+# 	def _prepare(self, source=None, **kwargs):
+# 		super()._prepare(source=source, **kwargs)
+# 		for material in self._expecting_materials:
+# 			if not self.has(material):
+# 				prt.warning(f'Expected material {material!r} not found in {self}')
 
 
 
@@ -64,12 +64,11 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 			yield name, self.get_material(name)
 	
 	def get_material(self, name, default=unspecified_argument):
-		if name in self._registered_materials:
-			material = self._registered_materials.get(name, unspecified_argument)
-			if material is not unspecified_argument:
-				return material
-			if isinstance(material, str):
-				return self.get_material(material, default=default)
+		material = self._registered_materials.get(name, unspecified_argument)
+		if isinstance(material, str):
+			return self.get_material(material, default=default) # TODO: check for circular references
+		if material is not unspecified_argument:
+			return material
 		if default is not unspecified_argument:
 			return default
 		raise self.MissingMaterial(name)
@@ -106,7 +105,7 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 		self.register_material(new, material)
 
 
-class CountableDataRouter(AbstractCountableData, AbstractDataRouter):
+class CountableDataRouter(AbstractDataRouter, AbstractDataSource, AbstractCountableData):
 	def __init__(self, default_len=None, **kwargs):
 		super().__init__(**kwargs)
 		self._default_len = default_len

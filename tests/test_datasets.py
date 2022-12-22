@@ -118,6 +118,8 @@ def test_dataset_iteration():
 def test_dataset_batch():
 	dataset = _init_default_dataset()
 
+	assert dataset['observation'].shape == (100, 3) and dataset['observation'].dtype == torch.float32
+
 	batch = dataset.batch(10)
 
 	assert str(batch) == 'Batch[10]<SwissRollDataset[100]>({observation}, {target}, {mechanism})'
@@ -140,9 +142,51 @@ def test_dataset_batch():
 
 	assert tuple(sorted(batch.cached())) == ('observation',)
 
+	obs2 = batch.get('observation')
+	assert obs.sub(obs2).abs().sum().item() == 0
+
+	obs3 = batch.get('obs', None)
+	assert obs3 is None
+
+
+def test_iterate_batch():
+	dataset = _init_default_dataset()
+
+	batch = dataset.batch(10)
+
+	# TODO: check batch.new()
+
+	loader = batch.iterate(epochs=1, batch_size=5).prepare()
+
+	b1 = loader.get_batch()
+
+	b2, = list(loader)
+
+	assert b1.size == 5
+
+	assert str(b1) == 'Batch[5]<Batch[10]<SwissRollDataset[100]>>({observation}, {target}, {mechanism})'
+
+	# TODO: more testing with b.o.b.
+
+
+def test_simple_dataset():
+
+	X, Y = torch.randn(100, 3), torch.randn(100, 1)
+	dataset = od.SimpleDataset(X, Y)
+
+	assert str(dataset) == 'SimpleDataset[100](0, 1)'
+
+	assert dataset.size == 100
+
+	assert dataset[0].sub(X).sum().item() == 0
+
+	buffers = tuple(sorted(dataset.available()))
+	assert len(buffers) == len(dataset)
+	assert buffers == (0, 1)
 
 
 
+	pass
 
 
 

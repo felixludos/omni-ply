@@ -31,7 +31,7 @@ class Sampledstream(Dataset, Datastream): # Datastream -> Dataset
 
 		# replacing stream with fixed samples
 		n_samples = self.n_samples
-		batch = self.Batch(source=self, size=n_samples) # mostly for caching
+		batch = self.Batch(source=self, indices=None, size=n_samples) # mostly for caching
 		for key, material in self.named_materials():
 			self._stream_materials[key] = material
 			self.register_material(key, batch[key], space=material.space)
@@ -42,16 +42,16 @@ class Sampledstream(Dataset, Datastream): # Datastream -> Dataset
 class ObservationDataset(Observation, Dataset):
 	class Batch(Observation, Dataset.Batch):
 		pass
-	class View(Observation, Dataset.View):
-		pass
+	# class View(Observation, Dataset.View):
+	# 	pass
 
 
 
 class SupervisedDataset(Supervised, ObservationDataset):
 	class Batch(Supervised, ObservationDataset.Batch):
 		pass
-	class View(Supervised, ObservationDataset.View):
-		pass
+	# class View(Supervised, ObservationDataset.View):
+	# 	pass
 
 
 
@@ -63,8 +63,8 @@ class LabeledDataset(Labeled, SupervisedDataset):
 
 	class Batch(Labeled, SupervisedDataset.Batch):
 		pass
-	class View(Labeled, SupervisedDataset.View):
-		pass
+	# class View(Labeled, SupervisedDataset.View):
+	# 	pass
 
 
 	# def generate_observation_from_label(self, label, gen=None):
@@ -92,10 +92,10 @@ class SyntheticDataset(Synthetic, LabeledDataset):
 		@property
 		def _distinct_mechanisms(self):
 			return self.source._distince_mechanisms
-	class View(Synthetic, LabeledDataset.View):
-		@property
-		def _distinct_mechanisms(self):
-			return self.source._distince_mechanisms
+	# class View(Synthetic, LabeledDataset.View):
+	# 	@property
+	# 	def _distinct_mechanisms(self):
+	# 		return self.source._distince_mechanisms
 
 
 	# def generate_mechanism(self, *shape):

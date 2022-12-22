@@ -5,7 +5,8 @@
 # 	SupervisedDataset, LabeledDataset, SyntheticDataset, \
 # 	RootedDataset, EncodableDataset, DownloadableDataset, ImageDataset
 
-from .top import Datastream, Buffer, Dataset
+from .top import Datastream, Dataset, Buffer, SimpleDataset
+from .materials import material
 from . import toy
 
 
