@@ -38,24 +38,25 @@ class Activation(RegistryBuilder, default_ident='relu', products={
 
 
 
-# def test_reg_builder():
-# 	nonlin = Activation.build('relu')
-# 	assert isinstance(nonlin, nn.ReLU)
-# 	assert nonlin.inplace is True
-#
-# 	nonlin = Activation.build('relu', inplace=False)
-# 	assert nonlin.inplace is False
-#
-# 	nonlin = Activation.build('sigmoid')
-# 	assert isinstance(nonlin, nn.Sigmoid)
-#
-# 	nonlin = Activation.validate('elu')
-# 	assert isinstance(nonlin, nn.ELU)
-#
-# 	nonlin = Activation.product('tanh')
-# 	assert nonlin is nn.Tanh
-#
-# 	assert len(Activation.available_products()) == 8
+def test_reg_builder():
+	nonlin = Activation.build('relu')
+	assert isinstance(nonlin, nn.ReLU)
+	assert nonlin.inplace is True
+
+	nonlin = Activation.build('relu', inplace=False)
+	assert nonlin.inplace is False
+
+	nonlin = Activation.build('sigmoid')
+	assert isinstance(nonlin, nn.Sigmoid)
+
+	nonlin = Activation.validate('elu')
+	assert isinstance(nonlin, nn.ELU)
+
+	nonlin = Activation.product('tanh')
+	assert nonlin is nn.Tanh
+
+	assert len(Activation.available_products()) == 8
+
 
 class Negative(nn.Module):
 	def forward(self, x):
@@ -103,7 +104,7 @@ def test_mod_product():
 
 
 
-class MyModels(ClassBuilder, nn.Module):
+class MyModels(ClassBuilder, nn.Module, default_ident='b'):
 	p1 = hparam(required=True)
 	p2 = hparam(10)
 	p3 = hparam('hello', inherit=True)
@@ -113,9 +114,11 @@ class MyModels(ClassBuilder, nn.Module):
 class ModelA(MyModels, ident='a'):
 	p2 = hparam(20)
 
+
 @inherit_hparams('p1', 'p2')
 class ModelB(MyModels, ident='b'):
 	pass
+
 
 @inherit_hparams('p1', 'p2')
 class ModelC(MyModels, ident='c'):
@@ -128,9 +131,35 @@ class ModelD(MyModels, ident='d'):
 
 def test_param_product():
 
+	assert len(MyModels.available_products()) == 4
+
+	hparams = dict(MyModels.named_hyperparameters())
+	assert len(hparams) == 4
+	assert tuple(sorted(hparams.keys())) == ('ident', 'p1', 'p2', 'p3') # p4 is hidden
+	assert len(list(MyModels.named_hyperparameters(hidden=True))) == 5
+
+	assert hparams['p1'] is MyModels.get_hparam('p1')
+
+	assert MyModels.p2 == 10
+	assert ModelA.p2 == 20
+	assert MyModels.product('a').p2 == 20
+	builder = MyModels()
+	assert builder.p2 == 10
+	assert ModelA().p2 == 20
+	assert builder.build('a').p2 == 20
+	assert ModelA.build().p2 == 20
+	assert ModelA().build('a').p2 == 20
+
+	assert isinstance(ModelA(), ModelA)
+	assert isinstance(ModelA.build(), ModelA)
+	assert isinstance(builder.build('a'), ModelA)
+
+	assert builder.build('b').p2 == 10
+	assert builder.build('d').p2 == 10
+
+	a = MyModels.build('a', p2=100)
 
 
-	pass
 
 
 

@@ -7,7 +7,7 @@ import omnifig as fig
 
 from .abstract import AbstractBuilder
 from .hyperparameters import HyperparameterBase
-from .parameterized import ParameterizedBase
+from .parameterized import InheritableParameterized
 from ..structure import spaces
 
 prt = logging.Logger('Building')
@@ -17,7 +17,7 @@ ch.setLevel(0)
 prt.addHandler(ch)
 
 
-class BuilderBase(AbstractBuilder, ParameterizedBase):
+class BuilderBase(AbstractBuilder, InheritableParameterized):
 	pass
 
 
@@ -155,7 +155,7 @@ class AutoBuilder(BuilderBase, auto_methods, wrap_mro_until=True,
 	def _auto_method_call(cls, self: Optional[auto_methods], src: Type, method: Callable,
 	                      args: Tuple, kwargs: Dict[str, Any]):
 		# base = (cls if method.__name__ == '__init__' else src) if self is None else self
-		base = src if self is None else self
+		base = cls if self is None else self
 		fixed_args, fixed_kwargs, missing = extract_function_signature(method, args=args, kwargs=kwargs,
 		                                                               allow_positional=True, include_missing=True,
 		                                                               default_fn=base._find_missing_hparam(base))
@@ -176,7 +176,7 @@ class MultiBuilderBase(BuilderBase):
 	def __init_subclass__(cls, _register_ident=False, **kwargs):
 		super().__init_subclass__(**kwargs)
 		if _register_ident:
-			cls._register_hparam('ident', cls._IdentParameter(name='ident', required=True))
+			cls._register_hparam('ident', cls._IdentParameter(name='ident', required=True), prepend=True)
 
 	class NoProductFound(KeyError):
 		pass
@@ -213,10 +213,12 @@ class RegistryBuilderBase(MultiBuilderBase):
 	_registration_node = None
 
 	def __init__(self, ident=None, **kwargs):
-		if ident is None:
-			ident = self.ident
-		super().__init__(ident=ident, **kwargs)
-
+		if self.has_hparam('ident'):
+			if ident is None:
+				ident = self.ident
+			super().__init__(ident=ident, **kwargs)
+		else:
+			super().__init__(**kwargs)
 
 	class _IdentParameter(MultiBuilderBase.Hyperparameter):
 		IdentSpace = spaces.Selection
@@ -292,7 +294,7 @@ class RegistryBuilderBase(MultiBuilderBase):
 
 
 
-class ClassBuilderBase(RegistryBuilderBase):
+class ClassBuilderBase(RegistryBuilderBase, create_registry=False):
 	'''Automatically register subclasses and add them to the product_registry.'''
 
 	_class_builder_delimiter = '/'

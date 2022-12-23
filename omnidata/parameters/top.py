@@ -82,10 +82,10 @@ class MultiBuilder(Builder, MultiBuilderBase, BasicBuilder, wrap_existing=True):
 	def product_base(self, *args, **kwargs):
 		return super(ModifiableProduct, self).product(*args, **kwargs)
 
-class RegistryBuilder(MultiBuilder, RegistryBuilderBase):
+class RegistryBuilder(MultiBuilder, RegistryBuilderBase, create_registry=False):
 	pass
 
-class ClassBuilder(RegistryBuilder, ClassBuilderBase):
+class ClassBuilder(RegistryBuilder, ClassBuilderBase, create_registry=False):
 	pass
 
 

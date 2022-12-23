@@ -60,6 +60,7 @@ class ParameterizedBase(AbstractParameterized):
 
 	@classmethod
 	def _register_hparam(cls, name, param):
+		# if name not in cls._registered_hparams:
 		cls._registered_hparams.add(name)
 		assert name is not None, f'No name provided for {param}'
 		setattr(cls, name, param)
@@ -87,6 +88,10 @@ class ParameterizedBase(AbstractParameterized):
 				raise AttributeError(f'{self.__class__.__name__} has no attribute {key}')
 			return default
 		return val
+
+	@agnostic
+	def has_hparam(self, key):
+		return key in self._registered_hparams
 
 	@agnostic
 	def hyperparameters(self, *, hidden=False):
@@ -123,10 +128,18 @@ class InheritableParameterized(ParameterizedBase):
 
 
 	@classmethod
+	def _register_hparam(cls, name, param, *, prepend=False):
+		param = super()._register_hparam(name, param)
+		if prepend:
+			cls._registered_hparams.remove(name)
+			cls._registered_hparams.insert(cls._num_inheritable_hparams, name)
+		return param
+
+	@classmethod
 	def inherit_hparams(cls, *names):
 		for name in reversed(names):
 			if name not in cls._registered_hparams:
-				cls.register_hparam(name, cls.get_hparam(name))
+				cls._register_hparam(name, cls.get_hparam(name), prepend=True)
 				cls._registered_hparams.remove(name)
 				cls._registered_hparams.insert(cls._num_inheritable_hparams, name)
 

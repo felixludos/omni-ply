@@ -168,6 +168,39 @@ def test_iterate_batch():
 
 	# TODO: more testing with b.o.b.
 
+	t1 = b1['target'].sum()
+
+	assert str(batch) == 'Batch[10]<SwissRollDataset[100]>({observation}, target, {mechanism})'
+	assert str(b1) == 'Batch[5]<Batch[10]<SwissRollDataset[100]>>({observation}, target, {mechanism})'
+
+	t2 = b2['target'].sum()
+
+	assert batch['target'].sum().isclose(t1 + t2)
+
+
+def test_new_batches():
+	dataset = _init_default_dataset()
+
+	batch = dataset.batch(20)
+
+	itr1 = [b for b in batch.iterate(batch_size=5)]
+
+	itr2 = []
+	i = 0
+	for b in batch.iterate(batch_size=5):
+		itr2.append(b)
+		itr2.append(b.new())
+		i += 1
+	assert i == 2
+
+	assert len(itr1) == len(itr2) == 4
+
+	assert itr1[0]['target'][0].sum().isclose(itr2[0]['target'][0].sum())
+	assert itr1[1]['target'][0].sum().isclose(itr2[1]['target'][0].sum())
+	assert itr1[2]['target'][0].sum().isclose(itr2[2]['target'][0].sum())
+	assert itr1[3]['target'][0].sum().isclose(itr2[3]['target'][0].sum())
+
+
 
 def test_simple_dataset():
 
@@ -175,18 +208,23 @@ def test_simple_dataset():
 	dataset = od.SimpleDataset(X, Y)
 
 	assert str(dataset) == 'SimpleDataset[100](0, 1)'
-
 	assert dataset.size == 100
-
 	assert dataset[0].sub(X).sum().item() == 0
 
 	buffers = tuple(sorted(dataset.available()))
 	assert len(buffers) == len(dataset)
 	assert buffers == (0, 1)
 
+	ds2 = od.SimpleDataset(X=X, Y=Y)
 
+	assert str(ds2) == 'SimpleDataset[100](X, Y)'
+	assert ds2.size == 100
+	assert ds2['X'].sub(X).sum().item() == 0
 
-	pass
+	buffers = tuple(sorted(ds2.available()))
+	assert len(buffers) == len(ds2)
+	assert buffers == ('X', 'Y')
+
 
 
 

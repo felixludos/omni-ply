@@ -70,14 +70,19 @@ class Epochable(Batchable, AbstractCountableData):
 
 	epoch_limit = hparam(inherit=True)
 	shuffle_batches = hparam(False, inherit=True, hidden=True)
+	infinite_iteration = hparam(False, inherit=True, hidden=True)
 
 	@with_hparams
-	def iterate(self, batch_size, epochs=None, epoch_limit=None, shuffle=None, shuffle_batches=False, **kwargs):
+	def iterate(self, batch_size, epochs=None, epoch_limit=None, shuffle=None, shuffle_batches=False,
+	            infinite_iteration=False, infinite=None, **kwargs):
 		if epoch_limit is None:
 			epoch_limit = epochs
 		if shuffle is None:
 			shuffle = shuffle_batches
-		return super().iterate(batch_size=batch_size, epochs=epoch_limit, shuffle=shuffle, **kwargs)
+		if infinite is None:
+			infinite = infinite_iteration
+		return super().iterate(batch_size=batch_size, epochs=epoch_limit, shuffle=shuffle,
+		                       infinite=infinite, **kwargs)
 
 
 

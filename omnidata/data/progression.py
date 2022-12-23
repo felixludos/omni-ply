@@ -287,6 +287,13 @@ class EpochBudgetProgression(InfiniteProgression, ShuffleProgression, BudgetProg
 
 	def _prepare(self, *args, **kwargs):
 		super()._prepare(*args, **kwargs)
+
+		if self._epochs is None \
+				and self._sample_limit is None \
+				and self._batch_limit is None \
+				and not self._infinite:
+			self._epochs = 1
+
 		self._total_samples, self._total_batches, self._full_epochs = self.compute_epoch_budget(
 			dataset_size=self.epoch_size, samples_per_batch=self.batch_size,
 			strict_batch_size=self._strict_batch_size,

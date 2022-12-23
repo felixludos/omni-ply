@@ -218,7 +218,7 @@ class AbstractBatch(AbstractSelector, AbstractRouterView):
 		return self.progress.source
 
 	def new(self):
-		return self.progress.new_batch()
+		return self.progress.next_batch()
 	
 	
 

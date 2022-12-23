@@ -91,12 +91,12 @@ class CachedView(AbstractRouterView):
 		       f'{", ".join((key if key in cached else "{" + key + "}") for key in self.available())})'
 
 	def _get_from(self, source, key=None):
-		if key in self._cache_table:
-			return self._cache_table[key]
-		out = super()._get_from(source, key)
-		if out is not None:
+		if key not in self._cache_table:
+			out = super()._get_from(self, key)
 			self._cache_table[key] = out
-		return out
+		if source is None or source is self:
+			return self._cache_table[key]
+		return self._cache_table[key][source.indices]
 
 
 

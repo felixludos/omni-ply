@@ -1,4 +1,3 @@
-
 # from ..persistent import Fingerprinted
 from ..parameters import hparam, with_hparams, Parameterized
 
@@ -23,8 +22,6 @@ class _FeaturedDataRouter(AutoCollection, AliasedCollection, Materialed, DataCol
 class Datastream(Batchable, _FeaturedDataRouter): # not countable (but batchable)
 	class Material(_FeaturedDataRouter.Material):
 		pass
-	# class View(RouterViewBase):
-	# 	pass
 
 
 class Dataset(Splitable, CountableDataRouter, Epochable, _FeaturedDataRouter):
@@ -32,13 +29,10 @@ class Dataset(Splitable, CountableDataRouter, Epochable, _FeaturedDataRouter):
 		pass
 	class Subset(Epochable, IndexView):
 		pass
-	# class View(IndexView):
-	# 	pass
-	# Subset = View
 
 
 
-class SimpleDataset(Dataset): # TODO: test with ints as keys
+class SimpleDataset(Dataset):
 	_is_ready = True
 
 	def __init__(self, *unnamed_data, **named_data):
