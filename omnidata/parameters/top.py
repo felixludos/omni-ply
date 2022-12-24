@@ -4,10 +4,11 @@ from omnibelt import agnostic, unspecified_argument
 from ..features import Prepared
 
 from .hyperparameters import ConfigHyperparameter, InheritableHyperparameter
-from .building import ConfigBuilder, AutoBuilder, BuildableBase, ModifiableProduct, \
-	MultiBuilderBase, RegistryBuilderBase, ClassBuilderBase
 from .parameterized import ParameterizedBase, ModifiableParameterized, FingerprintedParameterized
+from .building import ConfigBuilder, AutoBuilder, BuildableBase, ModifiableProduct, \
+	MultiBuilderBase, AutoRegistryBuilderBase, ClassBuilderBaseAuto
 from .machines import MachineBase
+from .spec import PreparedParameterized, Specced
 
 
 class Hyperparameter(InheritableHyperparameter, ConfigHyperparameter):
@@ -19,50 +20,7 @@ class Machine(Hyperparameter, MachineBase):
 
 
 
-class MachineParameterized(ParameterizedBase):
-	Machine = MachineBase
-
-	@classmethod
-	def register_machine(cls, name=None, _instance=None, **kwargs):
-		_instance = cls.Machine(name=name, **kwargs) if _instance is None else cls.Machine.extract_from(_instance)
-		if name is None:
-			name = _instance.name
-		return cls._register_hparam(name, _instance)
-
-	@agnostic
-	def machines(self):
-		for key, val in self.named_machines():
-			yield val
-
-	@agnostic
-	def named_machines(self):
-		for key, val in self.named_hyperparameters():
-			if isinstance(val, MachineBase):
-				yield key, val
-
-
-class PreparedParameterized(MachineParameterized, Prepared):
-	@agnostic
-	def _prepare_machine(self, name, machine, **kwargs):
-		val = getattr(self, name, None)
-		if isinstance(val, Prepared):
-			val.prepare(**kwargs)
-
-
-	@agnostic
-	def _prepare(self, *args, **kwargs):
-		super()._prepare(*args, **kwargs)
-		for name, machine in self.named_machines():
-			self._prepare_machine(name, machine)
-
-	@agnostic
-	def reset(self):
-		self._prepared = False
-		self.reset_hparams()
-
-
-
-class Parameterized(ModifiableParameterized, PreparedParameterized, FingerprintedParameterized):
+class Parameterized(ModifiableParameterized, Specced, PreparedParameterized, FingerprintedParameterized):
 	Hyperparameter = Hyperparameter
 	Machine = Machine
 
@@ -82,10 +40,14 @@ class MultiBuilder(Builder, MultiBuilderBase, BasicBuilder, wrap_existing=True):
 	def product_base(self, *args, **kwargs):
 		return super(ModifiableProduct, self).product(*args, **kwargs)
 
-class RegistryBuilder(MultiBuilder, RegistryBuilderBase, create_registry=False):
+class RegistryBuilder(MultiBuilder, AutoRegistryBuilderBase, create_registry=False):
+	'''
+	Important note: __init__ should not have any positional arguments,
+	except for `ident` when instantiating a builder
+	'''
 	pass
 
-class ClassBuilder(RegistryBuilder, ClassBuilderBase, create_registry=False):
+class ClassBuilder(RegistryBuilder, ClassBuilderBaseAuto, create_registry=False):
 	pass
 
 

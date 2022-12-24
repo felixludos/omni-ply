@@ -159,6 +159,23 @@ def test_param_product():
 
 	a = MyModels.build('a', p2=100)
 
+	assert MyModels.p2 == 10
+	assert ModelA.p2 == 20
+	assert a.p2 == 100
+
+	builder = MyModels(p2=50) # TODO
+
+	assert MyModels.p2 == 10
+	assert builder.p2 == 50
+	b = builder.build()
+	assert b.p2 == 50
+	assert isinstance(b, ModelB)
+
+	a = builder.build('a')
+	assert a.p2 == 50
+	assert isinstance(a, ModelA)
+
+
 
 
 

@@ -105,14 +105,6 @@ class ParameterizedBase(AbstractParameterized):
 			if val is not None and (hidden or not getattr(val, 'hidden', False)):
 				yield key, val
 
-	# @classmethod
-	# def inherit_hparams(cls, *names):
-	# 	for name in names:
-	# 		if name not in cls._registered_hparams:
-	# 			cls.register_hparam(name, cls.get_hparam(name))
-	# 	for name in reversed(names):
-	# 		cls._registered_hparams.remove(name)
-	# 		cls._registered_hparams.insert(0, name)
 
 
 class InheritableParameterized(ParameterizedBase):
@@ -195,7 +187,6 @@ class with_hparams(method_wrapper):
 	def process_args(args, kwargs, owner, instance, fn):
 		base = owner if instance is None else instance
 		return (), base.fill_hparams(fn, args, kwargs)
-
 
 
 

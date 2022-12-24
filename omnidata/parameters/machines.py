@@ -48,6 +48,8 @@ class MachineBase(HyperparameterBase, AbstractMachine): # TODO: check builder fo
 				raise
 			return builder.build()
 
+
+
 	# @agnostic
 	# def full_spec(self, fmt='{}', fmt_rule='{parent}.{child}', include_machines=True):
 	# 	for key, val in self.named_hyperparameters():

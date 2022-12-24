@@ -735,6 +735,9 @@ class Selection(Categorical):
 	def __str__(self):
 		return f'{self.__class__.__name__}({", ".join(map(str,self.values))})'
 
+	def __contains__(self, item):
+		return item in self.values
+
 	@property
 	def n(self):
 		return len(self.values)
