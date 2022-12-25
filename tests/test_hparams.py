@@ -9,7 +9,7 @@ import omnifig as fig
 
 import omnidata as od
 from omnidata import toy
-from omnidata import Builder, Buildable, RegistryBuilder, ClassBuilder, MultiBuilder
+from omnidata import Builder, Buildable, RegistryBuilder, MultiBuilder
 from omnidata import hparam, inherit_hparams, machine, spaces
 
 def _cmp_dicts(d1, d2):

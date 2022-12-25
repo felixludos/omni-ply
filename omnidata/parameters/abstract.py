@@ -91,3 +91,25 @@ class AbstractMachine(AbstractHyperparameter):
 
 
 
+class AbstractSpec(Iterable):
+	def get(self, name, default=unspecified_argument) -> 'AbstractSpec':
+		raise NotImplementedError
+
+	@property
+	def base(self):
+		raise NotImplementedError
+
+	@property
+	def name(self):
+		raise NotImplementedError
+
+	@property
+	def info(self):
+		raise NotImplementedError
+
+	@property
+	def is_default(self):
+		raise NotImplementedError
+
+
+

@@ -5,7 +5,7 @@ from omnibelt import unspecified_argument, Class_Registry, agnostic, Modifiable,
 from omnibelt.tricks import auto_methods, dynamic_capture, extract_function_signature
 import omnifig as fig
 
-from .abstract import AbstractBuilder
+from .abstract import AbstractBuilder, AbstractParameterized
 from .hyperparameters import HyperparameterBase
 from .parameterized import InheritableParameterized
 from ..structure import spaces
@@ -17,7 +17,7 @@ ch.setLevel(0)
 prt.addHandler(ch)
 
 
-class BuilderBase(AbstractBuilder, InheritableParameterized):
+class BuilderBase(InheritableParameterized, AbstractBuilder):
 	pass
 
 
@@ -29,6 +29,37 @@ class BuildableBase(BuilderBase):
 	@agnostic
 	def build(self, *args, **kwargs):
 		return self.product(*args, **kwargs)(*args, **kwargs)
+
+
+class SelfAware(BuildableBase):
+	# TODO: maybe replace with SpecBuilder (or at least standardize behavior for stateful builders)
+
+	@agnostic
+	def _populate_existing(self, target, existing=None):
+		if existing is None:
+			existing = {}
+		for name, _ in target.named_hyperparameters(hidden=True):
+			if name not in existing:
+				try:
+					value = getattr(self, name, unspecified_argument)
+				except self.Hyperparameter.MissingValueError:
+					continue
+				if value is not unspecified_argument:
+					if isinstance(value, SelfAware):
+						value = value.build_replica()
+					existing[name] = value
+		return existing
+
+
+	@agnostic
+	def build_replica(self, *args, **kwargs):
+		product = self.product(*args, **kwargs)
+		fixed_args, necessary_kwargs, missing = extract_function_signature(product, args=args, kwargs=kwargs,
+		                                                               allow_positional=False, include_missing=True,
+		                                                               default_fn=self._find_missing_hparam(self))
+		assert not len(missing), f'Could not find values for {missing} in {self}'
+		fixed_kwargs = self._populate_existing(product, necessary_kwargs)
+		return product(*fixed_args, **fixed_kwargs)
 
 
 class ConfigBuilder(BuilderBase, fig.Configurable):
@@ -68,6 +99,10 @@ class ConfigBuilder(BuilderBase, fig.Configurable):
 
 class ModifiableProduct(BuilderBase):
 	_product_mods = ()
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.__dict__['_product_mods'] = self._product_mods # save current product mods to instance.__dict__
 
 	@staticmethod
 	def _modify_product(product, *mods, name=None):
@@ -137,8 +172,8 @@ class BuildCreator(fig.ConfigNode.DefaultCreator): # creates using build() inste
 
 
 
-class AutoBuilder(BuilderBase, auto_methods, wrap_mro_until=True,
-                  inheritable_auto_methods=['build', 'product', 'validate']): # TODO: buildable should include __init__
+class AutoBuilder(BuilderBase, auto_methods, wrap_mro_until=True, # TODO: buildable should include __init__
+                  inheritable_auto_methods=['build', 'product', 'validate']):
 
 	class MissingArgumentsError(TypeError):
 		def __init__(self, src, method, missing, *, msg=None):
@@ -181,6 +216,11 @@ class MultiBuilderBase(BuilderBase):
 		super().__init_subclass__(**kwargs)
 		if _register_ident:
 			cls._register_hparam('ident', cls._IdentParameter(name='ident', required=True), prepend=True)
+
+	def __init__(self, ident=unspecified_argument, **kwargs):
+		super().__init__(**kwargs)
+		if ident is not unspecified_argument:
+			self.ident = ident
 
 	class NoProductFound(KeyError):
 		pass
@@ -308,16 +348,13 @@ class RegistryBuilderBase(MultiBuilderBase):
 
 class RegisteredProductBase(BuildableBase):
 	ident = None
-	def __init_subclass__(cls, ident=None, builder=None, is_default=False, **kwargs):
+	def __init_subclass__(cls, ident=None, registry=None, is_default=False, **kwargs):
+		super().__init_subclass__(**kwargs)
 		if ident is not None:
 			cls.ident = ident
 		ident = getattr(cls, 'ident', None)
-		if ident is not None:
-			if not isinstance(builder, (tuple, list)):
-				builder = (builder,)
-			for reg in builder:
-				if reg is not None:
-					reg.register_product(ident, cls, is_default=is_default)
+		if ident is not None and registry is not None:
+			registry.register_product(ident, cls, is_default=is_default)
 
 
 # class BoundRegistryBuilderBase(RegistryBuilderBase): # TODO: future

@@ -9,7 +9,7 @@ import omnifig as fig
 
 import omnidata as od
 from omnidata import toy
-from omnidata import Builder, Buildable, RegistryBuilder, ClassBuilder, MultiBuilder
+from omnidata import Builder, Buildable, RegistryBuilder, RegisteredProduct
 from omnidata import hparam, inherit_hparams, machine, spaces
 
 def _cmp_dicts(d1, d2):
@@ -104,29 +104,30 @@ def test_mod_product():
 
 
 
-class MyModels(ClassBuilder, nn.Module, default_ident='b'):
+class MyModels(RegistryBuilder, nn.Module, default_ident='b'):
 	p1 = hparam(required=True)
 	p2 = hparam(10)
 	p3 = hparam('hello', inherit=True)
 	p4 = hparam((1,2,3), hidden=True)
 
 
-class ModelA(MyModels, ident='a'):
+class ModelA(RegisteredProduct, registry=MyModels, ident='a'):
 	p2 = hparam(20)
 
 
-@inherit_hparams('p1', 'p2')
-class ModelB(MyModels, ident='b'):
-	pass
+class ModelB(RegisteredProduct, registry=MyModels, ident='b'):
+	p1 = hparam(required=True)
+	p2 = hparam(10)
 
 
-@inherit_hparams('p1', 'p2')
-class ModelC(MyModels, ident='c'):
-	pass
+class ModelC(RegisteredProduct, registry=MyModels, ident='c'):
+	p1 = hparam(required=True)
+	p2 = hparam(10)
 
 
-class ModelD(MyModels, ident='d'):
-	pass
+class ModelD(RegisteredProduct, registry=MyModels, ident='d'):
+	p1 = hparam(required=True)
+	p2 = hparam(10)
 
 
 def test_param_product():
@@ -148,7 +149,11 @@ def test_param_product():
 	assert ModelA().p2 == 20
 	assert builder.build('a').p2 == 20
 	assert ModelA.build().p2 == 20
-	assert ModelA().build('a').p2 == 20
+
+	a = ModelA(p2=50)
+	assert a.build().p2 == 20
+	assert a.build(p2=50).p2 == 50
+	assert a.build_replica().p2 == 50
 
 	assert isinstance(ModelA(), ModelA)
 	assert isinstance(ModelA.build(), ModelA)
@@ -175,6 +180,15 @@ def test_param_product():
 	assert a.p2 == 50
 	assert isinstance(a, ModelA)
 
+
+
+def test_spec():
+
+	a = ModelA(p2=50)
+
+	spec = a.spec().prepare()
+
+	assert len(spec) == len(list(a.named_hyperparameters()))
 
 
 
