@@ -40,8 +40,8 @@ class Prepared: # TODO: add autoprepare using __certify__
 
 	def prepare(self, *args, **kwargs):
 		if not self.is_ready:
-			self._prepare(*args, **kwargs)
 			self._is_ready = True
+			self._prepare(*args, **kwargs)
 		return self
 
 
