@@ -42,7 +42,7 @@ class AbstractTrainable(AbstractFitable):
 
 
 
-class AbstractModel(AbstractBuilder, AbstractFitable, AbstractEvaluatable):
+class AbstractModel(AbstractFitable, AbstractEvaluatable):
 	pass
 
 
@@ -50,7 +50,7 @@ class AbstractTrainableModel(AbstractModel, AbstractTrainable):
 	pass
 
 
-class AbstractTrainer(AbstractBuilder, AbstractFitable, AbstractEvaluatable):
+class AbstractTrainer(AbstractFitable, AbstractEvaluatable):
 	def __init__(self, model, **kwargs):
 		super().__init__(**kwargs)
 

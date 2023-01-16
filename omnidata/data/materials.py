@@ -95,10 +95,11 @@ class Materialed(DataCollection):
 	@classmethod
 	def _inherited_auto_materials(cls):
 		for base in cls.__bases__:
-			if issubclass(base, Materialed):
-				yield from base._inherited_auto_materials()
-			if cls._auto_materials is not None:
-				yield from cls._auto_materials
+			if issubclass(base, Materialed) and base._auto_materials is not None:
+				yield from base._auto_materials
+			# 	yield from base._inherited_auto_materials()
+			# if cls._auto_materials is not None:
+			# 	yield from cls._auto_materials
 
 	Material = MaterialSource
 	def _register_auto_material(self, *names, **kwargs):

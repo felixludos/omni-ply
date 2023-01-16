@@ -13,14 +13,12 @@ from .simple import Evaluatable
 
 
 
-class Trainer(AbstractTrainer):
+class Trainer(Parameterized, AbstractTrainer):
 	model = machine(builder='model')
 
-	def __init__(self, model, **kwargs):
-		super().__init__(model, **kwargs)
-		# self.source = source
+	def __init__(self, model=None, **kwargs):
+		super().__init__(model=model, **kwargs)
 		self.model = model
-
 		self._num_iter = 0
 
 
@@ -60,7 +58,7 @@ class Trainer(AbstractTrainer):
 
 
 
-class Model(Evaluatable, AbstractTrainableModel):
+class TrainableModel(Evaluatable, Parameterized, AbstractTrainableModel):
 	Trainer = Trainer
 
 

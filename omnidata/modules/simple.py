@@ -1,6 +1,8 @@
 from ..features.containers import SourceContainer, ScoreContainer
+from ..parameters import Parameterized
 
 from .abstract import AbstractResultable, AbstractFitable, AbstractEvaluatable, AbstractModel
+
 
 
 class Resultable(AbstractResultable):
@@ -42,13 +44,7 @@ class Fitable(Resultable, AbstractFitable, AbstractEvaluatable):
 
 
 
-class SimpleModel(Fitable, Evaluatable, AbstractModel):
-	# def _fit(self, info):
-	# 	raise NotImplementedError
-
-	# def _evaluate(self, info):
-	# 	raise NotImplementedError
-
+class SimpleModel(Fitable, Evaluatable, Parameterized, AbstractModel):
 	pass
 
 

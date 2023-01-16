@@ -4,13 +4,12 @@ from omnibelt import unspecified_argument, agnosticproperty
 
 
 class Named:
-	def __init__(self, *args, name=unspecified_argument, **kwargs):
-		super().__init__(*args, **kwargs)
-		if name is not unspecified_argument:
-			self.name = name
+	_name = None
+
 
 	class NoNameError(ValueError):
 		pass
+
 
 	def __str__(self):
 		if self.name is None:

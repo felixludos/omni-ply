@@ -6,7 +6,7 @@ from ..features import Prepared
 from .hyperparameters import ConfigHyperparameter, InheritableHyperparameter
 from .parameterized import ModifiableParameterized, FingerprintedParameterized
 from .building import ConfigBuilder, AutoBuilder, BuildableBase, SelfAware, ModifiableProduct, \
-	MultiBuilderBase, RegistryBuilderBase, RegisteredProductBase
+	MultiBuilderBase, RegistryBuilderBase, HierarchyBuilderBase, RegisteredProductBase
 from .machines import MachineBase
 from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
 
@@ -33,11 +33,17 @@ class Parameterized(SpeccedBase, ModifiableParameterized, PreparedParameterized,
 
 # not recommended as it can't handle modifiers
 
+
+
 class BasicBuilder(ConfigBuilder, AutoBuilder, BuilderSpecced, Parameterized):
 	pass
 
+
+
 class Builder(ModifiableProduct, BasicBuilder, inheritable_auto_methods=['product_base']):
 	pass
+
+
 
 class Buildable(SelfAware, Builder):
 	pass
@@ -53,6 +59,13 @@ class MultiBuilder(Builder, MultiBuilderBase, BasicBuilder, wrap_existing=True):
 
 class RegistryBuilder(MultiBuilder, RegistryBuilderBase, create_registry=False):
 	pass
+
+
+
+class HierarchyBuilder(RegistryBuilder, HierarchyBuilderBase, create_registry=False):
+	pass
+
+
 
 class RegisteredProduct(Buildable, RegisteredProductBase):
 	pass

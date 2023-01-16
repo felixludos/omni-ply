@@ -133,13 +133,13 @@ class BranchedDataRouter(DataCollection):
 
 
 class AutoCollection(DataCollection):
-	_SimpleMaterial = None
+	Buffer = None
 	
 	def register_material(self, name, material=None, *, space=None, **kwargs):
 		if material is None:
-			material = self._SimpleMaterial(space=space, **kwargs)
+			material = self.Buffer(space=space, **kwargs)
 		elif not isinstance(material, AbstractDataSource):
-			material = self._SimpleMaterial(material, space=space, **kwargs)
+			material = self.Buffer(material, space=space, **kwargs)
 		return super().register_material(name, material)
 
 
@@ -246,7 +246,6 @@ class Labeled(Supervised):
 
 class Synthetic(Labeled): # TODO: include auto alias
 	_distinct_mechanisms = True
-
 
 	@property
 	def mechanism_space(self):

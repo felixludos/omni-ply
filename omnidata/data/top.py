@@ -15,7 +15,7 @@ class Buffer(TensorSource, SpacedSource, BuildableData): # TODO: should be epoch
 
 
 class _FeaturedDataRouter(AutoCollection, AliasedCollection, Materialed, DataCollection, BuildableData):
-	_SimpleMaterial = Buffer
+	pass
 
 
 
@@ -25,6 +25,7 @@ class Datastream(Batchable, _FeaturedDataRouter): # not countable (but batchable
 
 
 class Dataset(Splitable, CountableDataRouter, Epochable, _FeaturedDataRouter):
+	Buffer = Buffer
 	class Material(_FeaturedDataRouter.Material):
 		pass
 	class Subset(Epochable, IndexView):

@@ -134,13 +134,13 @@ class ModifiableProduct(BuilderBase):
 
 
 # @fig.creator('build')
-class BuildCreator(fig.ConfigNode.DefaultCreator): # creates using build() instead of __init__()
+class BuildCreator(fig.Node.DefaultCreator): # creates using build() instead of __init__()
 	@staticmethod
 	def _modify_component(component, modifiers=()):
+		component = component.cls
 		if issubclass(component, ModifiableProduct):
-			cls = component.cls
 			mods = [mod.cls for mod in modifiers]
-			return cls.modded(*mods)
+			return component.modded(*mods)
 		elif len(modifiers):
 			raise NotImplementedError(f'Builders must subclass ModifiableProduct to use modifiers')
 		return super()._modify_component(component, modifiers=modifiers)
@@ -323,7 +323,7 @@ class RegistryBuilderBase(MultiBuilderBase):
 			return product
 
 	@agnostic
-	def register_product_decorator(self, name, is_default=False, **kwargs):
+	def registration_decorator(self, name, is_default=False, **kwargs):
 		return self._product_registration_decorator(self, name, is_default=is_default, **kwargs)
 
 	@classmethod
@@ -346,15 +346,40 @@ class RegistryBuilderBase(MultiBuilderBase):
 
 
 
+class HierarchyBuilderBase(RegistryBuilderBase, create_registry=False):
+	def __init_subclass__(cls, branch=None, create_registry=None, **kwargs):
+		if branch is not None:
+			create_registry = create_registry is None or create_registry
+			cls._update_hierarchy_address(branch)
+		super().__init_subclass__(create_registry=create_registry, **kwargs)
+
+	_hierarchy_address = None
+	_hierarchy_address_delimiter = '/'
+	@classmethod
+	def _update_hierarchy_address(cls, address):
+		cls._hierarchy_address = address if cls._hierarchy_address is None \
+			else f'{cls._hierarchy_address}{cls._hierarchy_address_delimiter}{address}'
+
+
+
 class RegisteredProductBase(BuildableBase):
 	ident = None
+	_owning_registry = None
+
 	def __init_subclass__(cls, ident=None, registry=None, is_default=False, **kwargs):
 		super().__init_subclass__(**kwargs)
-		if ident is not None:
-			cls.ident = ident
-		ident = getattr(cls, 'ident', None)
+		if ident is None:
+			ident = getattr(cls, 'ident', None)
+		else:
+			setattr(cls, 'ident', ident)
+		if registry is None:
+			registry = getattr(cls, '_owning_registry', None)
+		else:
+			setattr(cls, '_owning_registry', registry)
 		if ident is not None and registry is not None:
 			registry.register_product(ident, cls, is_default=is_default)
+
+
 
 
 # class BoundRegistryBuilderBase(RegistryBuilderBase): # TODO: future

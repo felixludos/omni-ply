@@ -2,13 +2,17 @@ import os
 import json
 import h5py as hf
 import torch
-from omnibelt import unspecified_argument, agnostic, md5
+from pathlib import Path
+from omnibelt import unspecified_argument, agnostic, agnosticproperty, md5
 
 from ..structure import spaces
 from ..parameters import hparam
+from ..persistent import Rooted
+from ..features import Named
 
-from .routers import Observation, Supervised, Labeled, Synthetic
-from .top import Dataset, Datastream
+from .abstract import AbstractDataRouter
+from .routers import Observation, Supervised, Labeled, Synthetic, DataCollection
+from .top import Dataset, Datastream, Buffer
 
 
 
@@ -110,6 +114,108 @@ class SyntheticDataset(Synthetic, LabeledDataset):
 	# 	raise NotImplementedError
 # Synthetic means the mapping is known (and available, usually only for evaluation)
 # TODO: separate labels and mechanisms
+
+
+
+class RootedRouter(DataCollection, Rooted):
+	_dirname = None
+
+	@agnostic
+	def _infer_root(self, root=None):
+		if root is not None:
+			return Path(root)
+		return super()._infer_root(root=root) / 'datasets'
+
+
+	@agnosticproperty
+	def root(self):
+		dname = self._dirname
+		assert dname is not None, 'missing dataset directory name'
+		return self._infer_root() / dname
+
+
+	@agnostic
+	def get_aux_path(self):
+		root = self.root / 'aux'
+		root.mkdir(parents=True, exist_ok=True)
+		return root
+
+
+	# def _find_path(self, dataset_name='', file_name=None, root=None):
+	# 	if root is None:
+	# 		root = self.root
+	# 	*other, dataset_name = dataset_name.split('.')
+	# 	if file_name is None:
+	# 		file_name = '.'.join(other) if len(other) else self.name
+	# 	path = root / f'{file_name}.h5'
+	# 	return path, dataset_name
+	#
+	#
+	# _default_hdf_buffer_type = HDFBuffer
+	# def register_hdf_buffer(self, name, dataset_name, file_name=None, root=None,
+	#                         buffer_type=None, path=None, **kwargs):
+	# 	if buffer_type is None:
+	# 		buffer_type = self._default_hdf_buffer_type
+	# 	if path is None:
+	# 		path, dataset_name = self._find_path(dataset_name, file_name=file_name, root=root)
+	# 	return self.register_buffer(name, buffer_type=buffer_type, dataset_name=dataset_name, path=path, **kwargs)
+	#
+	#
+	# @staticmethod
+	# def create_hdf_dataset(path, dataset_name, data=None, meta=None, dtype=None, shape=None):
+	# 	# if file_name is unspecified_argument:
+	# 	# 	file_name = 'aux'
+	# 	# if path is None:
+	# 	# 	path, dataset_name = self._find_path(dataset_name, file_name=file_name, root=root)
+	#
+	# 	if isinstance(data, torch.Tensor):
+	# 		data = data.detach().cpu().numpy()
+	# 	with hf.File(path, 'a') as f:
+	# 		if data is not None or (dtype is not None and shape is not None):
+	# 			f.create_dataset(dataset_name, data=data, dtype=dtype, shape=shape)
+	# 		if meta is not None:
+	# 			f.attrs[dataset_name] = json.dumps(meta, sort_keys=True)
+	# 	return path, dataset_name
+
+
+
+class DownloadableRouter(RootedRouter):
+	def __init__(self, download=False, **kwargs):
+		super().__init__(**kwargs)
+		self._auto_download = download
+
+	def _prepare(self, source=None, **kwargs):
+		if not self.is_downloaded():
+			if self._auto_download:
+				self.download()
+			else:
+				raise self.DatasetNotDownloaded(self.name)
+		super()._prepare(source=source, **kwargs)
+
+	@agnostic
+	def is_downloaded(self):
+		raise NotImplementedError
+
+	@classmethod
+	def download(cls, **kwargs):
+		raise NotImplementedError
+
+
+	class DatasetNotDownloaded(FileNotFoundError):
+		def __init__(self, name):
+			super().__init__(f'use download=True to enable automatic download for {name}.')
+
+
+
+class ImageBuffer(Buffer):
+	def process_image(self, image):
+		if not self.space.as_bytes:
+			return image.float().div(255)
+		return image
+
+
+	def _get_from(self, source, key=None):
+		return self.process_image(super()._get_from(source, key=key))
 
 
 

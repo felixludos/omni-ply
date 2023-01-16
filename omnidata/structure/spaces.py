@@ -118,7 +118,7 @@ class Dim(Packable, Measure, Sampler, Fingerprinted):
 		return super().measure(x, y)
 
 
-	def transform(self, vals, spec):
+	def transform(self, vals, spec): # spec is current space of vals, self is the new
 		return self.unstandardize(spec.standardize(vals))
 
 
