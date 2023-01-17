@@ -7,42 +7,42 @@ from collections import UserList
 
 from ..features import Prepared
 
-from .abstract import AbstractMachine, AbstractBuilder, AbstractParameterized, AbstractSpec
+from .abstract import AbstractSubmodule, AbstractBuilder, AbstractParameterized, AbstractSpec
 from .parameterized import ParameterizedBase
 # from .building import SelfAware
-from .machines import MachineBase
+from .submodules import SubmoduleBase
 
 
 # TODO: add abstract spec class
 
 
 
-class MachineParameterized(ParameterizedBase):
-	Machine = MachineBase
+class SubmoduleParameterized(ParameterizedBase):
+	Submodule = SubmoduleBase
 
 	@classmethod
-	def register_machine(cls, name=None, _instance=None, **kwargs):
-		_instance = cls.Machine(name=name, **kwargs) if _instance is None else cls.Machine.extract_from(_instance)
+	def register_submodule(cls, name=None, _instance=None, **kwargs):
+		_instance = cls.Submodule(name=name, **kwargs) if _instance is None else cls.Submodule.extract_from(_instance)
 		if name is None:
 			name = _instance.name
 		return cls._register_hparam(name, _instance)
 
 	@agnostic
-	def machines(self):
-		for key, val in self.named_machines():
+	def submodules(self):
+		for key, val in self.named_submodules():
 			yield val
 
 	@agnostic
-	def named_machines(self):
+	def named_submodules(self):
 		for key, val in self.named_hyperparameters():
-			if isinstance(val, MachineBase):
+			if isinstance(val, SubmoduleBase):
 				yield key, val
 
 
 
-class PreparedParameterized(MachineParameterized, Prepared):
+class PreparedParameterized(SubmoduleParameterized, Prepared):
 	@agnostic
-	def _prepare_machine(self, name, machine, **kwargs):
+	def _prepare_submodule(self, name, submodule, **kwargs):
 		val = getattr(self, name, None)
 		if isinstance(val, Prepared):
 			val.prepare(**kwargs)
@@ -51,8 +51,8 @@ class PreparedParameterized(MachineParameterized, Prepared):
 	@agnostic
 	def _prepare(self, *args, **kwargs):
 		super()._prepare(*args, **kwargs)
-		for name, machine in self.named_machines():
-			self._prepare_machine(name, machine)
+		for name, submodule in self.named_submodules():
+			self._prepare_submodule(name, submodule)
 
 	@agnostic
 	def reset(self):
@@ -180,10 +180,10 @@ class StatusSpec(SpecBase):
 
 
 
-class MachineSpec(SpecBase):
+class SubmoduleSpec(SpecBase):
 	@staticmethod
 	def _infer_src(param, base):
-		if param is not None and isinstance(param, AbstractMachine):
+		if param is not None and isinstance(param, AbstractSubmodule):
 			try:
 				src = param.get_value(base)
 			except param.MissingValueError:
@@ -196,12 +196,12 @@ class MachineSpec(SpecBase):
 		super().__init__(payload=payload, info=info, base=base, src=src, **kwargs)
 
 	@property
-	def is_machine(self):
-		return isinstance(self.info, AbstractMachine)
+	def is_submodule(self):
+		return isinstance(self.info, AbstractSubmodule)
 
 
 
-class BuildableSpec(MachineSpec):
+class BuildableSpec(SubmoduleSpec):
 	class _find_spec_value:
 		def __init__(self, spec, **kwargs):
 			super().__init__(**kwargs)

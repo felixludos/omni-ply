@@ -7,7 +7,7 @@ from .hyperparameters import ConfigHyperparameter, InheritableHyperparameter
 from .parameterized import ModifiableParameterized, FingerprintedParameterized
 from .building import ConfigBuilder, AutoBuilder, BuildableBase, SelfAware, ModifiableProduct, \
 	MultiBuilderBase, RegistryBuilderBase, HierarchyBuilderBase, RegisteredProductBase
-from .machines import MachineBase
+from .submodules import SubmoduleBase
 from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
 
 
@@ -15,7 +15,7 @@ class Hyperparameter(InheritableHyperparameter, ConfigHyperparameter):
 	pass
 
 
-class Machine(Hyperparameter, MachineBase):
+class Submodule(Hyperparameter, SubmoduleBase):
 	pass
 
 
@@ -27,7 +27,7 @@ class Spec(StatusSpec, BuildableSpec):
 
 class Parameterized(SpeccedBase, ModifiableParameterized, PreparedParameterized, FingerprintedParameterized):
 	Hyperparameter = Hyperparameter
-	Machine = Machine
+	Submodule = Submodule
 	Spec = Spec
 
 

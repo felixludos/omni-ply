@@ -1,14 +1,15 @@
 from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, Callable, Type, Iterable, Iterator
 from omnibelt import unspecified_argument, get_printer
 
-from .abstract import AbstractMachine
+from .abstract import AbstractSubmodule
 from .hyperparameters import HyperparameterBase, hparam
 from .building import get_builder, BuilderBase
 
 prt = get_printer(__name__)
 
 
-class MachineBase(HyperparameterBase, AbstractMachine): # TODO: check builder for space (if none is provided)
+
+class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builder for space (if none is provided)
 	def __init__(self, default=unspecified_argument, *, required=True, typ=None, builder=None, cache=True, **kwargs):
 		super().__init__(default=default, required=required, cache=cache, **kwargs)
 		self.typ = typ
@@ -69,8 +70,8 @@ class MachineBase(HyperparameterBase, AbstractMachine): # TODO: check builder fo
 
 
 
-class machine(hparam):
-	_registration_fn_name = 'register_machine'
+class submodule(hparam):
+	_registration_fn_name = 'register_submodule'
 
 
 

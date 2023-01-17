@@ -1,7 +1,7 @@
 from typing import Type, Union, Any, Optional, Callable, Sequence, Iterable, Iterator, Tuple, List, Dict, NamedTuple
 from collections import OrderedDict
 from functools import cached_property
-from omnibelt import smartproperty
+from omnibelt import smartproperty, unspecified_argument, method_collector
 from omnibelt.tricks import nested_method_decorator
 
 from .abstract import AbstractDataSource
@@ -10,104 +10,54 @@ from .sources import SpacedSource
 
 
 
-
-class material_base(nested_method_decorator):
-	_bindings_table = OrderedDict
-
-	def __init__(self, *keys, replaces=None, **info):
-		fn = None
-		if len(keys) and callable(keys[0]): # if callable, assume it is the init function
-			fn, keys = keys
-
-		super().__init__(fn=fn)
-
-		self.keys = keys
-		self.replaces = replaces
-		self.info = info
-		self.bindings = self._bindings_table()
-
-	def _setup(self, owner: Type, name: str) -> None:
-		super()._setup(owner, name)
-		self.name = name
-
-	class _collector:
-		class _collect_fn:
-			def __init__(self, owner):
-				self.owner = owner
-			def __call__(self, fn):
-				self.owner.fn = fn
-				return fn
-
-		def __init__(self):
-			self.args = None
-			self.kwargs = None
-			self.fn = None
-
-		def __call__(self, *args, **kwargs):
-			self.args = args
-			self.kwargs = kwargs
-			return self._collect_fn(self)
-
-
+class material_base(method_collector):
 	@property
 	def get(self): # (src) -> data
-		collector = self._collector()
-		self.bindings['get'] = collector
-		return collector
+		return self._make_collector('get')
+
 
 	@property
 	def get_key(self): # (src, key) -> data
-		collector = self._collector()
-		self.bindings['get_key'] = collector
-		return collector
+		return self._make_collector('get_key')
+
 
 	@property
 	def get_from_size(self): # (N) -> data
-		collector = self._collector()
-		self.bindings['get_from_size'] = collector
-		return collector
+		return self._make_collector('get_from_size')
+
 
 	@property
 	def get_sample(self): # () -> data
-		collector = self._collector()
-		self.bindings['get_sample'] = collector
-		return collector
+		return self._make_collector('get_sample')
+
 
 	@property
 	def transformation(self): # (**materials) -> data
-		collector = self._collector()
-		self.bindings['transformation'] = collector
-		return collector
+		return self._make_collector('transformation')
+
 
 	@property
 	def prepare(self): # () -> None
-		collector = self._collector()
-		self.bindings['prepare'] = collector
-		return collector
+		return self._make_collector('prepare')
 
 
 
 class countable_material(material_base):
 	@property
 	def get_from_indices(self):  # (indices) -> data
-		collector = self._collector()
-		self.bindings['get_from_indices'] = collector
-		return collector
+		return self._make_collector('get_from_indices')
+
 
 	@property  # (idx) -> data
 	def get_sample_from_index(self):
-		collector = self._collector()
-		self.bindings['get_sample_from_index'] = collector
-		return collector
+		return self._make_collector('get_sample_from_index')
 
 
 
 class space_material(material_base):
 	@property
 	def space(self):  # attribute
-		collector = self._collector()
-		self.bindings['space'] = collector
-		return collector
+		return self._make_collector('space')
 
 
 
@@ -116,14 +66,28 @@ class material(countable_material, space_material):
 
 
 
-class AbstractMaterial(AbstractDataSource):
+class AbstractMaterialTracker(AbstractDataSource):
 	def __init__(self, owner, mat, **kwargs):
 		super().__init__(**kwargs)
 
-	def register_with(self, collection: Type['Materialed'], mat: material_base):
+
+
+class AbstractMaterial(AbstractDataSource):
+	def __init__(self, source, mat, **kwargs):
+		super().__init__(**kwargs)
+
+
+	@staticmethod
+	def register_with(collection: Type['Materialed'], mat: material_base):
 		raise NotImplementedError
 
-	def materialize(self, obj: 'Materialed'):
+
+	@staticmethod
+	def inherit_materials(owner: Type['Materialed']):
+		raise NotImplementedError
+
+
+	def materialize(self, collection: 'Materialed', base: material_base, **kwargs):
 		raise NotImplementedError
 
 
@@ -139,15 +103,26 @@ class MaterialSource(SpacedSource, AbstractMaterial):
 		else:
 			raise ValueError(f'No keys provided for material {mat} of {owner}')
 
+
+	@staticmethod
+	def _process_base():
+
+
+
+		pass
+
+
 	@classmethod
-	def inherit_materials(cls, owner):
+	def inherit_materials(cls, owner: Type['Materialed']):
 		for base in cls.__bases__:
 			if issubclass(base, Materialed) and base._auto_materials is not None:
 				yield from base._auto_materials
 
+
 	@staticmethod
 	def _collected_attributes():
 		return {'space'}
+
 
 	@classmethod
 	def _fix_bindings(cls, owner, mat):
@@ -160,32 +135,47 @@ class MaterialSource(SpacedSource, AbstractMaterial):
 			# 	raise ValueError(f'No function provided for binding {k} of material {self._mat} of {owner}')
 			setattr(owner, v.fn.__name__, cached_property(v.fn) if k in attrs else v.fn) # TODO: property setter and deleter
 
+
 	@staticmethod
 	def _resolve_keys(mat):
 		if mat.replaces is not None:
 			yield mat.replaces
 		yield from mat.keys
-		if (mat.replaces is None and not len(mat.keys)) and mat.fn is not None:
-			yield mat.fn.__name__
+		if (mat.replaces is None and not len(mat.keys)) and mat._fn is not None:
+			yield mat._fn.__name__
+
 
 	@classmethod
-	def materialize(cls, obj: 'Materialed', base: material_base):
-		mat = cls(obj, base) if base.fn is None else base.fn.__get__(obj, type(obj))()
-		return obj.register_material(mat, *cls._resolve_keys(base))
+	def materialize(cls, collection: 'Materialed', base: material_base, *, mat=None, **kwargs):
+		# if data is None and base.fn is not None:
+		# 	data = cls._call_source_fn(collection, base.fn)
+		if mat is None:
+			mat = cls(collection, base, **kwargs) if base._fn is None else cls(collection, base, **kwargs)
+		for name in cls._resolve_keys(base):
+			collection.register_material(name, mat)
 
-	def __init__(self, obj, mat, **kwargs):
-		super().__init__(obj, mat, **kwargs)
-		self._obj = obj
+
+	def __init__(self, source: 'Materialed', mat: material_base, *, space=None, **kwargs):
+		if space is None:
+			space = mat.info.get('space', None)
+		super().__init__(source, mat, space=space, **kwargs)
+		self._source = source
 		self._base = mat
 
-		for k in self._resolve_keys(self._mat):
-			obj.register_material(k, self)
 
-		if self._mat.bindings['prepare'].fn is not None:
+	def _extract_base_attrs(self):
+		if 'space' in self._base.bindings:
+			self._space = self._call_source_fn(self._source, self._base.bindings['space'].fn)
 
 
-	def _prepare(self, **kwargs):
-		pass # TODO
+	def _prepare(self, *args, **kwargs):
+		if 'prepare' in self._base.bindings:
+			self._call_source_fn(self._source, self._base.bindings['prepare'].fn, *args, **kwargs)
+
+
+	@staticmethod
+	def _call_source_fn(source: 'Materialed', fn: Callable, *args, **kwargs):
+		return getattr(source, fn.__name__)(*args, **kwargs)
 
 
 	def _get_from(self, source, key=None):

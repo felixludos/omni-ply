@@ -5,7 +5,7 @@ from torch import nn
 from omnibelt import agnostic, unspecified_argument#, mix_into
 # from .. import util
 
-from ..parameters import machine, Parameterized
+from ..parameters import submodule, Parameterized
 from ..features import Prepared
 
 from .abstract import AbstractModel, AbstractTrainableModel, AbstractTrainer
@@ -14,7 +14,7 @@ from .simple import Evaluatable
 
 
 class Trainer(Parameterized, AbstractTrainer):
-	model = machine(builder='model')
+	model = module(builder='model')
 
 	def __init__(self, model=None, **kwargs):
 		super().__init__(model=model, **kwargs)

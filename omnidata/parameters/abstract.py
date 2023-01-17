@@ -82,7 +82,7 @@ class AbstractBuilder(AbstractParameterized):
 
 
 
-class AbstractMachine(AbstractHyperparameter):
+class AbstractSubmodule(AbstractHyperparameter):
 	def get_builder(self) -> Optional[AbstractBuilder]:
 		raise NotImplementedError
 
