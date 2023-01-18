@@ -2,7 +2,7 @@ from typing import Type, Union, Any, Optional, Callable, Sequence, Iterable, Ite
 from collections import OrderedDict
 from omnibelt import smartproperty, unspecified_argument
 from omnibelt.tricks import nested_method_decorator
-# from omnibelt.collectors import method_collector, universal_collector, AbstractCollector, AbstractCollectorTrigger
+from omnibelt.collectors import method_collector, universal_collector, AbstractCollector, AbstractCollectorTrigger
 
 
 
@@ -37,11 +37,9 @@ class AbstractDepot:
 
 
 class Depot(Container): # contains machines
-	def __init__(self, gizmos=None, **kwargs):
-		if gizmos is None:
-			gizmos = {}
-		super().__init__(*args, **kwargs)
-		self._gizmos = gizmos
+	def __init__(self, *sources, **kwargs):
+		super().__init__(**kwargs)
+		self._sources = sources
 
 
 	def _load_missing(self, key):
