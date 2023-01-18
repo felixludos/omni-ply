@@ -8,8 +8,12 @@ from omnibelt.tricks import nested_method_decorator
 
 
 class Container(OrderedDict): # contains gizmos
+	class MissingKey(KeyError):
+		pass
+	
+	
 	def _find_missing(self, key):
-		raise KeyError(key)
+		raise self.MissingKey(key)
 
 
 	def __getitem__(self, item):
@@ -33,15 +37,33 @@ class AbstractDepot:
 
 
 class Depot(Container): # contains machines
-	pass
+	def __init__(self, gizmos=None, **kwargs):
+		if gizmos is None:
+			gizmos = {}
+		super().__init__(*args, **kwargs)
+		self._gizmos = gizmos
+
+
+	def _load_missing(self, key):
+		if key in self._gizmos:
+			return self._gizmos[key].get_from(self, key)
+		return self.source[key]
+	
+	
+	def _find_missing(self, key):
+		if key in self._gizmos:
+			self[key] = self._gizmos[key].get_from(self, key)
+			return self[key]
+		if self._gizmos is not None:
+			self[key] = self._load_missing(key) # load and cache
+			return self[key]
+		return super()._find_missing(key)
 
 
 
-class machine_base(nested_method_decorator):
-	def __init__(self, *outputs, **kwargs):
-		super().__init__(**kwargs)
-		self._outputs = outputs
-
+class machine_base(method_collector):
+	def gizmos(self):
+		yield from self._keys
 
 
 class AbstractMachine:
@@ -56,10 +78,10 @@ class AbstractMachineTrigger:
 
 
 class _Machine_Trigger(AbstractMachineTrigger):
-	def __init__(self, owner, key, val):
+	def __init__(self, owner, key, base):
 		self.owner = owner
 		self.key = key
-		self.val = val
+		self.base = base
 
 
 
@@ -81,7 +103,7 @@ class MachineBase(AbstractMachine):
 		known = set()
 		used = cls._known_machines_type()
 		for trigger in reversed(machines):
-			gizmos = cls.extract_gizmos_from_trigger(trigger)
+			gizmos = list(cls.extract_gizmos_from_trigger(trigger))
 			if all(g in known for g in gizmos):
 				continue
 			known.update(gizmos)
@@ -90,8 +112,12 @@ class MachineBase(AbstractMachine):
 
 
 	@staticmethod
-	def extract_gizmos_from_trigger(machine: 'AbstractMachineTrigger'):
-		raise NotImplementedError
+	def extract_gizmos_from_trigger(trigger: 'AbstractMachineTrigger'):
+		yield from trigger.val.gizmos()
+		
+		
+	def gizmos(self):
+		yield from self.extract_gizmos_from_trigger(self.trigger)
 
 
 	_known_machines_gizmos_type = OrderedDict
@@ -101,7 +127,7 @@ class MachineBase(AbstractMachine):
 		table = cls._known_machines_gizmos_type()
 		for trigger in triggers:
 			machine = cls(source, trigger)
-			for gizmo in cls.extract_gizmos_from_trigger(trigger):
+			for gizmo in machine.gizmos():
 				table[gizmo] = machine
 		return table
 
