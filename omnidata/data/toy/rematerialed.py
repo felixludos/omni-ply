@@ -161,13 +161,14 @@ class RandomCrop(MNIST):
 
 
 class RandomCrop2(MNIST):
-	original = material('original', replaces='observation')
+	original = material.replacement('observation')
 
 	observation = material(replaces='observation')
 
 	@observation.transformation
 	def get_cropped_observation(self, original):
 		return original.random_crop(self.size)
+
 
 
 
@@ -325,8 +326,10 @@ class GAN(Model, gizmo_aliases={'real': 'observation'}):
 
 	@material.get_from_size('samples')
 	@material.get_from_size('fake')
-	def generate(self, N):
-		return self.generator(N)
+	@machine.optional('samples')
+	@machine.optional('fake')
+	def generate(self, batch_size):
+		return self.generator(batch_size)
 
 	# samples = material('samples', 'fake')
 	# @samples.get_from_size
@@ -412,21 +415,34 @@ class Multistep(GAN):
 
 
 
-class ClassificationPackage:
+
+class ClassificationAnnex: # (logits, target) -> {loss, correct, accuracy, confidences, confidence}
+	@machine.optional('prediction')
+	def compute_prediction(self, logits):
+		return logits.argmax(-1)
 
 	@machine('correct')
-	def compute_correct(self, prediction, target):
-		return (prediction.argmax(dim=1) == target).float()
+	@indicator.optional('loss')
+	def compute_loss(self, logits, target):
+		return F.cross_entropy(logits, target)
 
-	@machine('accuracy')
-	def compute_accuracy(self, prediction, target):
-		return self.compute_correct(prediction, target).mean()
+	@machine('correct')
+	@indicator.mean('accuracy')
+	def compute_correct(self, prediction, target):
+		return (prediction == target).float()
 
 	@machine('confidences')
-	def compute_confidences(self, prediction):
-		return prediction.softmax(dim=1).max(dim=1).values
+	@indicator.samples('confidence') # for multiple statistics
+	def compute_confidences(self, logits):
+		return logits.softmax(dim=1).max(dim=1).values
 
-	pass
+
+
+class Depot(Container):
+	@machine.from_batch('batch-size')
+	def _get_batch_size(self, batch):
+		return batch.size
+
 
 
 
@@ -449,7 +465,7 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 	class Batch(Synthetic, Datastream.Batch):
 		pass
 
-	@material.get_from_size('target', 'mechanism')
+	@material.get_from_size(('mechanism', 'target'))
 	def generate_mechanism(self, N):
 		with self.force_rng(rng=self.rng):
 			return self.mechanism_space.sample(N)
@@ -502,13 +518,13 @@ class SwissRoll(ManifoldStream):
 			spaces.Bound(min=0., max=1.),
 		)
 
-	@material.space('target')
-	def target_space(self):
-		return self.mechanism_space[0]
-
 	@machine('target')
 	def get_target_from_mechanism(self, mechanism):
 		return mechanism.narrow(-1,0,1)
+
+	@machine.space('target')
+	def target_space(self):
+		return self.mechanism_space[0]
 
 	@material.space('observation')
 	def observation_space(self):
@@ -536,17 +552,18 @@ class RandomMapping(Dataset):
 	D = hparam(10, space=spaces.HalfBound(min=1))
 	M = hparam(2, space=spaces.HalfBound(min=1))
 
+
 	@material
 	def X(self):
-		return torch.randn(self.N, self.D)
+		return torch.randn(self.N, self.D) # if a tensor is returned, the default buffer is used to wrap it
 	@X.space
 	def X_space(self):
 		return spaces.Unbound(self.D)
 
-	class Y_Buffer(Buffer):
+	class Y_Buffer(Buffer): # is a material subclass
 		pass
 
-	@material
+	@material('Y')
 	def Y(self):
 		return self.Y_Buffer()
 	@Y.space
@@ -554,9 +571,16 @@ class RandomMapping(Dataset):
 		return spaces.Unbound(self.M)
 
 
+class ToyDataset(Dataset):
 
-class MNIST(Dataset):
-	class ImageBuffer(Material):
+	target = material() # defaults to a tensor buffer
+
+
+	# @observation.get_from_indices
+	# def get_observation(self, indices):
+	# 	return self.observation.data[indices]
+
+	class ImageBuffer(Dataset.Buffer):
 		def get_from(self, source, key):
 			imgs = super().get_from(source, key)
 			return imgs if self.space.as_bytes else imgs.float() / 255.
@@ -568,31 +592,68 @@ class MNIST(Dataset):
 	def observation_space(self):
 		size = (32, 32) if self.resize else (28, 28)
 		return spaces.Pixels(1, *size, as_bytes=self._as_bytes)
-	@observation.get_from_indices
-	def get_observation(self, indices):
-		return self.observation.data[indices]
+
+	@target.space
+	def target_space(self):
+		return spaces.Categorical(10)
+
+	def _prepare(self): # no need for material specific prepare()s
+		self.observation.data = self._load_observation()
+		self.target.data = self._load_target()
 
 
 
-class RandomCrop(MNIST):
-	observation = material(replaces='observation')
-
-	@observation.get_from_indices
-	def get_observation(self, indices):
-		return super().get_observation(indices).random_crop(self.size)
+class MNIST(ToyDataset):
 
 
+class Observation(expected=['observation']):
+	pass
 
-class RandomCrop2(MNIST):
-	original = material('original', replaces='observation')
 
-	observation = material(replaces='observation')
-
-	@observation.transformation
-	def get_cropped_observation(self, original):
-		return original.random_crop(self.size)
+class Transform(Observation, replacements={'observation': 'original'}):
+	@machine('observation')
+	def transform_observation(self, original):
+		return original
 
 
 
+class RandomCrop(Transform):
+	size = hparam(4, suggested=[0, 1, 2, 4, 5, 8, 10])
+
+	def transform_observation(self, original):
+		obs = super().transform_observation(original)
+		crop = self._do_random_crop(obs, self.size)
+		return crop
+
+
+class Extracted_Transform(Transform):
+	extractor = submodule(builder='extractor')
+
+	def transform_observation(self, original):
+		return self.extractor(super().transform_observation(original))
+
+	@machine.prepare('observation')
+	def _prepare_extractor(self):
+		for param in self.extractor.parameters():
+			param.requires_grad = False
+
+	@machine.space('observation')
+	def observation_space(self):
+		return self.extractor.output_space
+
+
+
+class Extracted(Observation, replacements={'observation': 'original'}):
+	extractor = submodule(builder='extractor', signature=['original'], gizmo='observation')
+
+	@machine.prepare('observation')
+	def _prepare_extractor(self): # replaces default (extractor.prepare)
+		self.extractor.prepare()
+		for param in self.extractor.parameters():
+			param.requires_grad = False
+
+	@machine.space('observation')
+	def observation_space(self): # replaces default (extractor.dout)
+		return self.extractor.output_space
 
 

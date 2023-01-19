@@ -46,7 +46,7 @@ class AbstractRouter(AbstractSource): # branch
 					yield gizmo
 
 
-class Guru(AbstractRouter): # fills in gizmos using the given router, and checks for cycles
+# class Guru(AbstractRouter): # fills in gizmos using the given router, and checks for cycles
 
 
 
@@ -86,6 +86,39 @@ class RouterBase(AbstractRouter):
 		return gizmo
 
 
+
+class Crafty: # contains crafts (and craft sources when instantiated)
+	pass
+
+
+class craft: # decorator wrapping a property/method - aka craft-item
+	pass
+
+
+class Craft(SourceBase): # can be updated with craft items or other crafts
+	pass
+
+
+class CraftSource(SourceBase): # when instantiating a "Crafty", Crafts are instantiated as CraftSources
+	pass
+
+
+class Industrial(SourceBase): # gizmos come from crafts
+	class Assembler(Router):
+		pass
+
+
+class Function(Industrial):
+	@machine.space('output')
+	def dout(self):
+		return None
+
+	@machine.space('input')
+	def din(self):
+		return None
+
+	def __call__(self, inp):
+		return self.Assembler(self, input=inp)['output']
 
 
 

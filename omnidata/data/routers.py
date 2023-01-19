@@ -234,7 +234,7 @@ class Supervised(Observation, Metric):
 
 
 
-class Labeled(Supervised):
+class Labeled(Supervised, alias={'target': 'label'}):
 	@property
 	def label_space(self):
 		return self.space_of('label')
@@ -244,7 +244,7 @@ class Labeled(Supervised):
 
 
 
-class Synthetic(Labeled): # TODO: include auto alias
+class Synthetic(Labeled, alias={'label': 'mechanism'}): # TODO: include auto alias
 	_distinct_mechanisms = True
 
 	@property

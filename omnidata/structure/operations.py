@@ -50,8 +50,10 @@ class Augmentation:
 		raise NotImplementedError
 
 
+# indicator - even more general, just a function that takes an observation and returns a (scalar) value
 
-class Criterion:
+
+class Criterion: # relates to difference between two things
 	@agnostic
 	def compare(self, observation1, observation2):
 		raise NotImplementedError
