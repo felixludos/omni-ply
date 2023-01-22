@@ -2,35 +2,33 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 from functools import cached_property
 from omnibelt import method_propagator, OrderedSet, isiterable
 
-from .abstract import AbstractCrafty
+from .abstract import AbstractCrafty, AbstractCraft
 
 
 
 class BasicCrafty(AbstractCrafty): # contains crafts (and craft sources when instantiated)
-	Crafts = None
+	_Crafts = None # router for crafts
 	_processed_crafts = None
 
-	def __init_subclass__(cls, **kwargs):
-		super().__init_subclass__(**kwargs)
+	@classmethod
+	def _process_raw_crafts(cls):
 		if '_processed_crafts' not in cls.__dict__:
-			cls._processed_crafts = None if cls.Crafts is None else cls.Crafts.process_raw_crafts(cls)
+			cls._processed_crafts = None if cls._Crafts is None else cls._Crafts.process_raw_crafts(cls)
 
 
 
 class StandardCrafty(BasicCrafty):
-	Crafts = None
-
 	@classmethod
-	def _process_raw_crafts(cls, inherit_crafts: bool = True) -> List[Crafts]: # simple consolidation
-		return cls.Crafts.process_raw_crafts(inherit_crafts=inherit_crafts)
-
-
-	def _process_known_crafts(self): # full consolidation
-		return [craft.crafting(self) for craft in self._known_crafts]
+	def _process_raw_crafts(cls, inherit_crafts: bool = True) -> List[AbstractCraft]: # simple consolidation
+		return cls._Crafts.process_raw_crafts(inherit_crafts=inherit_crafts)
 
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
+		self._initialize_crafts()
+
+
+	def _initialize_crafts(self):
 		if self._processed_crafts is not None:
 			self._processed_crafts = self._processed_crafts.crafting(self)
 

@@ -1,6 +1,7 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
 
 
+
 class Gizmoed:
 	def gizmos(self) -> Iterator[str]:
 		raise NotImplementedError
@@ -17,7 +18,7 @@ class AbstractTool(Gizmoed): # leaf/source
 
 
 
-class AbstractKit(AbstractTool): # branch/router
+class Tooled(Gizmoed):
 	def tools(self) -> Iterator[AbstractTool]:
 		raise NotImplementedError
 
@@ -26,6 +27,19 @@ class AbstractKit(AbstractTool): # branch/router
 		raise NotImplementedError
 
 
+
+class SingleVendor(Tooled):
+	def vendor(self, gizmo: str, default: Any = None) -> AbstractTool:
+		raise NotImplementedError
+
+	def vendors(self, gizmo: str) -> Iterator[AbstractTool]:
+		v = self.vendor(gizmo)
+		if v is not None:
+			yield v
+
+
+
+class AbstractKit(Tooled, AbstractTool): # branch/router
 	class MissingGizmo(KeyError):
 		pass
 
