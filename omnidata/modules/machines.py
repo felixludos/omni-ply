@@ -2,7 +2,7 @@ from typing import Type, Union, Any, Optional, Callable, Sequence, Iterable, Ite
 from collections import OrderedDict
 from omnibelt import smartproperty, unspecified_argument
 from omnibelt.tricks import nested_method_decorator
-from omnibelt.collectors import method_collector, universal_collector, AbstractCollector, AbstractCollectorTrigger
+from omnibelt.collectors import method_propagator, universal_propagator, AbstractCollector, AbstractCollectorTrigger
 
 
 
@@ -59,7 +59,7 @@ class Depot(Container): # contains machines
 
 
 
-class machine_base(method_collector):
+class machine_base(method_propagator):
 	def gizmos(self):
 		yield from self._keys
 

@@ -1,7 +1,7 @@
 from typing import Type, Union, Any, Optional, Callable, Sequence, Iterable, Iterator, Tuple, List, Dict, NamedTuple
 from collections import OrderedDict
 from functools import cached_property
-from omnibelt import smartproperty, unspecified_argument, method_collector
+from omnibelt import smartproperty, unspecified_argument, method_propagator
 from omnibelt.tricks import nested_method_decorator
 
 from .abstract import AbstractDataSource
@@ -10,7 +10,7 @@ from .sources import SpacedSource
 
 
 
-class material_base(method_collector):
+class material_base(method_propagator):
 	@property
 	def get(self): # (src) -> data
 		return self._make_collector('get')

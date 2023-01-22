@@ -323,9 +323,9 @@ class GAN(Model, gizmo_aliases={'real': 'observation'}):
 	def create_depot(self, batch=None, **info):
 		return self.Depot(self, batch, **info)
 
-
-	@material.get_from_size('samples')
+	# @machine({'samples', 'fake'}) # not the same -> makes samples and fake identitcal!
 	@material.get_from_size('fake')
+	@material.get_from_size('samples')
 	@machine.optional('samples')
 	@machine.optional('fake')
 	def generate(self, batch_size):
