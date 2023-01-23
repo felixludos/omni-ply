@@ -1,5 +1,5 @@
 from typing import Type
-from omnidata.tools.crafting.crafting import Crafty, Crafts, craft
+from omnibelt.crafting import Crafty, Crafts, craft
 
 
 class Machine(Crafts):

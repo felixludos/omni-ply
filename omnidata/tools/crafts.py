@@ -1,0 +1,65 @@
+
+
+
+
+
+
+
+
+from .base import CraftsKit
+
+
+
+
+
+class MNIST(CraftsKit):
+	def space_of(self, gizmo: str) -> AbstractCrafts:
+
+		self._processed_crafts.space_of(gizmo)
+
+		return self.crafts.space_of(gizmo)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -2,7 +2,7 @@ from typing import Type, Union, Any, Optional, Callable, Sequence, Iterable, Ite
 from collections import OrderedDict
 from functools import cached_property
 from omnibelt import smartproperty, unspecified_argument, method_propagator
-from omnibelt.tricks import nested_method_decorator
+# from omnibelt.tricks import nested_method_decorator
 
 from .abstract import AbstractDataSource
 from .routers import DataCollection

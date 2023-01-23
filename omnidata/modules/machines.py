@@ -1,7 +1,7 @@
 from typing import Type, Union, Any, Optional, Callable, Sequence, Iterable, Iterator, Tuple, List, Dict, NamedTuple
 from collections import OrderedDict
 from omnibelt import smartproperty, unspecified_argument
-from omnibelt.tricks import nested_method_decorator
+# from omnibelt.tricks import nested_method_decorator
 from omnibelt.collectors import method_propagator, universal_propagator, AbstractCollector, AbstractCollectorTrigger
 
 

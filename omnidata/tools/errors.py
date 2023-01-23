@@ -1,0 +1,19 @@
+from typing import Optional
+
+
+
+class ToolFailedError(Exception):
+	def __init__(self, gizmo: str, message: Optional[str] = None):
+		if message is None:
+			message = f'{gizmo!r}'
+		super().__init__(message)
+		self.gizmo = gizmo
+
+
+
+class MissingGizmoError(KeyError):
+	pass
+
+
+
+
