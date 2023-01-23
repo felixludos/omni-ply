@@ -2,7 +2,8 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 from functools import cached_property
 from omnibelt import method_propagator, method_decorator, OrderedSet, isiterable
 
-from .abstract import AbstractCrafty, AbstractCraft, AbstractCrafts, AbstractRawCraft
+from ..abstract import AbstractKit, AbstractTool
+from .abstract import AbstractCrafty, AbstractCraft, AbstractCrafts, AbstractRawCraft, AbstractCraftTool
 
 
 
@@ -151,13 +152,59 @@ class SignatureCraft(BasicCraft):
 
 
 
+# class ReferenceCraft(SignatureCraft):
+# 	pass
+
+
+# class CallableCraft(AbstractCraft):
+# 	def craft(self, instance: AbstractCrafty, gizmo: str, command: str, context: AbstractKit):
+# 		raise NotImplementedError
+
+
+class DescriptorCraft(AbstractCraft):
+	CraftTool: AbstractCraftTool = None
+	
+	def _create_tool(self, instance: AbstractCrafty, owner: Type[AbstractCrafty]) -> AbstractCraftTool:
+		return self.CraftTool(self, instance)
+	
+	
+	def __get__(self, instance: AbstractCrafty, owner: Type[AbstractCrafty]) -> AbstractCraftTool:
+		return self._create_tool(instance, owner)
+
+	
+	def craft(self, instance: AbstractCrafty, command: str, args: Tuple, kwargs: Dict):
+		raise NotImplementedError
 
 
 
+####################
 
 
 
+class MachineCraft(SignatureCraft, SeamlessCraft):
+
+	pass
 
 
+
+class MaterialCraft(SignatureCraft, SeamlessCraft):
+	def __init__(self, owner: Type[AbstractCrafty], key: str, raw: AbstractRawCraft, *,
+	             signature=None, gizmos=None, **kwargs):
+		super().__init__(owner, key, raw, signature=signature, gizmos=gizmos, **kwargs)
+		self._getter = getattr(self._raw, '_method_name', None)
+	
+	
+	
+	pass
+
+
+
+class SpaceCraft(SignatureCraft, PropertyCraft, SeamlessCraft):
+	pass
+
+
+
+class IndicatorCraft(MachineCraft):
+	pass
 
 

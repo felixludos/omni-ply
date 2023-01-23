@@ -28,8 +28,8 @@ class BasicCrafts(AbstractCrafts): # container for crafts
 		crafts.append(cls._create_craft_item(owner, key, craft))
 
 
-	@classmethod
-	def _create_craft_item(cls, owner: Type[AbstractCrafty], key: str, craft: AbstractRawCraft) -> AbstractCraft:
+	@staticmethod
+	def _create_craft_item(owner: Type[AbstractCrafty], key: str, craft: AbstractRawCraft) -> AbstractCraft:
 		return craft.package_craft_item(owner, key)
 
 

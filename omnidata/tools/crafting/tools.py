@@ -2,12 +2,13 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 from functools import cached_property
 from omnibelt import method_propagator, OrderedSet, isiterable
 
-from omnidata.tools.abstract import AbstractTool, Gizmoed
+from ..abstract import AbstractTool, Gizmoed
+from .abstract import AbstractCrafty, AbstractCraft, AbstractCrafts, AbstractRawCraft, AbstractCraftTool
 
 
 
-class CraftTool(AbstractTool): # when instantiating a "Crafty", Crafts are instantiated as CraftSources
-	def __init__(self, instance: 'Crafty', base: 'Crafts', **kwargs):
+class CraftTool(AbstractCraftTool): # when instantiating a "Crafty", Crafts are instantiated as CraftSources
+	def __init__(self, base: AbstractCraft, instance: 'AbstractCrafty', **kwargs):
 		super().__init__(**kwargs)
 
 
