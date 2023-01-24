@@ -1,34 +1,24 @@
-from omnibelt.crafting import AbstractCrafts, AbstractCraft
-
-from .abstract import AbstractSpaced, AbstractTool, AbstractKit
-from .base import CraftsKit
-from .errors import ToolFailedError
+from typing import Type, Callable, Any
 
 
-
-class SpacedKit(AbstractSpaced, AbstractKit):
-	def space_of(self, gizmo: str) -> AbstractCrafts:
-		for vendor in self.vendors(gizmo):
-			try:
-				return vendor.space_of(gizmo)
-			except ToolFailedError:
-				pass
-		raise ToolFailedError(gizmo, f'No space for {gizmo!r}')
+from .base import RawCraft, CraftTool
 
 
 
-class SpacedTool(AbstractCraft, AbstractTool):
-	def space_of(self, gizmo: str) -> AbstractCrafts:
-		raise NotImplementedError
+class SpaceBase(CraftTool):
+	def send_space_of(self, instance: Any, gizmo: str) -> Any:
+		fn = getattr(instance, self._data['name'])
+		return fn()
 
 
 
-class SpacedCraftOperator():
+class Space(SpaceBase):
 	pass
 
 
 
-
+class space(RawCraft):
+	_CraftItem = Space
 
 
 
