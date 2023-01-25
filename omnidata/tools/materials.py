@@ -3,6 +3,7 @@ import torch
 
 from .abstract import AbstractContext
 from .base import RawCraft, CraftTool
+from .spaced import SpatialRawCraft
 
 
 
@@ -53,7 +54,7 @@ class Material(MaterialBase):
 
 
 
-class material(RawCraft):
+class material(SpatialRawCraft):
 	_CraftItem = Material
 
 

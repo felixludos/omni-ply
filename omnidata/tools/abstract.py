@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
+from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable, Hashable
 
 from .. import spaces
 
@@ -45,6 +45,21 @@ class AbstractTool(Gizmoed): # leaf/source
 
 
 class AbstractContext(AbstractTool):
+	@property
+	def context_id(self) -> Hashable:
+		raise NotImplementedError
+
+
+	def __hash__(self):
+		return hash(self.context_id)
+
+
+	def __eq__(self, other):
+		if isinstance(other, AbstractContext):
+			return self.context_id == other.context_id
+		return NotImplemented
+
+
 	def __getitem__(self, gizmo: str):
 		return self.get_from(self, gizmo)
 

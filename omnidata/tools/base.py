@@ -10,32 +10,92 @@ from .abstract import AbstractTool, Tooled, AbstractKit, AbstractContext, Single
 from .errors import MissingGizmoError, ToolFailedError
 
 
-
-class RawCraft(RawCraftItem): # decorator base
+class RawCraft(RawCraftItem):  # decorator base
 	_CraftItem = None
 
 
+class CraftToolBase(SignatureCraft, AwareCraft, DecoratedOperational, Operationalized, AbstractTool):
 
-class CraftToolBase(SignatureCraft, AwareCraft, AbstractTool):
+	def deep_history(self) -> Iterator['CraftToolBase']:
+		ids = set()
+
+		for tool in self._history:
+			if id(tool) not in ids:
+				ids.add(id(tool))
+				yield tool
+				yield from tool.deep_history()
+
+
 	def gizmos(self) -> Iterator[str]:
-		yield from self._gizmos
+		past = set()
+		for arg in self._data['args']:
+			if arg not in past:
+				past.add(arg)
+				yield arg
+		for tool in self.deep_history():
+			for arg in tool.gizmos():
+				if arg not in past:
+					past.add(arg)
+					yield arg
 
 
-	def _lineage(self, gizmo: str) -> Iterator['AbstractTool']:
-		yield from self._vendors.get(gizmo, ())
+	def top_level_keys(self):
+		past = set()
+		for key in super().top_level_keys():
+			if key not in past:
+				past.add(key)
+				yield key
+		for tool in self.deep_history():
+			for key in tool.top_level_keys():
+				if key not in past:
+					past.add(key)
+					yield key
 
 
-	def _call_fallback(self, gizmo: str, fn_name, *args, **kwargs) -> Any:
-		count = 0
-		for tool in self._lineage(gizmo):
-			try:
-				fn = getattr(tool, fn_name, None)
-				if fn is not None:
-					return fn(tool, *args, **kwargs)
-			except ToolFailedError:
-				pass
-			count += 1
-		raise ToolFailedError(gizmo, f'Tool failed for {gizmo!r} after {count} fallbacks')
+	def _full_operations(self) -> Iterator[Tuple[str, Callable]]:
+		for op in self._known_operations:
+			yield op, getattr(self, op)
+		past = set(self._known_operations.keys())
+		for tool in self.deep_history():
+			for op, func in tool._full_operations():
+				if op not in past:
+					past.add(op)
+					yield op, func
+
+
+	def _create_operator(self, instance, owner, *, ops=None, **kwargs):
+		if ops is None:
+			ops = dict(self._full_operations())
+		return super()._create_operator(instance, owner, ops=ops, **kwargs)
+
+
+	def __init__(self, manager: 'AbstractCrafts', owner: Type[AbstractCrafty], key: str,
+	             raw: RawCraft, *, history=None, **kwargs):
+		if history is None:
+			history = []
+		super().__init__(manager, owner, key, raw, **kwargs)
+		self._history = history
+
+
+	def merge(self, others: Iterable['CraftToolBase']):  # N-O
+		self._history.extend(other for other in others if other not in self._history)
+
+
+
+class MultiCraft(CraftToolBase):
+	def __init__(self, manager: 'AbstractCrafts', owner: Type[AbstractCrafty], key: str,
+	             raw: RawCraft, *, signature=None, history=None, data=None, **kwargs):
+		if data is None:
+			data = raw.extract_craft_data()
+		try:
+			if signature is None:
+				signature = self._extract_signature(data['args'])
+			if history is None:
+				history = {target: [] for targets in signature for target in targets}
+		except self._ExtractionFailedError as e:
+			raise ValueError(f'{owner.__name__}.{key}: {e}') from e
+		super().__init__(manager, owner, key, raw, history=history, data=data, **kwargs)
+		self._signature = signature
 
 
 	class _ExtractionFailedError(ValueError):
@@ -63,55 +123,30 @@ class CraftToolBase(SignatureCraft, AwareCraft, AbstractTool):
 		return signature
 
 
-	def __init__(self, manager: 'AbstractCrafts', owner: Type[AbstractCrafty], key: str,
-	             raw: AbstractRawCraft, *, signature=None, gizmos=None, **kwargs):
-		super().__init__(manager, owner, key, raw, **kwargs)
-		try:
-			if signature is None:
-				signature = self._extract_signature(self._data['args'])
-			if gizmos is None:
-				gizmos = [target for targets in signature for target in targets]
-		except self._ExtractionFailedError as e:
-			raise ValueError(f'{owner.__name__}.{key}: {e}') from e
 
-		self._vendors = {}
-		self._signature = signature
-		self._gizmos = gizmos
-
-
-	def merge(self, gizmo, others: Iterable['CraftToolBase']):  # N-O
-		for other in others:
-			self.update_top_level_keys(other.top_level_keys())
-		self._vendors.setdefault(gizmo).extend(others)
-
-
-
-class ValidatedCraftTool(CraftToolBase):
-	def __init__(self, manager: 'AbstractCrafts', owner: Type[AbstractCrafty], key: str,
-	             raw: AbstractRawCraft, *, signature=None, gizmos=None, **kwargs):
-		super().__init__(manager, owner, key, raw, signature=signature, gizmos=gizmos, **kwargs)
-		self._is_valid = True
-
-
-	def invalidate(self):
-		self._is_valid = False
-
-
-	@property
-	def is_valid(self):
-		return self._is_valid
-
-
-
-class CraftTool(ValidatedCraftTool, AbstractSpaced, DecoratedOperational, Operationalized):
-	@operation.get_from
-	def send_get_from(self, instance: Any, ctx: AbstractContext, gizmo: str) -> Any:
-		return self._call_fallback(gizmo, 'send_get_from', instance, ctx, gizmo)
-
-
+class SpacedTool(CraftToolBase, AbstractSpaced):
 	@operation.space_of
 	def send_space_of(self, instance: Any, gizmo: str) -> Any:
-		return self._call_fallback(gizmo, 'send_space_of', instance, gizmo)
+		raise NotImplementedError
+
+
+
+class GetterTool(SpacedTool, AbstractSpaced):
+	def signature(self): # for static analysis
+		raise NotImplementedError
+
+
+	@operation.get_from
+	def send_get_from(self, instance: Any, ctx: AbstractContext, gizmo: str) -> Any:
+		raise NotImplementedError
+
+
+
+class PreparedTool(CraftToolBase, AbstractSpaced):
+	@operation.prepare
+	def send_prepare(self, instance: Any, gizmo: str, **kwargs) -> Any:
+		raise NotImplementedError
+
 
 
 

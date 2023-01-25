@@ -66,7 +66,7 @@ class CraftsKitBase(SeamlessInheritableCrafts, SingleVendor, AbstractKit):
 
 	@staticmethod
 	def _merge_vendors(gizmo: str, main: AbstractCraft, *others: AbstractCraft) -> AbstractCraft: # N-O
-		return main.merge(gizmo, others) if others else main
+		return main.merge(others) if others else main
 
 
 	def _process_vendors(self, crafts: List[CraftToolBase]) -> Dict[str, AbstractCraft]: # O-N
