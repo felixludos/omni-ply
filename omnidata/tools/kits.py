@@ -3,12 +3,12 @@ from collections import OrderedDict
 
 from omnibelt.crafting import SeamlessInheritableCrafts, \
 	AwareCraft, SignatureCraft, \
-	AbstractCrafty, AbstractCraft, AbstractCrafts, AbstractRawCraft, AbstractCraftOperator
-from omnibelt import operators, DecoratedOperational, operation_base, \
-	auto_operation as operation, unspecified_argument
+	AbstractCrafty, AbstractCraft, AbstractCrafts, AbstractRawCraft, AbstractCraftOperator, AbstractCraftsOperator,
+from omnibelt import operators, DecoratedOperational, operation_base, auto_operation as operation, \
+	unspecified_argument, Operationalized
 
 from .abstract import AbstractTool, AbstractContext, AbstractKit, SingleVendor, AbstractSpaced
-from .crafts import CraftToolBase
+from .base import CraftToolBase
 from .errors import MissingGizmoError, ToolFailedError
 
 
@@ -30,7 +30,7 @@ class CraftsKitBase(SeamlessInheritableCrafts, SingleVendor, AbstractKit):
 		self._owner = owner
 		self._vendors = OrderedDict() if crafts is None else self._process_vendors(crafts)
 
-
+	
 	def get_from(self, ctx: 'AbstractContext', gizmo: str): # O-N
 		return self.vendor(gizmo).get_from(ctx, gizmo)
 
@@ -85,7 +85,19 @@ class SpacedCraftsKit(CraftsKitBase, SpacedKit):
 
 
 
-class CraftsKit(DecoratedOperational, SpacedCraftsKit):
+class CraftsKit(DecoratedOperational, Operationalized, SpacedCraftsKit):
+	class Operator(DecoratedOperational.Operator, AbstractCraftsOperator):
+		pass
+
+
+	def crafting(self, instance: 'AbstractCrafty') -> 'AbstractCraftOperator':
+		for craft in self.crafts():
+			craft.crafting(instance)
+		op = self.as_operator(instance)
+		setattr(instance, '_processed_crafts', op)
+		return op
+	
+	
 	@operation.tools
 	def send_tools(self, instance: Any):
 		for tool in self.tools():

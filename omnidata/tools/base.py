@@ -22,7 +22,20 @@ class CraftToolBase(SignatureCraft, AwareCraft, AbstractTool):
 
 
 	def _lineage(self, gizmo: str) -> Iterator['AbstractTool']:
-		yield from self._vendors[gizmo]
+		yield from self._vendors.get(gizmo, ())
+
+
+	def _call_fallback(self, gizmo: str, fn_name, *args, **kwargs) -> Any:
+		count = 0
+		for tool in self._lineage(gizmo):
+			try:
+				fn = getattr(tool, fn_name, None)
+				if fn is not None:
+					return fn(tool, *args, **kwargs)
+			except ToolFailedError:
+				pass
+			count += 1
+		raise ToolFailedError(gizmo, f'Tool failed for {gizmo!r} after {count} fallbacks')
 
 
 	class _ExtractionFailedError(ValueError):
@@ -90,40 +103,23 @@ class ValidatedCraftTool(CraftToolBase):
 
 
 
-class SpacedCraftTool(CraftToolBase, AbstractSpaced):
-	def _find_space_fn(self, instance: Any, gizmo: str) -> Callable:
-
-		for vendor in self._lineage(gizmo):
-
-			pass
-
-			if isinstance(vendor, AbstractSpaced):
-				return vendor.space_fn(instance)
-
-		raise NotImplementedError
-
-
-	def _remote_space_of(self, instance: Any, gizmo: str) -> Any:
-
-		return self._find_space_fn(instance, gizmo)(instance)
-
-
-
-class CraftTool(SpacedCraftTool, ValidatedCraftTool, DecoratedOperational, Operationalized):
-	def _find_getter_fn(self, instance: Any, gizmo: str) -> Callable:
-		raise NotImplementedError
-
-
+class CraftTool(ValidatedCraftTool, AbstractSpaced, DecoratedOperational, Operationalized):
 	@operation.get_from
 	def send_get_from(self, instance: Any, ctx: AbstractContext, gizmo: str) -> Any:
-		raise NotImplementedError
+		return self._call_fallback(gizmo, 'send_get_from', instance, ctx, gizmo)
 
 
 	@operation.space_of
 	def send_space_of(self, instance: Any, gizmo: str) -> Any:
-		return self._find_space_fn(instance, gizmo)()
+		return self._call_fallback(gizmo, 'send_space_of', instance, gizmo)
 
 
+
+# class GetterCraftTool(CraftTool):
+# 	def merge(self, gizmo, others: Iterable['CraftToolBase']):  # N-O
+# 		for other in others:
+# 			self.update_top_level_keys(other.top_level_keys())
+# 		self._vendors.setdefault(gizmo).extend(others)
 
 
 
