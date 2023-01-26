@@ -1,10 +1,13 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable, Type
+from functools import cached_property
 
 from omnibelt import operators, DecoratedOperational, AbstractOperator, AbstractOperational, \
 	auto_operation as operation, Operationalized
-from omnibelt.crafting import ProcessedCrafts, SeamlessCrafts, InheritableCrafts, \
+from omnibelt.crafting import ProcessedCrafts, SeamlessCrafts, InheritableCrafts, WrappedCraft, \
 	RawCraftItem, AwareCraft, SignatureCraft, \
 	AbstractCrafty, AbstractCraft, AbstractCrafts, AbstractRawCraft, AbstractCraftOperator
+
+from ..features import Prepared
 
 from .abstract import AbstractTool, Tooled, AbstractKit, AbstractContext, SingleVendor, AbstractSpaced
 from .errors import MissingGizmoError, ToolFailedError
@@ -15,24 +18,13 @@ class RawCraft(RawCraftItem):  # decorator base
 
 
 class CraftToolBase(SignatureCraft, AwareCraft, DecoratedOperational, Operationalized, AbstractTool):
-
-	def deep_history(self) -> Iterator['CraftToolBase']:
-		ids = set()
-
-		for tool in self._history:
-			if id(tool) not in ids:
-				ids.add(id(tool))
-				yield tool
-				yield from tool.deep_history()
-
-
 	def gizmos(self) -> Iterator[str]:
 		past = set()
 		for arg in self._data['args']:
 			if arg not in past:
 				past.add(arg)
 				yield arg
-		for tool in self.deep_history():
+		for tool in self._history:
 			for arg in tool.gizmos():
 				if arg not in past:
 					past.add(arg)
@@ -45,22 +37,19 @@ class CraftToolBase(SignatureCraft, AwareCraft, DecoratedOperational, Operationa
 			if key not in past:
 				past.add(key)
 				yield key
-		for tool in self.deep_history():
+		for tool in self._history:
 			for key in tool.top_level_keys():
 				if key not in past:
 					past.add(key)
 					yield key
 
 
-	def _full_operations(self) -> Iterator[Tuple[str, Callable]]:
-		for op in self._known_operations:
-			yield op, getattr(self, op)
-		past = set(self._known_operations.keys())
-		for tool in self.deep_history():
-			for op, func in tool._full_operations():
-				if op not in past:
-					past.add(op)
-					yield op, func
+	def _full_operations(self) -> Dict[str, Callable]: # 0-N
+		ops = {}
+		for tool in reversed(self._history):
+			ops.update(tool._full_operations())
+		ops.update({op: getattr(self, attr) for op, attr in self._known_operations.items()})
+		return ops
 
 
 	def _create_operator(self, instance, owner, *, ops=None, **kwargs):
@@ -124,14 +113,29 @@ class MultiCraft(CraftToolBase):
 
 
 
-class SpacedTool(CraftToolBase, AbstractSpaced):
+class SpacedTool(CraftToolBase, AbstractSpaced, WrappedCraft):
 	@operation.space_of
 	def send_space_of(self, instance: Any, gizmo: str) -> Any:
-		raise NotImplementedError
+		val = getattr(instance, self._data['name'])
+		return val
+	
+	@staticmethod
+	def _wrap_craft_fn(owner: Type[AbstractCrafty], raw: AbstractRawCraft, fn: Optional[Callable] = None) -> Callable:
+		return cached_property(super()._wrap_craft_fn(owner, raw, fn=fn))
 
 
 
-class GetterTool(SpacedTool, AbstractSpaced):
+class PreparedTool(CraftToolBase, AbstractSpaced, Prepared):
+	@operation.prepare
+	def send_prepare(self, instance: Any, **kwargs) -> Any:
+		if not self.is_ready:
+			self.prepare()
+			fn = getattr(instance, self._data['name'])
+			return fn(**kwargs)
+
+
+
+class GetterTool(CraftToolBase, AbstractSpaced):
 	def signature(self): # for static analysis
 		raise NotImplementedError
 
@@ -140,12 +144,6 @@ class GetterTool(SpacedTool, AbstractSpaced):
 	def send_get_from(self, instance: Any, ctx: AbstractContext, gizmo: str) -> Any:
 		raise NotImplementedError
 
-
-
-class PreparedTool(CraftToolBase, AbstractSpaced):
-	@operation.prepare
-	def send_prepare(self, instance: Any, gizmo: str, **kwargs) -> Any:
-		raise NotImplementedError
 
 
 

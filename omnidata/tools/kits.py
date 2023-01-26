@@ -86,7 +86,7 @@ class SpacedCraftsKit(CraftsKitBase, SpacedKit):
 
 
 class CraftsKit(DecoratedOperational, Operationalized, SpacedCraftsKit):
-	class Operator(DecoratedOperational.Operator, AbstractCraftsOperator):
+	class Operator(SpacedCraftsKit.Operator):
 		pass
 
 

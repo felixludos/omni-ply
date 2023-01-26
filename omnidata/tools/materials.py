@@ -8,14 +8,10 @@ from .spaced import SpatialRawCraft
 
 
 class MaterialBase(CraftTool):
-	def _find_getter_type(self, ctx: AbstractContext, gizmo: str) -> str:
-		raise NotImplementedError # TODO
-
-
 	def send_get_from(self, instance: Any, ctx: AbstractContext, gizmo: str) -> Any:
-		getter_fn = self._find_getter_fn(instance, gizmo)
-		getter_type = self._find_getter_type(ctx, gizmo)
-		return getattr(self, getter_type)(getter_fn, ctx)
+		fn = getattr(instance, self._data['name'])
+		getter = getattr(self, self._data['method'])
+		return getter(fn, ctx)
 
 
 	@staticmethod
