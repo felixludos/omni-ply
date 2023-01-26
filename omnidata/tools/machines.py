@@ -4,7 +4,7 @@ import inspect
 from omnibelt import auto_operation as operation
 
 from .abstract import AbstractContext
-from .base import GetterTool
+from .base import GetterTool, GetterRawCraft
 from .spaced import SpatialRawCraft
 
 
@@ -34,19 +34,15 @@ class Machine(MachineBase):
 
 
 
-class machine(SpatialRawCraft):
+class machine(SpatialRawCraft, GetterRawCraft):
 	_CraftItem = Machine
 
 
 
 class Indicator(Machine):
-
 	@operation.log
 	def send_log(self, instance: Any, ctx: AbstractContext, gizmo: str) -> Any:
-		getter_fn = self._find_getter_fn(instance, gizmo)
-		return getter_fn(**self._parse_context_args(getter_fn, ctx))
-
-	pass
+		raise NotImplementedError
 
 
 

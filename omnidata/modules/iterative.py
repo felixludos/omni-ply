@@ -14,7 +14,7 @@ from .simple import Evaluatable
 
 
 class Trainer(Parameterized, AbstractTrainer):
-	model = module(builder='model')
+	model = submodule(builder='model')
 
 	def __init__(self, model=None, **kwargs):
 		super().__init__(model=model, **kwargs)

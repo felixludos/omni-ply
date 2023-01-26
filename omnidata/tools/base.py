@@ -2,8 +2,8 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 from functools import cached_property
 
 from omnibelt import operators, DecoratedOperational, AbstractOperator, AbstractOperational, \
-	auto_operation as operation, Operationalized
-from omnibelt.crafting import ProcessedCrafts, SeamlessCrafts, InheritableCrafts, WrappedCraft, \
+	auto_operation as operation, Operationalized, agnosticproperty, agnostic
+from omnibelt.crafting import ProcessedCrafts, SeamlessCrafts, InheritableCrafts, WrappedCraft, PropertyCraft, \
 	RawCraftItem, AwareCraft, SignatureCraft, \
 	AbstractCrafty, AbstractCraft, AbstractCrafts, AbstractRawCraft, AbstractCraftOperator
 
@@ -14,64 +14,151 @@ from .errors import MissingGizmoError, ToolFailedError
 
 
 class RawCraft(RawCraftItem):  # decorator base
+	_args = None
 	_CraftItem = None
 
 
-class CraftToolBase(SignatureCraft, AwareCraft, DecoratedOperational, Operationalized, AbstractTool):
+	class _propagator_reference(RawCraftItem._propagator_reference):
+		def __init__(self, *args, backup_args=None, **kwargs):
+			if backup_args is None:
+				backup_args = ()
+			super().__init__(*args, **kwargs)
+			self._backup_args = backup_args
+
+
+		def __call__(self, *args, **kwargs):
+			return super().__call__(*args, *self._backup_args, **kwargs)
+
+
+	@agnostic
+	def _agnostic_propagator(self, item, **kwargs):
+		return self._make_propagator(item, backup_args=self._args, **kwargs)
+
+
+
+class GetterRawCraft(RawCraft):  # decorator base
+	@agnosticproperty # TODO: candidate for a class init argument (?)
+	def prepare(self):
+		return self._agnostic_propagator('prepare')
+
+
+
+class CraftToolOperator(SignatureCraft.Operator, DecoratedOperational.Operator, Prepared):
+	def _prepare(self, *args, **kwargs):
+		return self._send_operation('prepare')(*args, **kwargs)
+
+
+	def has_gizmo(self, gizmo):
+		return gizmo in self._gizmos
+
+
 	def gizmos(self) -> Iterator[str]:
+		yield from self._gizmos
+		# past = set()
+		# for arg in self._data['args']:
+		# 	if arg not in past:
+		# 		past.add(arg)
+		# 		yield arg
+		# for tool in self._history:
+		# 	for arg in tool.gizmos():
+		# 		if arg not in past:
+		# 			past.add(arg)
+		# 			yield arg
+
+
+	def _extract_gizmos(self, args):
 		past = set()
-		for arg in self._data['args']:
+		for arg in args:
 			if arg not in past:
 				past.add(arg)
 				yield arg
-		for tool in self._history:
-			for arg in tool.gizmos():
-				if arg not in past:
-					past.add(arg)
-					yield arg
 
 
-	def top_level_keys(self):
-		past = set()
-		for key in super().top_level_keys():
-			if key not in past:
-				past.add(key)
-				yield key
-		for tool in self._history:
-			for key in tool.top_level_keys():
-				if key not in past:
-					past.add(key)
-					yield key
+	def __init__(self, base: 'CraftTool', instance: Any, *, history=None, gizmos=None, **kwargs):
+		# if history is None:
+		# 	history = []
+		if gizmos is None:
+			gizmos = list(self._extract_gizmos(base._data['args']))
+		super().__init__(base, instance, **kwargs)
+		self._history = [] #history # TESTING
+		self._gizmos = gizmos
+		self._base = base # TESTING
 
 
-	def _full_operations(self) -> Dict[str, Callable]: # 0-N
-		ops = {}
-		for tool in reversed(self._history):
-			ops.update(tool._full_operations())
-		ops.update({op: getattr(self, attr) for op, attr in self._known_operations.items()})
-		return ops
-
-
-	def _create_operator(self, instance, owner, *, ops=None, **kwargs):
-		if ops is None:
-			ops = dict(self._full_operations())
-		return super()._create_operator(instance, owner, ops=ops, **kwargs)
-
-
-	def __init__(self, manager: 'AbstractCrafts', owner: Type[AbstractCrafty], key: str,
-	             raw: RawCraft, *, history=None, **kwargs):
-		if history is None:
-			history = []
-		super().__init__(manager, owner, key, raw, **kwargs)
-		self._history = history
-
-
-	def merge(self, others: Iterable['CraftToolBase']):  # N-O
-		self._history.extend(other for other in others if other not in self._history)
+	def merge(self, others: Iterable['CraftToolOperator']):  # N-O
+		for other in others:
+			for op, fn in other._ops.items():
+				if op not in self._ops:
+					self._ops[op] = fn
+			self._gizmos.extend(gizmo for gizmo in other._gizmos if gizmo not in self._gizmos)
+		self._history.extend(other for other in others if other not in self._history) # TESTING
+		return self
 
 
 
-class MultiCraft(CraftToolBase):
+class CraftTool(SignatureCraft, AwareCraft, DecoratedOperational, AbstractTool):
+	Operator = CraftToolOperator
+
+	@operation.prepare
+	def send_prepare(self, instance: Any, *args, **kwargs) -> Any:
+		return getattr(instance, self._data['name'])(*args, **kwargs)
+
+
+	# def gizmos(self) -> Iterator[str]:
+	# 	past = set()
+	# 	for arg in self._data['args']:
+	# 		if arg not in past:
+	# 			past.add(arg)
+	# 			yield arg
+	# 	for tool in self._history:
+	# 		for arg in tool.gizmos():
+	# 			if arg not in past:
+	# 				past.add(arg)
+	# 				yield arg
+	#
+	#
+	# def top_level_keys(self):
+	# 	past = set()
+	# 	for key in super().top_level_keys():
+	# 		if key not in past:
+	# 			past.add(key)
+	# 			yield key
+	# 	for tool in self._history:
+	# 		for key in tool.top_level_keys():
+	# 			if key not in past:
+	# 				past.add(key)
+	# 				yield key
+
+
+	# def _full_operations(self) -> Dict[str, Callable]: # 0-N
+	# 	ops = {}
+	# 	for tool in reversed(self._history):
+	# 		ops.update(tool._full_operations())
+	# 	ops.update({op: getattr(self, attr) for op, attr in self._known_operations.items()})
+	# 	return ops
+	#
+	#
+	# def _create_operator(self, instance, owner, *, ops=None, **kwargs):
+	# 	if ops is None:
+	# 		ops = dict(self._full_operations())
+	# 	return super()._create_operator(instance, owner, ops=ops, **kwargs)
+
+
+	# def __init__(self, manager: 'AbstractCrafts', owner: Type[AbstractCrafty], key: str,
+	#              raw: RawCraft, *, history=None, **kwargs):
+	# 	if history is None:
+	# 		history = []
+	# 	super().__init__(manager, owner, key, raw, **kwargs)
+	# 	self._history = history
+
+
+	# def merge(self, others: Iterable['CraftToolBase']):  # N-O
+	# 	self._history.extend(other for other in others if other not in self._history)
+	# 	return self
+
+
+
+class MultiCraft(CraftTool):
 	def __init__(self, manager: 'AbstractCrafts', owner: Type[AbstractCrafty], key: str,
 	             raw: RawCraft, *, signature=None, history=None, data=None, **kwargs):
 		if data is None:
@@ -113,29 +200,20 @@ class MultiCraft(CraftToolBase):
 
 
 
-class SpacedTool(CraftToolBase, AbstractSpaced, WrappedCraft):
+class SpacedTool(CraftTool, AbstractSpaced, PropertyCraft):
 	@operation.space_of
 	def send_space_of(self, instance: Any, gizmo: str) -> Any:
 		val = getattr(instance, self._data['name'])
 		return val
-	
-	@staticmethod
-	def _wrap_craft_fn(owner: Type[AbstractCrafty], raw: AbstractRawCraft, fn: Optional[Callable] = None) -> Callable:
-		return cached_property(super()._wrap_craft_fn(owner, raw, fn=fn))
 
 
 
-class PreparedTool(CraftToolBase, AbstractSpaced, Prepared):
-	@operation.prepare
-	def send_prepare(self, instance: Any, **kwargs) -> Any:
-		if not self.is_ready:
-			self.prepare()
-			fn = getattr(instance, self._data['name'])
-			return fn(**kwargs)
+class CachedSpaceTool(SpacedTool):
+	_property_type = cached_property # TODO: call __set_name__ on the property before using
 
 
 
-class GetterTool(CraftToolBase, AbstractSpaced):
+class GetterTool(CraftTool, AbstractSpaced):
 	def signature(self): # for static analysis
 		raise NotImplementedError
 
@@ -143,6 +221,7 @@ class GetterTool(CraftToolBase, AbstractSpaced):
 	@operation.get_from
 	def send_get_from(self, instance: Any, ctx: AbstractContext, gizmo: str) -> Any:
 		raise NotImplementedError
+
 
 
 
