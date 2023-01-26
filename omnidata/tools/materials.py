@@ -5,14 +5,18 @@ from omnibelt import agnosticproperty
 from .abstract import AbstractContext
 from .base import RawCraft, GetterTool, GetterRawCraft
 from .spaced import SpatialRawCraft
+from .errors import ToolFailedError
 
 
 
 class MaterialBase(GetterTool):
 	def send_get_from(self, instance: Any, ctx: AbstractContext, gizmo: str) -> Any:
+		getter_type = self._data['method']
+		if getter_type not in {'get_from_size', 'get_from_indices', 'get_next_sample', 'get_sample_from_index'}:
+			raise ToolFailedError(f'Unknown getter type: {getter_type}')
+
 		fn = getattr(instance, self._data['name'])
 
-		getter_type = self._data['method']
 		if getter_type == 'get_next_sample' and hasattr(ctx, 'size'):
 			return self.collect_samples(fn, ctx)
 		if getter_type == 'get_sample_from_index' and hasattr(ctx, 'indices'):
