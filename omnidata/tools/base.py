@@ -96,65 +96,50 @@ class CraftToolOperator(SignatureCraft.Operator, DecoratedOperational.Operator, 
 
 
 
-class CraftTool(SignatureCraft, AwareCraft, DecoratedOperational, AbstractTool):
+class CraftToolBase(SignatureCraft, AwareCraft, DecoratedOperational, AbstractTool):
+	def _create_operator(self, instance, owner, *, ops=None, **kwargs):
+		if ops is None:
+			ops = {name: getattr(self, op.attr_name)
+			       for name, op in self._known_operations.items()}
+		return super()._create_operator(instance, owner, ops=ops, **kwargs)
+
+
+	def _select_op(self, data, ops):
+
+		method = data['method']
+
+		if method in ops:
+			return {method: ops[method]}
+
+		raise NotImplementedError
+
+
+
+class endpoint(operation):
+	pass
+
+
+
+class CraftTool(CraftToolBase):
 	Operator = CraftToolOperator
 
-	@operation.prepare
+
+	def _select_op(self, data, ops):
+
+		method = data['method']
+
+		if method == 'prepare':
+			return {'prepare': ops['prepare']}
+
+		if method in ops:
+			return {method: ops[method]}
+
+
+	@endpoint.prepare
 	def send_prepare(self, instance: Any, *args, **kwargs) -> Any:
 		return getattr(instance, self._data['name'])(*args, **kwargs)
 
 
-	# def gizmos(self) -> Iterator[str]:
-	# 	past = set()
-	# 	for arg in self._data['args']:
-	# 		if arg not in past:
-	# 			past.add(arg)
-	# 			yield arg
-	# 	for tool in self._history:
-	# 		for arg in tool.gizmos():
-	# 			if arg not in past:
-	# 				past.add(arg)
-	# 				yield arg
-	#
-	#
-	# def top_level_keys(self):
-	# 	past = set()
-	# 	for key in super().top_level_keys():
-	# 		if key not in past:
-	# 			past.add(key)
-	# 			yield key
-	# 	for tool in self._history:
-	# 		for key in tool.top_level_keys():
-	# 			if key not in past:
-	# 				past.add(key)
-	# 				yield key
-
-
-	# def _full_operations(self) -> Dict[str, Callable]: # 0-N
-	# 	ops = {}
-	# 	for tool in reversed(self._history):
-	# 		ops.update(tool._full_operations())
-	# 	ops.update({op: getattr(self, attr) for op, attr in self._known_operations.items()})
-	# 	return ops
-	#
-	#
-	# def _create_operator(self, instance, owner, *, ops=None, **kwargs):
-	# 	if ops is None:
-	# 		ops = dict(self._full_operations())
-	# 	return super()._create_operator(instance, owner, ops=ops, **kwargs)
-
-
-	# def __init__(self, manager: 'AbstractCrafts', owner: Type[AbstractCrafty], key: str,
-	#              raw: RawCraft, *, history=None, **kwargs):
-	# 	if history is None:
-	# 		history = []
-	# 	super().__init__(manager, owner, key, raw, **kwargs)
-	# 	self._history = history
-
-
-	# def merge(self, others: Iterable['CraftToolBase']):  # N-O
-	# 	self._history.extend(other for other in others if other not in self._history)
-	# 	return self
 
 
 
@@ -239,6 +224,58 @@ class GetterTool(CraftTool, AbstractSpaced):
 
 
 
+
+	# def gizmos(self) -> Iterator[str]:
+	# 	past = set()
+	# 	for arg in self._data['args']:
+	# 		if arg not in past:
+	# 			past.add(arg)
+	# 			yield arg
+	# 	for tool in self._history:
+	# 		for arg in tool.gizmos():
+	# 			if arg not in past:
+	# 				past.add(arg)
+	# 				yield arg
+	#
+	#
+	# def top_level_keys(self):
+	# 	past = set()
+	# 	for key in super().top_level_keys():
+	# 		if key not in past:
+	# 			past.add(key)
+	# 			yield key
+	# 	for tool in self._history:
+	# 		for key in tool.top_level_keys():
+	# 			if key not in past:
+	# 				past.add(key)
+	# 				yield key
+
+
+	# def _full_operations(self) -> Dict[str, Callable]: # 0-N
+	# 	ops = {}
+	# 	for tool in reversed(self._history):
+	# 		ops.update(tool._full_operations())
+	# 	ops.update({op: getattr(self, attr) for op, attr in self._known_operations.items()})
+	# 	return ops
+	#
+	#
+	# def _create_operator(self, instance, owner, *, ops=None, **kwargs):
+	# 	if ops is None:
+	# 		ops = dict(self._full_operations())
+	# 	return super()._create_operator(instance, owner, ops=ops, **kwargs)
+
+
+	# def __init__(self, manager: 'AbstractCrafts', owner: Type[AbstractCrafty], key: str,
+	#              raw: RawCraft, *, history=None, **kwargs):
+	# 	if history is None:
+	# 		history = []
+	# 	super().__init__(manager, owner, key, raw, **kwargs)
+	# 	self._history = history
+
+
+	# def merge(self, others: Iterable['CraftToolBase']):  # N-O
+	# 	self._history.extend(other for other in others if other not in self._history)
+	# 	return self
 
 
 
