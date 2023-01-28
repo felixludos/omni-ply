@@ -62,7 +62,8 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 	def named_materials(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
 		for name in self._registered_materials:
 			yield name, self.get_material(name)
-	
+
+
 	def get_material(self, name, default=unspecified_argument):
 		material = self._registered_materials.get(name, unspecified_argument)
 		if isinstance(material, str):
@@ -234,7 +235,7 @@ class Supervised(Observation, Metric):
 
 
 
-class Labeled(Supervised, alias={'target': 'label'}):
+class Labeled(Supervised):#, alias={'target': 'label'}):
 	@property
 	def label_space(self):
 		return self.space_of('label')
@@ -244,7 +245,7 @@ class Labeled(Supervised, alias={'target': 'label'}):
 
 
 
-class Synthetic(Labeled, alias={'label': 'mechanism'}): # TODO: include auto alias
+class Synthetic(Labeled):#, alias={'label': 'mechanism'}): # TODO: include auto alias
 	_distinct_mechanisms = True
 
 	@property

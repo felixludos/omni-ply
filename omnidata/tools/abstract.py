@@ -1,4 +1,5 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable, Hashable
+from omnibelt import unspecified_argument
 
 from .. import spaces
 
@@ -8,6 +9,10 @@ from .errors import ToolFailedError
 
 class Gizmoed:
 	def gizmos(self) -> Iterator[str]:
+		raise NotImplementedError
+
+
+	def has_gizmo(self, gizmo: str) -> bool:
 		raise NotImplementedError
 
 
@@ -21,20 +26,24 @@ class Tooled(Gizmoed):
 		raise NotImplementedError
 
 
+	def has_gizmo(self, gizmo: str) -> bool:
+		return any(tool.has_gizmo(gizmo) for tool in self.tools())
+
+
 
 class SingleVendor(Tooled):
-	def vendor(self, gizmo: str, default: Any = None) -> 'AbstractTool':
+	def vendor(self, gizmo: str, default: Any = unspecified_argument) -> 'AbstractTool':
 		raise NotImplementedError
 
 
 	def vendors(self, gizmo: str) -> Iterator['AbstractTool']:
-		v = self.vendor(gizmo)
-		if v is not None:
-			yield v
+		yield self.vendor(gizmo)
 
 
 
 class AbstractTool(Gizmoed): # leaf/source
+
+
 	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
 		raise NotImplementedError
 
@@ -73,6 +82,12 @@ class AbstractKit(Tooled, AbstractTool): # branch/router
 				if gizmo not in past:
 					past.add(gizmo)
 					yield gizmo
+
+
+	def vendors(self, gizmo: str):
+		for tool in self.tools():
+			if tool.has_gizmo(gizmo):
+				yield tool
 
 
 	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
