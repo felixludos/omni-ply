@@ -42,8 +42,6 @@ class SingleVendor(Tooled):
 
 
 class AbstractTool(Gizmoed): # leaf/source
-
-
 	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
 		raise NotImplementedError
 

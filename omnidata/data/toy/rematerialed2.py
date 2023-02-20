@@ -15,15 +15,11 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 	class Batch(Synthetic, Datastream.Batch):
 		pass
 
-	observation = material() # get
-
-	@observation.transformation # get_key
+	@machine('observation')
 	def decode(self, mechanism):
 		raise NotImplementedError
 
-	manifold = material('target', 'mechanism')
-
-	@manifold.get_from_size
+	@material.get_from_size('mechanism')
 	def generate_mechanism(self, N):
 		with self.force_rng(rng=self.rng):
 			return self.mechanism_space.sample(N)
@@ -34,9 +30,7 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 
 
 class Stochastic(ManifoldStream):
-	observation = material(src='observation')
-
-	@observation.transformation # get_key
+	@machine('observation')
 	def generate_observation_from_mechanism(self, mechanism):
 		with self.force_rng(rng=self.rng):
 			return self.decode_distrib(mechanism).sample()
@@ -66,28 +60,18 @@ class SwissRoll(ManifoldStream):
 	tmin = hparam(3., space=spaces.HalfBound(min=0.))
 	tmax = hparam(9., space=spaces.HalfBound(min=0.))
 
-	manifold = material(replaces='mechanism')
-
-	@manifold.space
+	@space('mechanism')
 	def mechanism_space(self):
 		return spaces.Joint(
 			spaces.Bound(min=self.tmin, max=self.tmax),
 			spaces.Bound(min=0., max=1.),
 		)
 
-	target = material(replaces='target')
-
-	@target.space
+	@space('target')
 	def target_space(self):
 		return self.mechanism_space[0]
 
-	@target.transformation
-	def get_target_from_mechanism(self, mechanism):
-		return mechanism.narrow(-1,0,1)
-
-	observation = material(replaces='observation')
-
-	@observation.space
+	@space('observation')
 	def observation_space(self):
 		return spaces.Joint(
 			spaces.Bound(min=-self.Ax * self.tmax, max=self.Ax * self.tmax),
@@ -106,6 +90,10 @@ class SwissRoll(ManifoldStream):
 		], -1)
 		return pts
 
+	@machine('target')
+	def get_target_from_mechanism(self, mechanism):
+		return mechanism.narrow(-1,0,1)
+
 
 
 class RandomMapping(Dataset):
@@ -113,7 +101,7 @@ class RandomMapping(Dataset):
 	D = hparam(10, space=spaces.HalfBound(min=1))
 	M = hparam(2, space=spaces.HalfBound(min=1))
 
-	@material(space=spaces.Unbound())
+	@material
 	def X(self):
 		return torch.randn(self.N, self.D)
 	@X.space
@@ -151,29 +139,16 @@ class MNIST(Dataset):
 
 
 
-class RandomCrop(MNIST):
-	observation = material(replaces='observation')
-
-	@observation.get_from_indices
+class RandomCrop(MNIST): # "api specific"
 	def get_observation(self, indices):
 		return super().get_observation(indices).random_crop(self.size)
 
 
 
-class RandomCrop2(MNIST):
-	original = material.replacement('observation')
-
-	observation = material(replaces='observation')
-	
-	@material.get_from_indices('original')
-	def get_observation(self, indices):
-		return super().get_observation(indices)
-		
-	
+class RandomCrop2(MNIST, replacing={'original': 'observation'}):
 	@machine('observation')
 	def get_cropped_observation(self, original):
 		return original.random_crop(self.size)
-
 
 
 
@@ -198,9 +173,19 @@ class Autoencoder:
 	@machine('reconstruction')
 	def decode(self, latent):
 		return self.decoder(latent)
-	@decode.space('reconstruction')
+	@decode.space
 	def reconstruction_space(self):
 		return self.decoder.output_space
+
+	@machine('loss')
+	def compute_loss(self, observation, reconstruction):
+		return self.criterion(reconstruction, observation)
+
+
+
+class Autoencoder2:
+	encoder = submachine(builder='encoder', input='observation', output='latent')
+	decoder = submachine(builder='decoder', input='latent', output='reconstruction')
 
 	@machine('loss')
 	def compute_loss(self, observation, reconstruction):
@@ -331,10 +316,8 @@ class GAN(Model, gizmo_aliases={'real': 'observation'}):
 	# @machine({'samples', 'fake'}) # not the same -> makes samples and fake identitcal!
 	@material.get_from_size('fake')
 	@material.get_from_size('samples')
-	@machine.optional('samples')
-	@machine.optional('fake')
-	def generate(self, batch_size):
-		return self.generator(batch_size)
+	def generate(self, N):
+		return self.generator(N)
 
 	# samples = material('samples', 'fake')
 	# @samples.get_from_size

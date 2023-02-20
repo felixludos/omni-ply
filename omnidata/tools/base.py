@@ -13,6 +13,7 @@ from .abstract import AbstractTool, Tooled, AbstractKit, AbstractContext, Single
 from .errors import MissingGizmoError, ToolFailedError
 
 
+
 class RawCraft(RawCraftItem):  # decorator base
 	_args = None
 	_CraftItem = None
@@ -36,10 +37,10 @@ class RawCraft(RawCraftItem):  # decorator base
 
 
 
-class GetterRawCraft(RawCraft):  # decorator base
-	@agnosticproperty # TODO: candidate for a class init argument (?)
-	def prepare(self):
-		return self._agnostic_propagator('prepare')
+# class GetterRawCraft(RawCraft):  # decorator base
+# 	@agnosticproperty # TODO: candidate for a class init argument (?)
+# 	def prepare(self):
+# 		return self._agnostic_propagator('prepare')
 
 
 
@@ -122,24 +123,6 @@ class endpoint(operation):
 
 class CraftTool(CraftToolBase):
 	Operator = CraftToolOperator
-
-
-	def _select_op(self, data, ops):
-
-		method = data['method']
-
-		if method == 'prepare':
-			return {'prepare': ops['prepare']}
-
-		if method in ops:
-			return {method: ops[method]}
-
-
-	@endpoint.prepare
-	def send_prepare(self, instance: Any, *args, **kwargs) -> Any:
-		return getattr(instance, self._data['name'])(*args, **kwargs)
-
-
 
 
 
