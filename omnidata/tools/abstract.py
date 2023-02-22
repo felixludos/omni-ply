@@ -1,9 +1,9 @@
-from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable, Hashable
+from typing import Optional, Any, Iterator, Hashable
 from omnibelt import unspecified_argument
 
-from .. import spaces
+from omnidata import spaces
 
-from .errors import ToolFailedError
+from omnidata.tools.errors import ToolFailedError
 
 
 

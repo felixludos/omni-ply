@@ -193,6 +193,22 @@ class Autoencoder2:
 
 
 
+class Autoencoder3:
+	encoder = submodule(builder='encoder')
+	@machine('latent')
+	def encode(self, observation):
+		return self.encoder(observation)
+
+	decoder = submodule(builder='decoder')
+	@machine('reconstruction')
+	def decode(self, latent):
+		return self.decoder(latent)
+
+	@machine('loss')
+	def compute_loss(self, observation, reconstruction):
+		return self.criterion(reconstruction, observation)
+
+
 class VAE:
 	@machine('posterior')
 	def encode(self, observation):

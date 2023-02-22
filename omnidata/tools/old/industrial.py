@@ -1,11 +1,11 @@
 from typing import Hashable
 from collections import UserDict
-from omnibelt.crafting import InitializationCrafty
+from omnibelt.old_crafting import InitializationCrafty
 
-from ..features import Prepared
+from omnidata.features import Prepared
 
-from .abstract import AbstractKit, AbstractContext
-from .errors import MissingGizmoError
+from omnidata.tools.abstract import AbstractKit, AbstractContext
+from omnidata.tools.errors import MissingGizmoError
 from .kits import CraftsKit
 
 

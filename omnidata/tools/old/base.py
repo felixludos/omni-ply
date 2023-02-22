@@ -1,17 +1,14 @@
-from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable, Type
+from typing import Tuple, Union, Any, Iterator, Iterable, Type
 from functools import cached_property
 
-from omnibelt import operators, DecoratedOperational, AbstractOperator, AbstractOperational, \
-	auto_operation as operation, Operationalized, agnosticproperty, agnostic
-from omnibelt.crafting import ProcessedCrafts, SeamlessCrafts, InheritableCrafts, WrappedCraft, PropertyCraft, \
+from omnibelt import DecoratedOperational, auto_operation as operation, agnostic
+from omnibelt.old_crafting import PropertyCraft, \
 	RawCraftItem, AwareCraft, SignatureCraft, \
-	AbstractCrafty, AbstractCraft, AbstractCrafts, AbstractRawCraft, AbstractCraftOperator
+	AbstractCrafty, AbstractCrafts
 
-from ..features import Prepared
+from omnidata.features import Prepared
 
-from .abstract import AbstractTool, Tooled, AbstractKit, AbstractContext, SingleVendor, AbstractSpaced
-from .errors import MissingGizmoError, ToolFailedError
-
+from omnidata.tools.abstract import AbstractTool, AbstractContext, AbstractSpaced
 
 
 class RawCraft(RawCraftItem):  # decorator base

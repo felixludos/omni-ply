@@ -415,7 +415,7 @@ class Multistep(GAN):
 		for i in range(self.n_disc_steps):
 			if i > 0:
 				info.clear_cache()
-				info.new_batch()
+				info.new_batch() # info.transition()
 			super()._discriminator_step(info)
 
 

@@ -1,9 +1,9 @@
-from typing import Type, Callable, Any
+from typing import Callable, Any
 import inspect
 
 from omnibelt import auto_operation as operation
 
-from .abstract import AbstractContext
+from omnidata.tools.abstract import AbstractContext
 from .base import GetterTool, GetterRawCraft
 from .spaced import SpatialRawCraft
 
