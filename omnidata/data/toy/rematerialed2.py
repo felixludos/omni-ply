@@ -209,6 +209,24 @@ class Autoencoder3:
 		return self.criterion(reconstruction, observation)
 
 
+
+class SharedEncoder:
+	encoder = submachine(builder='encoder')
+
+	@machine('latent1')
+	def encode1(self, observation1):
+		return self.encoder(observation1)
+
+	@machine('latent2')
+	def encode2(self, observation2):
+		return self.encoder(observation2)
+
+	@machine('loss')
+	def compute_loss(self, observation, reconstruction):
+		return self.criterion(reconstruction, observation)
+
+
+
 class VAE:
 	@machine('posterior')
 	def encode(self, observation):

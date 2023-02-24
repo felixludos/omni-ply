@@ -9,6 +9,9 @@ from omnibelt import method_decorator, agnostic
 from omnibelt.crafts import AbstractCraft, NestableCraft, OperationalCraft, AbstractCrafty, ProcessedIndividualCrafty
 
 
+from ..features import Prepared
+
+
 
 class LabelCraft(AbstractCraft):
 	def __init__(self, label: str, **kwargs):
@@ -65,23 +68,36 @@ class SimpleLoggingCraft(LoggingCraft):
 
 
 
-class FunctionToolCraft(ToolCraft, method_decorator):
+class FunctionCraft(method_decorator, LabelCraft):
 	def __init__(self, label: str, *, fn=None, **kwargs):
 		super().__init__(label=label, fn=fn, **kwargs)
 
 
+	@property
+	def wrapped(self):
+		return self._fn
+
+
 	_name = None
-	def _setup_decorator(self, owner: Type, name: str) -> 'method_decorator':
+	def _setup_decorator(self, owner: Type, name: str) -> method_decorator:
 		self._name = name
 		return super()._setup_decorator(owner, name)
 
 
+	def _get_instance_fn(self, instance: AbstractCrafty, name: Optional[str] = None):
+		if name is None:
+			name = self._name
+		return getattr(instance, name)
+
+
+
+class FunctionToolCraft(FunctionCraft, ToolCraft):
 	def get_from(self, instance: AbstractCrafty, ctx, gizmo: str):
 		if self._name is None:
 			raise TypeError('no name')
 		if self._label != gizmo:
 			raise ValueError(f'gizmo mismatch: {self._label} != {gizmo}')
-		return self._get_from_fn(getattr(instance, self._name), ctx, gizmo)
+		return self._get_from_fn(self._get_instance_fn(instance), ctx, gizmo)
 
 
 	def _get_from_fn(self, fn, ctx, gizmo):
@@ -144,7 +160,22 @@ class IndexSampleCraft(IndexCraft, SampleCraft):
 
 
 
-class SpaceCraft(LabelCraft, cached_property):
+class CachedPropertyCraft(LabelCraft, cached_property):
+	def __init__(self, gizmo: str, *, func=None, **kwargs):
+		super().__init__(gizmo=gizmo, func=func, **kwargs)
+
+
+	def __call__(self, func: Callable):
+		self.func = func
+		return self
+
+
+	def _get_instance_val(self, instance: AbstractCrafty):
+		return getattr(instance, self.attrname)
+
+
+
+class SpaceCraft(OperationalCraft, CachedPropertyCraft):
 	class Operator(OperationalCraft.Operator):
 		_base: 'SpaceCraft'
 
@@ -153,16 +184,8 @@ class SpaceCraft(LabelCraft, cached_property):
 
 
 	def space_of(self, instance: AbstractCrafty, gizmo: str = None):
-		return getattr(instance, self.attrname)
+		return self._get_instance_val(instance)
 
-
-	def __init__(self, gizmo: str, *, func=None, **kwargs):
-		super().__init__(gizmo=gizmo, func=func, **kwargs)
-
-
-	def __call__(self, func: Callable):
-		self.func = func
-		return self
 
 
 
@@ -176,18 +199,31 @@ class DefaultCraft(MachineCraft):
 
 
 
-# class InitCraft(ToolCraft):
-# 	class Operator(ToolCraft.Operator, Prepared):
-# 		_base: 'InitCraft'
-#
-# 		def _prepare(self, ctx, gizmo: str):
-# 			return self._base.prepare(self._instance, ctx, gizmo)
-#
-#
-# 	def prepare(self, instance: AbstractCrafty, ctx, gizmo: str):
-# 		raise NotImplementedError
-#
-# 	pass
+class InitCraft(OperationalCraft, CachedPropertyCraft):
+	class Operator(OperationalCraft.Operator):
+		_base: 'InitCraft'
+
+		def init(self):
+			return self._base.init(self._instance)
+
+
+	def init(self, instance: AbstractCrafty):
+		return self._process_init_val(instance, self._get_instance_val(instance))
+
+
+	def _process_init_val(self, instance, val):
+		return val
+
+	pass
+
+
+
+class TensorCraft(InitCraft):
+	def _process_init_val(self, instance, val):
+		if isinstance(val, torch.Tensor):
+			buffer = getattr(instance, 'Buffer', None)
+			return buffer(val)
+		return val
 
 
 ########################################################################################################################
@@ -211,23 +247,9 @@ class SpacedCraft(LabelCraft):
 		return self._space_craft_type(self.label)(*args, **kwargs)
 
 
+class ContextedCraft(LabelCraft):
+	from_context = FunctionToolCraft
 
-class machine(MachineCraft, SpacedCraft):
-	optional = OptionalCraft
-	default = DefaultCraft
-
-
-
-class indicator(machine, LoggingCraft):
-	pass
-
-
-
-class material(MethodCraft, SpacedCraft):
-	get_from_size = SizeCraft
-	get_from_indices = IndexCraft
-	get_next_sample = SampleCraft
-	get_sample_from_index = IndexSampleCraft
 
 
 ########################################################################################################################
@@ -280,15 +302,19 @@ class CraftyKit(ProcessedIndividualCrafty):
 
 
 	def get_from(self, ctx, gizmo: str):
-		if gizmo not in self._tools:
-			raise ValueError(f'no tool with gizmo: {gizmo}')
 		return self._tools[gizmo].get_from(ctx, gizmo)
 
 
 	def space_of(self, gizmo: str):
-		if gizmo not in self._spaces:
-			raise ValueError(f'no space for gizmo: {gizmo}')
 		return self._spaces[gizmo][0].space_of(self, gizmo)
+
+
+	def vendors(self, gizmo: str):
+		yield from self._tools[gizmo].vendors()
+
+
+	def has_gizmo(self, gizmo: str):
+		return gizmo in self._tools
 
 
 	def gizmos(self):
@@ -296,7 +322,17 @@ class CraftyKit(ProcessedIndividualCrafty):
 
 
 
+class MaterialedCrafty(CraftyKit, Prepared): # allows materials to be initialized when prepared
+	def _prepare(self, *args, **kwargs):
+		super()._prepare(*args, **kwargs)
 
+		materials = {}
+		for gizmo, tool in self._tools.items():
+			for craft in tool.vendors():
+				if isinstance(craft, InitCraft):
+					materials[gizmo] = craft.init(self)
+				break
+		self._tools.update(materials)
 
 
 
