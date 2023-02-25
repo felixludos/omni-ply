@@ -1,7 +1,8 @@
 
 
 from .crafts import MachineCraft, ContextedCraft, SpacedCraft, OptionalCraft, DefaultCraft, LoggingCraft, \
-	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft, MaterialedCrafty
+	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft, \
+	MaterialedCrafty, AssessibleCrafty, SignaturedCrafty
 from .context import SizedContext, ScopedContext, SimpleContext, ScopeBase, Cached
 
 
@@ -41,13 +42,9 @@ class Guru(Context):
 		super().__init__(tools=tools, **kwargs)
 
 
-
-class Industrial(MaterialedCrafty):
-	pass
-
-
-
-
-
+class Industrial(MaterialedCrafty, SignaturedCrafty, AssessibleCrafty):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._process_crafts()
 
 

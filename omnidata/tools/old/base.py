@@ -8,7 +8,7 @@ from omnibelt.old_crafting import PropertyCraft, \
 
 from omnidata.features import Prepared
 
-from omnidata.tools.abstract import AbstractTool, AbstractContext, AbstractSpaced
+from omnidata.tools.abstract import AbstractTool, AbstractContext, AbstractSpacedTool
 
 
 class RawCraft(RawCraftItem):  # decorator base
@@ -165,7 +165,7 @@ class MultiCraft(CraftTool):
 
 
 
-class SpacedTool(CraftTool, AbstractSpaced, PropertyCraft):
+class SpacedTool(CraftTool, AbstractSpacedTool, PropertyCraft):
 	@operation.space_of
 	def send_space_of(self, instance: Any, gizmo: str) -> Any:
 		val = getattr(instance, self._data['name'])
@@ -178,7 +178,7 @@ class CachedSpaceTool(SpacedTool):
 
 
 
-class GetterTool(CraftTool, AbstractSpaced):
+class GetterTool(CraftTool, AbstractSpacedTool):
 	def signature(self): # for static analysis
 		raise NotImplementedError
 

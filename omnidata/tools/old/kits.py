@@ -8,13 +8,13 @@ from omnibelt import DecoratedOperational, unspecified_argument
 
 from omnidata.features import Prepared
 
-from omnidata.tools.abstract import AbstractContext, AbstractKit, SingleVendor, AbstractSpaced
+from omnidata.tools.abstract import AbstractContext, AbstractKit, SingleVendor, AbstractSpacedTool
 from .base import CraftTool, CraftToolOperator
 from omnidata.tools.errors import MissingGizmoError, ToolFailedError
 
 
 
-class SpacedKit(AbstractKit, AbstractSpaced):
+class SpacedKit(AbstractKit, AbstractSpacedTool):
 	def space_of(self, gizmo: str) -> AbstractCrafts:
 		for vendor in self.vendors(gizmo):
 			try:

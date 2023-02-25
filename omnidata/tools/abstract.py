@@ -1,4 +1,4 @@
-from typing import Optional, Any, Iterator, Hashable
+from typing import Optional, Any, Iterator, Hashable, Type
 from omnibelt import unspecified_argument
 
 from omnidata import spaces
@@ -55,7 +55,6 @@ class AbstractTool(Gizmoed): # leaf/source
 
 
 
-
 class AbstractKit(Tooled, AbstractTool): # branch/router
 	def gizmos(self) -> Iterator[str]:
 		past = set()
@@ -80,6 +79,10 @@ class AbstractKit(Tooled, AbstractTool): # branch/router
 			except ToolFailedError:
 				tries += 1
 		raise ToolFailedError(f'No vendor for {gizmo} in {self} (tried {tries} vendor/s)')
+
+
+	def has_gizmo(self, gizmo: str) -> bool:
+		return any(tool.has_gizmo(gizmo) for tool in self.tools())
 
 
 
@@ -126,11 +129,45 @@ class AbstractScope(AbstractContext):
 
 
 
-class AbstractSpaced(AbstractTool):
+class AbstractSpacedTool(AbstractTool):
 	def space_of(self, gizmo: str) -> spaces.Dim:
 		raise NotImplementedError
 
 
+
+class AbstractAssessment:
+	def add_node(self, node, **props):
+		raise NotImplementedError
+
+
+	def add_edge(self, src, dest, **props):
+		raise NotImplementedError
+
+
+	def expand(self, node: 'AbstractAssessible'):
+		node.assess(self)
+
+
+	def expand_static(self, node: Type['AbstractAssessible']):
+		node.assess_static(self)
+
+
+
+class AbstractAssessible:
+	@classmethod
+	def assess_static(cls, assessment: AbstractAssessment):
+		assessment.add_node(cls)
+
+
+	def assess(self, assessment: AbstractAssessment):
+		assessment.add_node(self)
+
+
+
+class Loggable:
+	@staticmethod
+	def log(ctx):
+		raise NotImplementedError
 
 
 

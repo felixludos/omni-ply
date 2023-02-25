@@ -2,18 +2,31 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 
 import inspect
 from functools import cached_property
+from collections import OrderedDict
 
 import torch
 
 from omnibelt import method_decorator, agnostic
-from omnibelt.crafts import AbstractCraft, NestableCraft, OperationalCraft, AbstractCrafty, ProcessedIndividualCrafty
+from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, SkilledCraft, IndividualCrafty
 
 
 from ..features import Prepared
 
+from .abstract import AbstractSpacedTool, Loggable, AbstractAssessible
+from .errors import ToolFailedError, MissingGizmoError
+from .assessments import Signatured
 
 
-class LabelCraft(AbstractCraft):
+
+class LabelCraft(SkilledCraft):
+	class Skill(SkilledCraft.Skill):
+		_base: 'LabelCraft'
+
+		@property
+		def label(self):
+			return self._base.label
+
+
 	def __init__(self, label: str, **kwargs):
 		super().__init__(**kwargs)
 		self._label = label
@@ -25,9 +38,29 @@ class LabelCraft(AbstractCraft):
 
 
 
-class ToolCraft(LabelCraft, NestableCraft, OperationalCraft):
-	class Operator(OperationalCraft.Operator):
+class AnalysisCraft(LabelCraft, Signatured, AbstractAssessible):
+	class Skill(SkilledCraft.Skill, Signatured, AbstractAssessible):
+		def signatures(self, owner = None):
+			if owner is None:
+				owner = self._instance
+			yield from self._base.signatures(owner)
+
+
+	def signature(self, owner: Type[AbstractCrafty]):
+		yield self._Signature(self.label)
+
+
+
+
+
+class ToolCraft(NestableCraft, AnalysisCraft):
+	class Skill(AnalysisCraft.Skill):
 		_base: 'ToolCraft'
+
+		@property
+		def label(self):
+			return self._base.label
+
 
 		def get_from(self, ctx, gizmo: str):
 			return self._base.get_from(self._instance, ctx, gizmo)
@@ -38,15 +71,8 @@ class ToolCraft(LabelCraft, NestableCraft, OperationalCraft):
 
 
 
-class Loggable:
-	@staticmethod
-	def log(ctx):
-		raise NotImplementedError
-
-
-
 class LoggingCraft(ToolCraft):
-	class Operator(ToolCraft.Operator, Loggable):
+	class Skill(ToolCraft.Skill, Loggable):
 		_base: 'LoggingCraft'
 
 		def log(self, ctx):
@@ -107,20 +133,46 @@ class FunctionToolCraft(FunctionCraft, ToolCraft):
 
 class MachineCraft(FunctionToolCraft):
 	@staticmethod
-	def _parse_context_args(fn: Callable, ctx):
-		# TODO: allow for default values -> use omnibelt extract_signature
-
-		args = {}
+	def _parse_fn_args(fn: Callable, *, raw: Optional[bool] = False) -> Iterator[Tuple[str, Any]]:
 		params = inspect.signature(fn).parameters
-		for name, param in params[1:].items():
-			if name in ctx:
-				args[name] = ctx[name]
+		param_items = iter(params.items())
+		if raw:
+			next(param_items) # skip self/cls arg
+		for name, param in param_items:
+			yield name, param.default
 
-		return args
+
+	@classmethod
+	def _fillin_fn_args(cls, fn: Callable, ctx):
+		# TODO: allow for arbitrary default values -> use omnibelt extract_signature
+
+		inp = {}
+		for key, default in cls._parse_fn_args(fn):
+			try:
+				inp[key] = ctx[key]
+			except KeyError:
+				if default is inspect.Parameter.empty:
+					raise
+				inp[key] = default
+
+		return inp
+
+
+	def _machine_inputs(self, owner, *, raw: Optional[bool] = None):
+		fn = self._get_instance_fn(owner)
+		if raw is None:
+			raw = isinstance(owner, type)
+		for key, default in self._parse_fn_args(fn, raw=raw):
+			if default is inspect.Parameter.empty:
+				yield key
+
+
+	def signatures(self, owner: Type[AbstractCrafty]):
+		yield self._Signature(self.label, inputs=tuple(self._machine_inputs(owner)))
 
 
 	def _get_from_fn(self, fn, ctx, gizmo):
-		return fn(**self._parse_context_args(fn, ctx))
+		return fn(**self._fillin_fn_args(fn, ctx))
 
 
 
@@ -135,10 +187,18 @@ class SizeCraft(FunctionToolCraft):
 		return fn(getattr(ctx, 'size', ctx))
 
 
+	def signatures(self, owner: Type[AbstractCrafty]):
+		yield self._Signature(self.label, meta='size')
+
+
 
 class IndexCraft(FunctionToolCraft):
 	def _get_from_fn(self, fn, ctx, gizmo):
 		return fn(getattr(ctx, 'indices', ctx))
+
+
+	def signatures(self, owner: Type[AbstractCrafty]):
+		yield self._Signature(self.label, meta='indices')
 
 
 
@@ -150,13 +210,21 @@ class SampleCraft(FunctionToolCraft):
 		return torch.stack([fn() for _ in range(size)])
 
 
+	def signatures(self, owner: Type[AbstractCrafty]):
+		yield self._Signature(self.label)
 
-class IndexSampleCraft(IndexCraft, SampleCraft):
+
+
+class IndexSampleCraft(FunctionToolCraft):
 	def _get_from_fn(self, fn, ctx, gizmo):
 		indices = getattr(ctx, 'indices', None)
 		if indices is None:
 			return fn(getattr(ctx, 'index', ctx))
 		return torch.stack([fn(i) for i in indices])
+
+
+	def signatures(self, owner: Type[AbstractCrafty]):
+		yield self._Signature(self.label, meta='index')
 
 
 
@@ -175,8 +243,8 @@ class CachedPropertyCraft(LabelCraft, cached_property):
 
 
 
-class SpaceCraft(OperationalCraft, CachedPropertyCraft):
-	class Operator(OperationalCraft.Operator):
+class SpaceCraft(CachedPropertyCraft):
+	class Skill(CachedPropertyCraft.Skill):
 		_base: 'SpaceCraft'
 
 		def space_of(self, gizmo: str):
@@ -188,23 +256,26 @@ class SpaceCraft(OperationalCraft, CachedPropertyCraft):
 
 
 
-
 class OptionalCraft(MachineCraft):
-	pass
+	class Skill(MachineCraft.Skill):
+		pass
 
 
 
 class DefaultCraft(MachineCraft):
-	pass
+	class Skill(MachineCraft.Skill):
+		pass
 
 
 
-class InitCraft(OperationalCraft, CachedPropertyCraft):
-	class Operator(OperationalCraft.Operator):
+class InitCraft(CachedPropertyCraft):
+	class Skill(CachedPropertyCraft.Skill):
 		_base: 'InitCraft'
 
-		def init(self):
-			return self._base.init(self._instance)
+		def init(self, instance: Optional[AbstractCrafty] = None):
+			if instance is None:
+				instance = self._instance
+			return self._base.init(instance)
 
 
 	def init(self, instance: AbstractCrafty):
@@ -214,8 +285,6 @@ class InitCraft(OperationalCraft, CachedPropertyCraft):
 	def _process_init_val(self, instance, val):
 		return val
 
-	pass
-
 
 
 class TensorCraft(InitCraft):
@@ -224,6 +293,7 @@ class TensorCraft(InitCraft):
 			buffer = getattr(instance, 'Buffer', None)
 			return buffer(val)
 		return val
+
 
 
 ########################################################################################################################
@@ -247,6 +317,7 @@ class SpacedCraft(LabelCraft):
 		return self._space_craft_type(self.label)(*args, **kwargs)
 
 
+
 class ContextedCraft(LabelCraft):
 	from_context = FunctionToolCraft
 
@@ -256,8 +327,8 @@ class ContextedCraft(LabelCraft):
 
 
 
-class CraftyKit(ProcessedIndividualCrafty):
-	class _Tool:
+class CraftyKit(IndividualCrafty, AbstractSpacedTool):
+	class _ToolOrderer:
 		def __init__(self, gizmo: str):
 			self._gizmo = gizmo
 			self._standard = []
@@ -265,43 +336,52 @@ class CraftyKit(ProcessedIndividualCrafty):
 			self._defaults = []
 
 
-		def add(self, craft: ToolCraft):
-			if isinstance(craft, OptionalCraft):
-				self._optionals.append(craft)
-			elif isinstance(craft, DefaultCraft):
-				self._defaults.append(craft)
+		def add(self, skill: ToolCraft.Skill):
+			if isinstance(skill, OptionalCraft.Skill):
+				self._optionals.append(skill)
+			elif isinstance(skill, DefaultCraft.Skill):
+				self._defaults.append(skill)
 			else:
-				self._standard.append(craft)
+				self._standard.append(skill)
 
 
-		def vendors(self):
+		def tool_options(self):
 			yield from self._standard
 			yield from self._optionals
 			yield from self._defaults
 
 
+		def as_tool(self):
+			return next(self.tool_options())
+
+
 		def get_from(self, ctx, gizmo: str):
-			for vendor in self.vendors():
-				return vendor.get_from(self, ctx, gizmo)
+			for vendor in self.tool_options():
+				try:
+					return vendor.get_from(ctx, gizmo)
+				except ToolFailedError:
+					pass
 
 
-	def _process_all_crafts(self):
+	def _process_crafts(self):
 		self._tools = {}
 		self._spaces = {}
-		super()._process_all_crafts()
+		super()._process_crafts()
 
 
-	def _process_craft(self, craft: LabelCraft):
-		super()._process_craft(craft)
-		if isinstance(craft, ToolCraft):
-			if craft.label not in self._tools:
-				self._tools[craft.label] = self._Tool(craft.label)
-			self._tools[craft.label].add(craft)
-		if isinstance(craft, SpaceCraft):
-			self._spaces.setdefault(craft.label, []).append(craft)
+	def _process_skill(self, skill: LabelCraft.Skill):
+		super()._process_skill(skill)
+		if isinstance(skill, ToolCraft.Skill):
+			if skill.label not in self._tools:
+				self._tools[skill.label] = self._ToolOrderer(skill.label)
+			self._tools[skill.label].add(skill)
+		if isinstance(skill, SpaceCraft.Skill):
+			self._spaces.setdefault(skill.label, []).append(skill)
 
 
 	def get_from(self, ctx, gizmo: str):
+		if gizmo not in self._tools:
+			raise MissingGizmoError(gizmo)
 		return self._tools[gizmo].get_from(ctx, gizmo)
 
 
@@ -310,7 +390,7 @@ class CraftyKit(ProcessedIndividualCrafty):
 
 
 	def vendors(self, gizmo: str):
-		yield from self._tools[gizmo].vendors()
+		yield from self._tools[gizmo].tool_options()
 
 
 	def has_gizmo(self, gizmo: str):
@@ -328,12 +408,48 @@ class MaterialedCrafty(CraftyKit, Prepared): # allows materials to be initialize
 
 		materials = {}
 		for gizmo, tool in self._tools.items():
-			for craft in tool.vendors():
-				if isinstance(craft, InitCraft):
-					materials[gizmo] = craft.init(self)
+			for skill in tool.tool_options():
+				if isinstance(skill, InitCraft.Skill):
+					materials[gizmo] = skill.init(self)
 				break
 		self._tools.update(materials)
 
+
+class SignaturedCrafty(CraftyKit, Signatured):
+	@agnostic
+	def signatures(self, owner = None) -> Iterator['AbstractSignature']:
+		if isinstance(self, type):
+			self: Type['SignaturedCrafty']
+			for loc, key, craft in self._emit_all_craft_items():
+				if isinstance(craft, Signatured):
+					yield from craft.signatures(self)
+		else:
+			for _, tool in self._tools.items():
+				if isinstance(tool, self._ToolOrderer):
+					tool = tool.as_tool()
+				if isinstance(tool, Signatured):
+					yield from tool.signatures(self)
+
+
+
+class AssessibleCrafty(CraftyKit, AbstractAssessible):
+	@classmethod
+	def assess_static(cls, assessment):
+		super().assess_static(assessment)
+		for owner, key, craft in cls._emit_all_craft_items():
+			if isinstance(craft, AbstractAssessible):
+				assessment.add_edge(cls, craft, name=key, loc=owner)
+				assessment.expand(craft)
+
+
+	def assess(self, assessment):
+		super().assess(assessment)
+		for gizmo, tool in self._tools.items():
+			if isinstance(tool, self._ToolOrderer):
+				tool = tool.as_tool()
+			if isinstance(tool, AbstractAssessible):
+				assessment.add_edge(self, tool, gizmo=gizmo)
+				assessment.expand(tool)
 
 
 

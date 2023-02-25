@@ -1,22 +1,46 @@
-from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable, Type, Set
+from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Hashable, Iterator, Iterable, Type, Set
 from collections import UserDict
 
-from .abstract import AbstractContext, AbstractTool, AbstractScope
+from .abstract import AbstractContext, AbstractKit, AbstractTool, AbstractAssessible, AbstractScope, AbstractAssessment
 from .errors import MissingGizmoError, ToolFailedError
+from .assessments import Signatured
 
 
-class ContextBase(AbstractContext):
+
+class ContextBase(AbstractContext, AbstractKit, AbstractAssessible, Signatured):
+	def context_id(self) -> Hashable:
+		return id(self)
+
+
 	def _get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
 		for tool in self.vendors(gizmo):
 			try:
 				return tool.get_from(self, gizmo)
-			except ToolFailedError:
+			except (ToolFailedError, MissingGizmoError):
 				pass
 		raise MissingGizmoError(gizmo)
 
 
 	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
 		return self._get_from(ctx, gizmo)
+
+
+	def vendors(self, gizmo: str) -> Iterator['AbstractScope']:
+		yield from self.tools()
+
+
+	def assess(self, assessment: AbstractAssessment):
+		super().assess(assessment)
+		for tool in self.tools():
+			if isinstance(tool, AbstractAssessible):
+				assessment.add_edge(self, tool)
+				assessment.expand(tool)
+
+
+	def signatures(self, owner = None) -> Iterator['AbstractSignature']:
+		for tool in self.tools():
+			if isinstance(tool, Signatured):
+				yield from tool.signatures(self)
 
 
 
@@ -57,7 +81,6 @@ class NestedContext(ContextBase):
 
 
 
-
 class ScopeBase(NestedContext, AbstractScope):
 	'''
 	interface between the internal labels (defined by dev) for a single module,
@@ -84,9 +107,6 @@ class ScopeBase(NestedContext, AbstractScope):
 		if ctx is not self:
 			gizmo = self.gizmo_to(gizmo)
 		return super().get_from(ctx, gizmo)
-
-
-# class MapScope()
 
 
 
@@ -159,9 +179,9 @@ class SizedContext(ContextBase):
 class Cached(ContextBase, UserDict):
 	def _get_from(self, ctx, gizmo):
 		if gizmo in self:
-			return self[gizmo]
+			return self.data[gizmo]
 		val = super()._get_from(ctx, gizmo)
-		self[gizmo] = val # cache loaded val
+		self.data[gizmo] = val # cache loaded val
 		return val
 
 
