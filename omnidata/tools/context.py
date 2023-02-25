@@ -12,11 +12,15 @@ class ContextBase(AbstractContext, AbstractKit, AbstractAssessible, Signatured):
 		return id(self)
 
 
+	def __str__(self):
+		return f'{self.__class__.__name__}({", ".join(self.gizmos())})'
+
+
 	def _get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
 		for tool in self.vendors(gizmo):
 			try:
 				return tool.get_from(self, gizmo)
-			except (ToolFailedError, MissingGizmoError):
+			except ToolFailedError:
 				pass
 		raise MissingGizmoError(gizmo)
 
@@ -177,12 +181,37 @@ class SizedContext(ContextBase):
 
 
 class Cached(ContextBase, UserDict):
+	def gizmos(self) -> Iterator[str]:
+		past = set()
+		for gizmo in super().gizmos():
+			if gizmo not in past:
+				yield gizmo
+				past.add(gizmo)
+		for gizmo in self.cached():
+			if gizmo not in past:
+				yield gizmo
+				past.add(gizmo)
+
+
+	def is_cached(self, gizmo: str):
+		return gizmo in self.data
+
+
+	def cached(self):
+		yield from self.keys()
+
+
 	def _get_from(self, ctx, gizmo):
 		if gizmo in self:
 			return self.data[gizmo]
 		val = super()._get_from(ctx, gizmo)
 		self.data[gizmo] = val # cache loaded val
 		return val
+
+
+	def __str__(self):
+		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + gizmo + '}') for gizmo in self.gizmos()]
+		return f'{self.__class__.__name__}({", ".join(gizmos)})'
 
 
 

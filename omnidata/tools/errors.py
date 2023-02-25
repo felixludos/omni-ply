@@ -11,8 +11,11 @@ class ToolFailedError(Exception):
 
 
 
-class MissingGizmoError(KeyError):
-	pass
+class MissingGizmoError(ToolFailedError, KeyError):
+	def __init__(self, gizmo: str, message: Optional[str] = None):
+		if message is None:
+			message = gizmo
+		super().__init__(gizmo, message)
 
 
 

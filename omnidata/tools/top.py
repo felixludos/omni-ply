@@ -1,26 +1,36 @@
 
 
 from .crafts import MachineCraft, ContextedCraft, SpacedCraft, OptionalCraft, DefaultCraft, LoggingCraft, \
-	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft, \
-	MaterialedCrafty, AssessibleCrafty, SignaturedCrafty
+	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft
+from .kits import MaterialedCrafty, AssessibleCrafty, SignaturedCrafty, RelabeledKit
 from .context import SizedContext, ScopedContext, SimpleContext, ScopeBase, Cached
 
 
 
-class machine(MachineCraft, ContextedCraft, SpacedCraft):
+class machine(ContextedCraft, MachineCraft, SpacedCraft):
+	class Skill(MachineCraft.Skill, SpacedCraft.Skill):
+		pass
+
 	optional = OptionalCraft
 	default = DefaultCraft
 
 
+
 class indicator(machine, LoggingCraft):
-	pass
+	class Skill(machine.Skill, LoggingCraft.Skill):
+		pass
 
 
-class material(TensorCraft, ContextedCraft, SpacedCraft):
-	get_from_size = SizeCraft
-	get_from_indices = IndexCraft
-	get_next_sample = SampleCraft
-	get_sample_from_index = IndexSampleCraft
+
+class material(ContextedCraft, TensorCraft, SpacedCraft):
+	class Skill(TensorCraft.Skill, SpacedCraft.Skill):
+		pass
+
+	from_size = SizeCraft
+	from_indices = IndexCraft
+	next_sample = SampleCraft
+	sample_from_index = IndexSampleCraft
+
 
 
 class space(SpaceCraft):
@@ -42,7 +52,8 @@ class Guru(Context):
 		super().__init__(tools=tools, **kwargs)
 
 
-class Industrial(MaterialedCrafty, SignaturedCrafty, AssessibleCrafty):
+
+class Industrial(MaterialedCrafty, SignaturedCrafty, RelabeledKit, AssessibleCrafty):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._process_crafts()
