@@ -1,13 +1,13 @@
 import numpy as np
 import torch
 
-from ..materials import Materialed, material
-from ...structure import spaces, Decoder, Generator, NormalDistribution
-from ...features import Seeded
-from ...parameters import hparam, inherit_hparams
+from omnidata.data.materials import Materialed, material
+from omnidata.structure import spaces, Decoder, Generator, NormalDistribution
+from omnidata.features import Seeded
+from omnidata.parameters import hparam, inherit_hparams
 
-from ..flavors import Synthetic, Sampledstream
-from ..top import Datastream, Dataset, Buffer
+from omnidata.data.flavors import Synthetic, Sampledstream
+from omnidata.data.top import Datastream, Dataset, Buffer
 
 
 
@@ -15,11 +15,15 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 	class Batch(Synthetic, Datastream.Batch):
 		pass
 
-	@machine('observation')
+	observation = material() # get
+
+	@observation.transformation # get_key
 	def decode(self, mechanism):
 		raise NotImplementedError
 
-	@material.get_from_size('mechanism')
+	manifold = material('target', 'mechanism')
+
+	@manifold.get_from_size
 	def generate_mechanism(self, N):
 		with self.force_rng(rng=self.rng):
 			return self.mechanism_space.sample(N)
@@ -30,7 +34,9 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 
 
 class Stochastic(ManifoldStream):
-	@machine('observation')
+	observation = material(src='observation')
+
+	@observation.transformation # get_key
 	def generate_observation_from_mechanism(self, mechanism):
 		with self.force_rng(rng=self.rng):
 			return self.decode_distrib(mechanism).sample()
@@ -60,18 +66,28 @@ class SwissRoll(ManifoldStream):
 	tmin = hparam(3., space=spaces.HalfBound(min=0.))
 	tmax = hparam(9., space=spaces.HalfBound(min=0.))
 
-	@space('mechanism')
+	manifold = material(replaces='mechanism')
+
+	@manifold.space
 	def mechanism_space(self):
 		return spaces.Joint(
 			spaces.Bound(min=self.tmin, max=self.tmax),
 			spaces.Bound(min=0., max=1.),
 		)
 
-	@space('target')
+	target = material(replaces='target')
+
+	@target.space
 	def target_space(self):
 		return self.mechanism_space[0]
 
-	@space('observation')
+	@target.transformation
+	def get_target_from_mechanism(self, mechanism):
+		return mechanism.narrow(-1,0,1)
+
+	observation = material(replaces='observation')
+
+	@observation.space
 	def observation_space(self):
 		return spaces.Joint(
 			spaces.Bound(min=-self.Ax * self.tmax, max=self.Ax * self.tmax),
@@ -90,10 +106,6 @@ class SwissRoll(ManifoldStream):
 		], -1)
 		return pts
 
-	@machine('target')
-	def get_target_from_mechanism(self, mechanism):
-		return mechanism.narrow(-1,0,1)
-
 
 
 class RandomMapping(Dataset):
@@ -101,7 +113,7 @@ class RandomMapping(Dataset):
 	D = hparam(10, space=spaces.HalfBound(min=1))
 	M = hparam(2, space=spaces.HalfBound(min=1))
 
-	@material
+	@material(space=spaces.Unbound())
 	def X(self):
 		return torch.randn(self.N, self.D)
 	@X.space
@@ -139,16 +151,29 @@ class MNIST(Dataset):
 
 
 
-class RandomCrop(MNIST): # "api specific"
+class RandomCrop(MNIST):
+	observation = material(replaces='observation')
+
+	@observation.get_from_indices
 	def get_observation(self, indices):
 		return super().get_observation(indices).random_crop(self.size)
 
 
 
-class RandomCrop2(MNIST, replacing={'original': 'observation'}):
+class RandomCrop2(MNIST):
+	original = material.replacement('observation')
+
+	observation = material(replaces='observation')
+	
+	@material.get_from_indices('original')
+	def get_observation(self, indices):
+		return super().get_observation(indices)
+		
+	
 	@machine('observation')
 	def get_cropped_observation(self, original):
 		return original.random_crop(self.size)
+
 
 
 
@@ -173,53 +198,9 @@ class Autoencoder:
 	@machine('reconstruction')
 	def decode(self, latent):
 		return self.decoder(latent)
-	@decode.space
+	@decode.space('reconstruction')
 	def reconstruction_space(self):
 		return self.decoder.output_space
-
-	@machine('loss')
-	def compute_loss(self, observation, reconstruction):
-		return self.criterion(reconstruction, observation)
-
-
-
-class Autoencoder2:
-	encoder = submachine(builder='encoder', input='observation', output='latent')
-	decoder = submachine(builder='decoder', input='latent', output='reconstruction')
-
-	@machine('loss')
-	def compute_loss(self, observation, reconstruction):
-		return self.criterion(reconstruction, observation)
-
-
-
-class Autoencoder3:
-	encoder = submodule(builder='encoder')
-	@machine('latent')
-	def encode(self, observation):
-		return self.encoder(observation)
-
-	decoder = submodule(builder='decoder')
-	@machine('reconstruction')
-	def decode(self, latent):
-		return self.decoder(latent)
-
-	@machine('loss')
-	def compute_loss(self, observation, reconstruction):
-		return self.criterion(reconstruction, observation)
-
-
-
-class SharedEncoder:
-	encoder = submachine(builder='encoder')
-
-	@machine('latent1')
-	def encode1(self, observation1):
-		return self.encoder(observation1)
-
-	@machine('latent2')
-	def encode2(self, observation2):
-		return self.encoder(observation2)
 
 	@machine('loss')
 	def compute_loss(self, observation, reconstruction):
@@ -350,8 +331,10 @@ class GAN(Model, gizmo_aliases={'real': 'observation'}):
 	# @machine({'samples', 'fake'}) # not the same -> makes samples and fake identitcal!
 	@material.get_from_size('fake')
 	@material.get_from_size('samples')
-	def generate(self, N):
-		return self.generator(N)
+	@machine.optional('samples')
+	@machine.optional('fake')
+	def generate(self, batch_size):
+		return self.generator(batch_size)
 
 	# samples = material('samples', 'fake')
 	# @samples.get_from_size
@@ -432,7 +415,7 @@ class Multistep(GAN):
 		for i in range(self.n_disc_steps):
 			if i > 0:
 				info.clear_cache()
-				info.new_batch()
+				info.new_batch() # info.transition()
 			super()._discriminator_step(info)
 
 

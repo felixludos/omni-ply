@@ -5,6 +5,10 @@ from omnibelt import unspecified_argument, duplicate_instance, get_printer
 
 from ..features import Prepared
 from ..persistent import AbstractFingerprinted
+from ..tools.abstract import AbstractTool, AbstractKit, AbstractSourcedKit, \
+	AbstractSpaced, AbstractContext, AbstractMogul
+from ..tools.errors import MissingGizmoError
+from ..tools.moguls import BatchMogul, ContinuousMogul
 
 
 prt = get_printer(__file__)
@@ -13,6 +17,7 @@ prt = get_printer(__file__)
 class AbstractData(Prepared, AbstractFingerprinted): # TODO: make fingerprinted
 	def _prepare(self, **kwargs):
 		pass
+
 
 	def copy(self):
 		return duplicate_instance(self) # shallow copy
@@ -26,112 +31,80 @@ class AbstractData(Prepared, AbstractFingerprinted): # TODO: make fingerprinted
 		return self._title()
 
 
-	def __repr__(self):
-		return str(self)
-
 
 class AbstractCountableData(AbstractData):
 	def _title(self):
 		return f'{super()._title()}[{self.size}]'
+
 
 	@property
 	def size(self):
 		raise NotImplementedError
 
 
-class AbstractDataSource(AbstractData):
-	def __getitem__(self, item):
-		return self.get_from(self, item)
 
+class AbstractDataSource(AbstractData, AbstractTool, AbstractSpaced):
 	@classmethod
-	def _parse_selection(cls, source):
-		return source
-
-	def get(self, source):
-		raise NotImplementedError
-
-	def get_from(self, source, key):
-		return self._get_from(source, key)
-
-	@staticmethod
-	def _get_from(source, key=None):
-		raise NotImplementedError
-
-	def space_of(self, key):
-		raise NotImplementedError
-
-	def validate_selection(self, selection):
-		return selection
+	def _parse_context(cls, context: AbstractContext):
+		return context
 
 
-class AbstractDataRouter(AbstractDataSource):
+	# def validate_context(self, context: AbstractContext):
+	# 	return context
+
+
+class MissingBuffer(MissingGizmoError):
+	pass
+
+
+class AbstractDataRouter(AbstractDataSource, AbstractKit):
 	def _prepare(self, source=None, **kwargs):
 		super()._prepare(source=source, **kwargs)
-		for material in self.materials():
-			material.prepare()
+		for buffer in self.tools():
+			buffer.prepare()
 
-	def named_materials(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
+
+	def named_buffers(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
 		raise NotImplementedError
 
-	def available(self) -> Iterator[str]:
-		for k, _ in self.named_materials():
-			yield k
-
-	def materials(self) -> Iterator['AbstractDataSource']:
-		for _, m in self.named_materials():
-			yield m
 
 	def __len__(self):
 		raise NotImplementedError # number of materials (not number of samples! -> size)
 
-	class MissingMaterial(KeyError):
-		pass
+	_MissingBuffer = MissingBuffer
 
 
-	def get(self, key, default=unspecified_argument):
-		try:
-			return self.get_from(self._parse_selection(self), key)
-		except self.MissingMaterial:
-			if default is unspecified_argument:
-				raise
-			return default
-
-	def has(self, key):
+	def get_buffer(self, gizmo: str, default: Optional[Any] = unspecified_argument):
 		raise NotImplementedError
 
-	def space_of(self, name):
-		return self.get_material(name).space
 
-	def get_material(self, name, default=unspecified_argument):
+	def register_buffer(self, gizmo: str, buffer: AbstractTool):
 		raise NotImplementedError
 
-	def register_material(self, name, material):
+
+	def _register_multi_buffer(self, buffer: AbstractTool, *gizmos: str):
+		for gizmo in gizmos:
+			self.register_buffer(gizmo, buffer)
+
+
+	def remove_buffer(self, name):
 		raise NotImplementedError
 
-	def _register_multi_material(self, material, *names):
-		for name in names:
-			self.register_material(name, material)
-
-	def remove_material(self, name):
-		raise NotImplementedError
-
-	def __setitem__(self, key, value):
-		self.register_material(key, value)
-
-	def __delitem__(self, key):
-		self.remove_material(key)
-
-	def __contains__(self, name):
-		return self.has(name)
+	# def __setitem__(self, key, value):
+	# 	self.register_buffer(key, value)
+	#
+	# def __delitem__(self, key):
+	# 	self.remove_material(key)
 
 
 	def __str__(self):
-		return f'{super().__str__()}({", ".join(map(str,self.available()))})'
+		return f'{super().__str__()}({", ".join(map(str, self.gizmos()))})'
 
 
 	View = None
 	def view(self, **kwargs):
 		return self.View(self, **kwargs)
+
 
 
 class AbstractView(AbstractDataSource):
@@ -152,26 +125,39 @@ class AbstractView(AbstractDataSource):
 	def source(self):
 		raise NotImplementedError
 
-	def _get_from(self, source, key=None):
-		return self.source.get_from(source, key)
+	def get_from(self, ctx: AbstractContext, gizmo: str):
+		return self.source.get_from(ctx, gizmo)
 
 
 
 class AbstractRouterView(AbstractView, AbstractDataRouter):
-	def named_materials(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
-		yield from self.source.named_materials()
+	def named_buffers(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
+		yield from self.source.named_buffers()
 
-	def available(self) -> Iterator[str]:
-		return self.source.available()
 
-	def get_material(self, name, default=unspecified_argument):
-		return self.source.get_material(name, default=default)
+	def gizmos(self) -> Iterator[str]:
+		yield from self.source.gizmos()
 
-	def has(self, key):
-		return self.source.has(key)
 
-	def validate_selection(self, selection):
-		return self.source.validate_selection(selection)
+	def tools(self) -> Iterator['AbstractTool']:
+		yield from self.source.tools()
+
+
+	def vendors(self, gizmo: str) -> Iterator['AbstractTool']:
+		yield from self.source.vendors(gizmo)
+
+
+	def has_gizmo(self, gizmo):
+		return self.source.has_gizmo(gizmo)
+
+
+	def get_buffer(self, gizmo: str, default: Optional[Any] = unspecified_argument):
+		return self.source.get_buffer(gizmo, default=default)
+
+
+	def validate_context(self, selection):
+		return self.source.validate_context(selection)
+
 
 	def view(self, **kwargs):
 		if self.View is None:
@@ -179,8 +165,10 @@ class AbstractRouterView(AbstractView, AbstractDataRouter):
 		return self.View(self, **kwargs)
 
 
+
 class AbstractCountableRouterView(AbstractRouterView, AbstractCountableData):
 	pass
+
 
 
 class AbstractSelector:
@@ -188,71 +176,45 @@ class AbstractSelector:
 		raise NotImplementedError
 
 
-# class AbstractSelectorView(AbstractSelector, AbstractView):
-# 	pass
-
 
 class AbstractIndexedData(AbstractCountableData):
 	def __init__(self, *, indices=None, **kwargs):
 		super().__init__(**kwargs)
 
+
 	@property
 	def size(self):
 		return len(self.indices)
+
 
 	@property
 	def indices(self):
 		raise NotImplementedError
 
 
-class AbstractBatch(AbstractSelector, AbstractRouterView):
-	def __init__(self, progress, **kwargs):
-		super().__init__(**kwargs)
 
-	@property
-	def progress(self) -> 'AbstractProgress':
-		raise NotImplementedError
-
-	@property
-	def source(self):
-		return self.progress.source
-
-	def new(self):
-		return self.progress.next_batch()
-	
-	
-
-class AbstractProgression:
-	def __iter__(self):
-		return self
-
+class AbstractProgression(BatchMogul, ContinuousMogul, AbstractSourcedKit):
 	def __next__(self):
 		return self.next_batch()
 
-	def get_batch(self): # gets current if it exists, otherwise returns next one
-		raise NotImplementedError
-
-	@property
-	def current_batch(self):
-		raise NotImplementedError
 
 	def next_batch(self):
 		raise NotImplementedError
 
-	@property
-	def source(self):
-		raise NotImplementedError
+
+
+class AbstractBatch(AbstractSelector, AbstractRouterView, AbstractContext):
+	def __init__(self, progress: AbstractProgression, **kwargs):
+		super().__init__(**kwargs)
+
 
 	@property
-	def done(self):
+	def progress(self) -> AbstractProgression:
 		raise NotImplementedError
 
-	@property
-	def sample_count(self):
-		raise NotImplementedError
-	@property
-	def batch_count(self):
-		raise NotImplementedError
+
+	def new(self):
+		return self.progress.next_batch()
 
 
 
@@ -260,15 +222,18 @@ class AbstractBatchable(AbstractDataSource):
 	def __iter__(self):
 		return self.iterate()
 
+
 	def __next__(self):
 		return self.batch()
 
-	def iterate(self, batch_size=None, **kwargs):
+
+	def iterate(self, batch_size: Optional[int] = None, **kwargs):
 		raise NotImplementedError
 
-	def batch(self, batch_size=None, **kwargs):
+
+	def batch(self, batch_size: Optional[int] = None, **kwargs):
 		progress = self.iterate(batch_size=batch_size, **kwargs)
-		return progress.get_batch()
+		return progress.current_context()
 
 
 

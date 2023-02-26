@@ -45,10 +45,10 @@ class CraftyKit(IndividualCrafty, AbstractKit, AbstractSpaced):
 			yield self.tool()
 
 
-	def _process_crafts(self):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
 		self._tools = {}
 		self._spaces = {}
-		super()._process_crafts()
 
 
 	def _process_skill(self, src: Type[AbstractCrafty], key: str, craft: AbstractCraft, skill: LabelCraft.Skill):
@@ -61,9 +61,14 @@ class CraftyKit(IndividualCrafty, AbstractKit, AbstractSpaced):
 			self._spaces.setdefault(skill.label, []).append(skill)
 
 
+	def has_gizmo(self, gizmo: str) -> bool:
+		return gizmo in self._tools
+
+
 	def space_of(self, gizmo: str):
-		# gizmo = self.validate_label(gizmo)
-		return self._spaces[gizmo][0].space_of(self, gizmo)
+		if gizmo in self._spaces:
+			return self._spaces[gizmo][0].space_of(self, gizmo)
+		return self._tools[gizmo].space_of(self, gizmo)
 
 
 	def vendors(self, gizmo: str):

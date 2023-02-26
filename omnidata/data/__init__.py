@@ -6,7 +6,7 @@
 # 	RootedDataset, EncodableDataset, DownloadableDataset, ImageDataset
 
 from .top import Datastream, Dataset, Buffer, SimpleDataset
-from .materials import material
+# from .materials import material
 from . import toy
 from . import flavors
 

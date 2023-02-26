@@ -2,13 +2,22 @@ import numpy as np
 import torch
 # from sklearn.datasets import make_swiss_roll
 
-from ..materials import Materialed, material
+# from ..materials import Materialed, material
 from ...structure import spaces, Decoder, Generator, NormalDistribution
 from ...features import Seeded
 from ...parameters import hparam, inherit_hparams
 
 from ..flavors import Synthetic, Sampledstream
 from ..top import Datastream
+
+class material: # compatibility
+	def __init__(self, name):
+		self.name = name
+
+	def __call__(self, func):
+		func.material_name = self.name
+		return func
+	pass
 
 
 class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
@@ -19,9 +28,9 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 
 	def _prepare(self, **kwargs):
 		super()._prepare(**kwargs)
-		self.get_material('observation').space = self.observation_space
-		self.get_material('target').space = self.target_space
-		self.get_material('mechanism').space = self.mechanism_space
+		self.get_buffer('observation').space = self.observation_space
+		self.get_buffer('target').space = self.target_space
+		self.get_buffer('mechanism').space = self.mechanism_space
 
 	@material('observation')
 	def get_observation(self, src):

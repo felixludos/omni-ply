@@ -202,7 +202,7 @@ class Cached(ContextBase, UserDict):
 
 
 	def _get_from(self, ctx, gizmo):
-		if gizmo in self:
+		if self.is_cached(gizmo):
 			return self.data[gizmo]
 		val = super()._get_from(ctx, gizmo)
 		self.data[gizmo] = val # cache loaded val

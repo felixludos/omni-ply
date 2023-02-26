@@ -17,17 +17,14 @@ from .views import SizeSelector, IndexSelector
 prt = get_printer(__file__)
 
 
-
 class BuildableData(AbstractDataSource, Buildable):
 	pass
-
 
 
 class Shufflable(Seeded):
 	@staticmethod
 	def _is_big_number(N):
 		return N > 10000000
-
 
 	def _shuffle_indices(self, N):
 		# TODO: include a warning if cls._is_big_number(N)
@@ -46,7 +43,6 @@ class SpacedSource(AbstractDataSource):
 		super().__init__(**kwargs)
 		self._space = space
 
-
 	@property
 	def space(self):
 		return self._space
@@ -56,13 +52,13 @@ class SpacedSource(AbstractDataSource):
 
 
 
-# class SingleSource(AbstractDataSource):
-# 	def _get_from(self, source, key=None):
-# 		return self._get(source)
-#
-# 	@staticmethod
-# 	def _get(source):
-# 		raise NotImplementedError
+class SingleSource(AbstractDataSource):
+	def _get_from(self, source, key=None):
+		return self._get(source)
+
+	@staticmethod
+	def _get(source):
+		raise NotImplementedError
 
 
 
@@ -80,6 +76,7 @@ class SampleSource(AbstractDataSource, Sampler):
 
 
 
+
 # class SelectorSource(AbstractDataSource, AbstractSelector):
 # 	def get(self, key):
 # 		return self.get_from(self, key)
@@ -89,6 +86,8 @@ class SampleSource(AbstractDataSource, Sampler):
 # class GenerativeSource(AbstractDataSource, Generator):
 # 	def _get_from(self, source, key):
 # 		return self.generate(source.size)
+
+
 
 
 
@@ -115,7 +114,7 @@ class Subsetable(AbstractDataSource, AbstractCountableData, Shufflable):
 			assert cut is not None, 'Either cut or indices must be specified'
 			indices, _ = self._split_indices(indices=self._shuffle_indices(self.size) \
 				if shuffle else torch.arange(self.size), cut=cut)
-		indices = self.validate_context(indices)
+		indices = self.validate_selection(indices)
 		return self.Subset(source=self, indices=indices)
 	
 

@@ -48,6 +48,10 @@ class Simple3(Industrial):
 	def i(self, index):
 		return index
 
+	# @space('x')
+	# def x_space(self, y):
+	# 	return torch.zeros(y.shape)
+
 
 
 def test_industrial():
@@ -65,6 +69,7 @@ def test_tool_init():
 	assert g['d'] == 4
 
 
+
 def test_tool_analysis():
 	g = Guru(Simple2(), Simple())
 
@@ -74,6 +79,7 @@ def test_tool_analysis():
 	print('\n'.join(map(str, sig)))
 
 	assert len(sig) == 3
+
 
 
 def test_simple_materials():

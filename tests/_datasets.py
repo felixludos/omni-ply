@@ -25,7 +25,7 @@ def test_dataset_init():
 
 	assert str(dataset) == 'SwissRollDataset[100](observation, target, mechanism)'
 
-	buffers = tuple(sorted(dataset.available()))
+	buffers = tuple(sorted(dataset.available_buffers()))
 	assert len(buffers) == len(dataset)
 	assert buffers == ('mechanism', 'observation', 'target')
 
@@ -124,7 +124,7 @@ def test_dataset_batch():
 
 	assert str(batch) == 'Batch[10]<SwissRollDataset[100]>({observation}, {target}, {mechanism})'
 
-	buffers = tuple(sorted(batch.available()))
+	buffers = tuple(sorted(batch.available_buffers()))
 	assert len(buffers) == len(batch)
 	assert buffers == ('mechanism', 'observation', 'target')
 
@@ -211,7 +211,7 @@ def test_simple_dataset():
 	assert dataset.size == 100
 	assert dataset[0].sub(X).sum().item() == 0
 
-	buffers = tuple(sorted(dataset.available()))
+	buffers = tuple(sorted(dataset.available_buffers()))
 	assert len(buffers) == len(dataset)
 	assert buffers == (0, 1)
 
@@ -221,7 +221,7 @@ def test_simple_dataset():
 	assert ds2.size == 100
 	assert ds2['X'].sub(X).sum().item() == 0
 
-	buffers = tuple(sorted(ds2.available()))
+	buffers = tuple(sorted(ds2.available_buffers()))
 	assert len(buffers) == len(ds2)
 	assert buffers == ('X', 'Y')
 

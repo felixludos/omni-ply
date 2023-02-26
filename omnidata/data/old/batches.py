@@ -8,13 +8,13 @@ from .progression import StreamProgression, SetProgression
 
 
 
+
 class BatchableBase(AbstractBatchable):
 	Batch = None # should get checked/used by Progression
 	Progression = None
 
 	@classmethod
-	def _parse_context(cls, source):
-		raise NotImplementedError
+	def _parse_selection(cls, source):
 		if source is None or isinstance(source, AbstractSelector):
 			return source
 		# if source is None:

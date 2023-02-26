@@ -152,7 +152,7 @@ class MaterialSource(SpacedSource, AbstractMaterial):
 		if mat is None:
 			mat = cls(collection, base, **kwargs) if base._fn is None else cls(collection, base, **kwargs)
 		for name in cls._resolve_keys(base):
-			collection.register_buffer(name, mat)
+			collection.register_material(name, mat)
 
 
 	def __init__(self, source: 'Materialed', mat: material_base, *, space=None, **kwargs):
@@ -216,7 +216,7 @@ class Materialed(DataCollection):
 	def _register_auto_material(self, *names, **kwargs):
 		mat = self.Material(self, **kwargs)
 		for name in names:
-			self.register_buffer(name, mat)
+			self.register_material(name, mat)
 		return mat
 
 

@@ -40,16 +40,38 @@ class AbstractTool(Gizmoed): # leaf/source
 		yield self
 
 
+	def validate_context(self, ctx: 'AbstractContext'):
+		'''makes sure the context is valid for this tool, and returns a new context if necessary'''
+		return ctx
+
+
 	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
 		raise NotImplementedError
+
+
+	def get(self, gizmo: str, default: Any = unspecified_argument):
+		try:
+			return self.get_from(None, gizmo)
+		except ToolFailedError:
+			if default is unspecified_argument:
+				raise
+			return default
 
 
 	def __getitem__(self, gizmo: str):
 		return self.get_from(None, gizmo)
 
 
+	def __contains__(self, gizmo: str):
+		return self.has_gizmo(gizmo)
+
+
 
 class AbstractKit(AbstractTool): # branch/router
+	def tools(self) -> Iterator['AbstractTool']: # must iterate over children, not self (prevents infinite recursion)
+		raise NotImplementedError
+
+
 	def gizmos(self) -> Iterator[str]:
 		past = set()
 		for tool in self.tools():
@@ -74,7 +96,15 @@ class AbstractKit(AbstractTool): # branch/router
 
 
 
+class AbstractSourcedKit(AbstractKit):
+	def sources(self) -> Iterator['AbstractTool']:
+		raise NotImplementedError
+
+
+
 class AbstractMogul:
+	# def resources(self) -> Iterator['AbstractTool']:
+	# 	raise NotImplementedError
 	pass
 
 
@@ -93,6 +123,15 @@ class AbstractContext(AbstractKit):
 		if isinstance(other, AbstractContext):
 			return self.context_id == other.context_id
 		return NotImplemented
+
+
+	def get(self, gizmo: str, default: Any = unspecified_argument):
+		try:
+			return self.get_from(self, gizmo)
+		except ToolFailedError:
+			if default is unspecified_argument:
+				raise
+			return default
 
 
 	def __getitem__(self, gizmo: str):

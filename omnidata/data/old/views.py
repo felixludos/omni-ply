@@ -65,8 +65,8 @@ class IndexSelector(SizeSelector, AbstractIndexedData):
 
 
 class IndexView(IndexSelector, AbstractCountableRouterView, AbstractIndexedData): # -> Subset
-	def validate_context(self, selection: 'AbstractSelector'):
-		return super().validate_context(selection.compose(self))
+	def validate_selection(self, selection: 'AbstractSelector'):
+		return super().validate_selection(selection.compose(self))
 
 
 
@@ -88,7 +88,7 @@ class CachedView(AbstractRouterView):
 	def __str__(self):
 		cached = set(self.cached())
 		return f'{self._title()}(' \
-		       f'{", ".join((key if key in cached else "{" + key + "}") for key in self.available_buffers())})'
+		       f'{", ".join((key if key in cached else "{" + key + "}") for key in self.available())})'
 
 	def _get_from(self, source, key=None):
 		if key not in self._cache_table:

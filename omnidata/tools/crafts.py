@@ -92,7 +92,7 @@ class AnalysisCraft(ReplaceableCraft, Signatured, AbstractAssessible):
 
 
 	def signatures(self, owner: Type[AbstractCrafty] = None):
-		yield self._Signature(self.label)
+		yield self._Signature(self._validate_label(owner, self.label))
 
 
 
@@ -194,7 +194,7 @@ class FunctionToolCraft(FunctionCraft, ToolCraft):
 
 
 
-class MachineCraft(FunctionToolCraft):
+class TransformCraft(LabelCraft):
 	@staticmethod
 	def _parse_fn_args(fn: Callable, *, raw: Optional[bool] = False) -> Iterator[Tuple[str, Any]]:
 		params = inspect.signature(fn).parameters
@@ -221,8 +221,7 @@ class MachineCraft(FunctionToolCraft):
 		return inp
 
 
-	def _machine_inputs(self, owner, *, raw: Optional[bool] = None):
-		fn = self._get_instance_fn(owner)
+	def _transform_inputs(self, owner, fn, *, raw: Optional[bool] = None):
 		if raw is None:
 			raw = isinstance(owner, type)
 		for key, default in self._parse_fn_args(fn, raw=raw):
@@ -230,15 +229,18 @@ class MachineCraft(FunctionToolCraft):
 				yield self._validate_label(owner, key)
 
 
+
+class MachineCraft(FunctionToolCraft, TransformCraft):
 	def signatures(self, owner: Type[AbstractCrafty] = None):
 		assert owner is not None
 		label = self._validate_label(owner, self.label)
-		yield self._Signature(label, inputs=tuple(self._machine_inputs(owner)))
+		yield self._Signature(label, inputs=tuple(self._transform_inputs(owner, self._get_instance_fn(owner))))
 
 
 	def _get_from(self, instance: AbstractCrafty, ctx, gizmo: str):
-		inputs = {inp: ctx[inp] for inp in self._machine_inputs(instance, raw=False)}
-		return self._get_from_fn(self._get_instance_fn(instance), ctx, gizmo, inputs=inputs)
+		fn = self._get_instance_fn(instance)
+		inputs = {inp: ctx[inp] for inp in self._transform_inputs(instance, fn, raw=False)}
+		return self._get_from_fn(fn, ctx, gizmo, inputs=inputs)
 
 
 	def _get_from_fn(self, fn, ctx, gizmo, *, inputs=None):
@@ -328,7 +330,7 @@ class CachedPropertyCraft(ReplaceableCraft, cached_property):
 
 
 
-class SpaceCraft(CachedPropertyCraft):
+class SpaceCraft(CachedPropertyCraft): # TransformCraft
 	class Skill(CachedPropertyCraft.Skill):
 		_base: 'SpaceCraft'
 
@@ -339,6 +341,11 @@ class SpaceCraft(CachedPropertyCraft):
 
 	def _space_of(self, instance: AbstractCrafty, gizmo: str = None):
 		return self._get_instance_val(instance)
+
+
+
+class ContextualSpaceCraft(SpaceCraft):
+	pass
 
 
 

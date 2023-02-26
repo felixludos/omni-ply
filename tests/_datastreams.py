@@ -24,7 +24,7 @@ def test_datastream_init():
 
 	assert str(datastream) == 'Helix(observation, target, mechanism)'
 
-	buffers = tuple(sorted(datastream.available()))
+	buffers = tuple(sorted(datastream.available_buffers()))
 	assert len(buffers) == len(datastream)
 	assert buffers == ('mechanism', 'observation', 'target')
 
@@ -116,7 +116,7 @@ def test_datastream_batch():
 
 	assert str(batch) == 'Batch[10]<Helix>({observation}, {target}, {mechanism})'
 
-	buffers = tuple(sorted(batch.available()))
+	buffers = tuple(sorted(batch.available_buffers()))
 	assert len(buffers) == len(batch)
 	assert buffers == ('mechanism', 'observation', 'target')
 

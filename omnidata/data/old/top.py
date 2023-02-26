@@ -6,14 +6,9 @@ from .routers import DataCollection, AutoCollection, BranchedDataRouter, Aliased
 from .views import IndexView
 from .sources import Splitable, TensorSource, SpacedSource, BuildableData
 from .progression import SetProgression, StreamProgression
-# from .materials import Materialed
+from .materials import Materialed
 from .batches import Batchable, Epochable
 
-
-class Materialed: # compatibility
-	class Material:
-		pass
-	pass
 
 class Buffer(TensorSource, SpacedSource, BuildableData): # TODO: should be epochable
 	pass
@@ -30,7 +25,7 @@ class Datastream(Batchable, _FeaturedDataRouter): # not countable (but batchable
 
 
 class Dataset(Splitable, CountableDataRouter, Epochable, _FeaturedDataRouter):
-	_Buffer = Buffer
+	Buffer = Buffer
 	class Material(_FeaturedDataRouter.Material):
 		pass
 	class Subset(Epochable, IndexView):
@@ -47,9 +42,9 @@ class SimpleDataset(Dataset):
 
 	def _register_init_data(self, unnamed_data, named_data):
 		for i, x in enumerate(unnamed_data):
-			self.register_buffer(i, x)
+			self.register_material(i, x)
 		for k, v in named_data.items():
-			self.register_buffer(k, v)
+			self.register_material(k, v)
 
 
 

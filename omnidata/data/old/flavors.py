@@ -36,9 +36,9 @@ class Sampledstream(Dataset, Datastream): # Datastream -> Dataset
 		# replacing stream with fixed samples
 		n_samples = self.n_samples
 		batch = self.Batch(source=self, indices=None, size=n_samples) # mostly for caching
-		for key, material in self.named_buffers():
+		for key, material in self.named_materials():
 			self._stream_materials[key] = material
-			self.register_buffer(key, batch[key], space=material.space)
+			self.register_material(key, batch[key], space=material.space)
 		return out
 
 
