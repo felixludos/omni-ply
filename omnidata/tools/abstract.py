@@ -74,6 +74,11 @@ class AbstractKit(AbstractTool): # branch/router
 
 
 
+class AbstractMogul:
+	pass
+
+
+
 class AbstractContext(AbstractKit):
 	@property
 	def context_id(self) -> Hashable:

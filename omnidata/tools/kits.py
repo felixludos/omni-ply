@@ -79,6 +79,13 @@ class CraftyKit(IndividualCrafty, AbstractKit, AbstractSpaced):
 
 
 
+class ValidatedKit(CraftyKit):
+	@classmethod
+	def validate_label(cls, label):
+		return label
+
+
+
 class RelabeledKit(CraftyKit):
 	_inherited_tool_relabels = None
 	def __init_subclass__(cls, replace=None, **kwargs): # {old_label: new_label}
@@ -109,12 +116,6 @@ class RelabeledKit(CraftyKit):
 			else:
 				yield loc, key, craft
 
-
-	@classmethod
-	def validate_label(cls, label):
-		# return cls._inherited_tool_relabels.get(label, label)
-		# raise NotImplementedError
-		return label
 
 
 class MaterialedCrafty(CraftyKit, Prepared): # allows materials to be initialized when prepared

@@ -36,7 +36,7 @@ class LabelCraft(SkilledCraft):
 
 
 	def _validate_label(self, owner, label): # TODO: may be unnecessary (-> split into a subclass)
-		return owner.validate_label(label)
+		return label
 
 
 	@property
@@ -70,7 +70,13 @@ class ReplaceableCraft(CopyCraft):
 
 
 	def _validate_label(self, owner, label):
-		return super()._validate_label(owner, self._replacements.get(label, label))
+		return self._replacements.get(label, label)
+
+
+
+class ValidatedCraft(ReplaceableCraft):
+	def _validate_label(self, owner, label):  # TODO: may be unnecessary (-> split into a subclass)
+		return owner.validate_label(label)
 
 
 
@@ -175,6 +181,12 @@ class FunctionCraft(method_decorator, CopyCraft):
 class FunctionToolCraft(FunctionCraft, ToolCraft):
 	def _get_from(self, instance: AbstractCrafty, ctx, gizmo: str):
 		return self._get_from_fn(self._get_instance_fn(instance), ctx, gizmo)
+
+
+	def signatures(self, owner: Type[AbstractCrafty] = None):
+		assert owner is not None
+		label = self._validate_label(owner, self.label)
+		yield self._Signature(label, meta='context')
 
 
 	def _get_from_fn(self, fn, ctx, gizmo):
@@ -376,6 +388,7 @@ class TensorCraft(InitCraft):
 
 
 class MethodCraft(AbstractCraft):
+	'''For crafts which contain methods to create crafts, but can't be used directly themselves'''
 	def __init__(self, *args, **kwargs):
 		raise TypeError('This craft cannot be directly instantiated')
 
