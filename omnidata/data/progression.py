@@ -4,7 +4,7 @@ import math
 import torch
 
 from ..features import Prepared, ProgressBarred
-from ..tools.moguls import BatchMogul, ContinuousMogul, SelectionMogul, LimitMogul, \
+from ..tools.moguls import BatchMogul, IteratorMogul, SelectionMogul, LimitMogul, \
 	BatchBudgetMogul, EpochMogul, EpochBudgetMogul
 
 from .abstract import AbstractProgression
@@ -14,6 +14,8 @@ from .sources import Shufflable
 
 class AbstractBudgetProgression(AbstractProgression, BatchBudgetMogul):
 	pass
+
+
 
 
 
@@ -35,16 +37,8 @@ class ProgressionBase(AbstractProgression, Prepared):
 
 
 	@property
-	def current_batch(self):
-		return self._current_batch
-
-
-	@property
 	def batch_size(self):
 		return self._batch_size
-	@batch_size.setter
-	def batch_size(self, batch_size):
-		self._batch_size = batch_size
 
 
 	@property
@@ -110,8 +104,6 @@ class BudgetProgression(ProgressionBase, AbstractBudgetProgression):
 	@property
 	def budget_samples(self) -> Optional[int]:
 		return self._total_samples
-
-
 	@property
 	def budget_batches(self) -> Optional[int]:
 		return self._total_batches
@@ -122,8 +114,6 @@ class BudgetProgression(ProgressionBase, AbstractBudgetProgression):
 		if self._total_samples is None:
 			return _inf
 		return self._total_samples - self.sample_count
-
-
 	@property
 	def remaining_batches(self):
 		if self._total_batches is None:
@@ -189,16 +179,6 @@ class EpochProgression(ProgressionBase, EpochMogul):
 	def _setup_epoch(self):
 		self._selections = self._generate_selections(self._generate_sample_order())
 		self._sel_index = 0
-
-	# @property
-	# def remaining_batches_in_epoch(self) -> Optional[int]:
-	# 	return len(self._selections) - self._sel_index
-	#
-	# @property
-	# def remaining_samples_in_epoch(self) -> Optional[int]:
-	# 	if self._strict_batch_size:
-	# 		return self.remaining_samples_in_epoch * self.batch_size
-	# 	return self.epoch_size - self.sample_count
 
 
 

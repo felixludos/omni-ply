@@ -6,71 +6,65 @@ import torch
 from ...structure import spaces, Decoder, Generator, NormalDistribution
 from ...features import Seeded
 from ...parameters import hparam, inherit_hparams
+from ...tools import material, machine, space
 
 from ..flavors import Synthetic, Sampledstream
 from ..top import Datastream
 
-class material: # compatibility
-	def __init__(self, name):
-		self.name = name
-
-	def __call__(self, func):
-		func.material_name = self.name
-		return func
-	pass
 
 
 class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
-	class Batch(Synthetic, Datastream.Batch):
-		pass
-	# class View(Synthetic, Datastream.View):
-	# 	pass
-
-	def _prepare(self, **kwargs):
-		super()._prepare(**kwargs)
-		self.get_buffer('observation').space = self.observation_space
-		self.get_buffer('target').space = self.target_space
-		self.get_buffer('mechanism').space = self.mechanism_space
-
-	@material('observation')
-	def get_observation(self, src):
-		return self.generate_observation_from_mechanism(src['mechanism'])
-
-	@material('target')
-	@material('mechanism')
-	def get_mechanism(self, src):
-		return self.generate_mechanism(src.size)
-
-	def generate(self, N): # generates observations
+	def generate(self, N: int): # generates observations
 		return self.generate_observation_from_mechanism(self.generate_mechanism(N))
 
-	def generate_mechanism(self, N):
+
+	@material.from_size('mechanism')
+	def generate_mechanism(self, N: int):
 		with self.force_rng(rng=self.rng):
 			return self.space_of('mechanism').sample(N)
 
+
+	@machine('observation')
+	def generate_observation_from_mechanism(self, mechanism):
+		raise NotImplementedError
+
+
+
+class Deterministic(ManifoldStream, Decoder):
+	@machine('observation')
 	def generate_observation_from_mechanism(self, mechanism):
 		return self.decode(mechanism)
 
-	def decode(self, mechanism):
+
+	def decode(self, mechanism): # deterministic mapping from mechanism to observation
 		raise NotImplementedError
 
 
 
-class Stochastic(ManifoldStream):
+class Distributional(ManifoldStream):
 	def generate_observation_from_mechanism(self, mechanism):
-		with self.force_rng(rng=self.rng):
-			return self.decode_distrib(mechanism).sample()
+		with self.force_rng(rng=self.rng): # TODO: change force to push
+			return self.decode_distribution(mechanism).sample()
 
+
+	def decode_distribution(self, mechanism):
+		raise NotImplementedError
+
+
+
+class Stochastic(Distributional, Deterministic):
 	def _decode_distrib_from_mean(self, mean):
 		raise NotImplementedError
 
-	def decode_distrib(self, mechanism):
+
+	def decode_distribution(self, mechanism):
 		return self._decode_distrib_from_mean(self.decode(mechanism))
 
 
 
 class Noisy(Stochastic):
 	noise_std = hparam(0., space=spaces.HalfBound(min=0.))#, alias='noise-std')
+
 
 	def _decode_distrib_from_mean(self, mean):
 		return NormalDistribution(mean, self.noise_std * torch.ones_like(mean))
@@ -87,18 +81,20 @@ class SwissRoll(ManifoldStream):
 	tmax = hparam(9., space=spaces.HalfBound(min=0.))
 
 
-	@hparam(hidden=True)
+	@space('mechanism')
 	def mechanism_space(self):
 		return spaces.Joint(
 			spaces.Bound(min=self.tmin, max=self.tmax),
 			spaces.Bound(min=0., max=1.),
 		)
 
-	@hparam(hidden=True)
+
+	@space('target')
 	def target_space(self):
 		return self.mechanism_space[0]
 
-	@hparam(hidden=True)
+
+	@space('observation')
 	def observation_space(self):
 		# assert Ax > 0 and Ay > 0 and Az > 0 and freq > 0 and tmax > tmin, \
 		# 	f'invalid parameters: {Ax} {Ay} {Az} {freq} {tmax} {tmin}'
@@ -109,9 +105,9 @@ class SwissRoll(ManifoldStream):
 		)
 
 
-	@material('target')
-	def get_target(self, src):
-		return src['mechanism'].narrow(-1,0,1) #if self.target_theta else src['mechanism']
+	@machine('target')
+	def get_target(self, mechanism):
+		return mechanism.narrow(-1,0,1) #if self.target_theta else src['mechanism']
 
 
 	def decode(self, mechanism):
@@ -145,18 +141,20 @@ class Helix(ManifoldStream):
 	w = hparam(1., space=spaces.HalfBound(min=0.))
 
 
-	@hparam(hidden=True)
+	@space('mechanism')
 	def mechanism_space(self):
 		return spaces.Joint(
 			spaces.Periodic(min=-1., max=1.) if self.periodic_strand else spaces.Bound(min=-1., max=1.),
 			spaces.Categorical(n=self.n_helix),
 		)
 
-	@hparam(hidden=True)
+
+	@space('target')
 	def target_space(self):
 		return self.mechanism_space[-1]
 
-	@hparam(hidden=True)
+
+	@space('observation')
 	def observation_space(self):
 		return spaces.Joint(
 			spaces.Bound(min=-self.Rx, max=self.Rx),
@@ -165,9 +163,9 @@ class Helix(ManifoldStream):
 		)
 
 
-	@material('target')
-	def get_target(self, src):
-		return src['mechanism'].narrow(-1,1,1).long() #if self.target_strand else src['mechanism']
+	@machine('target')
+	def get_target(self, mechanism):
+		return mechanism.narrow(-1,1,1).long()
 
 
 	def decode(self, mechanism):

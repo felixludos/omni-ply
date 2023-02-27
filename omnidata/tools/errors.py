@@ -1,6 +1,10 @@
 from typing import Optional
 
 
+class InvalidContextError(TypeError):
+	pass
+
+
 
 class ToolFailedError(Exception):
 	def __init__(self, gizmo: str, message: Optional[str] = None):

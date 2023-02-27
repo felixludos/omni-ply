@@ -17,9 +17,10 @@ from .top import Dataset, Datastream, Buffer
 
 
 class Sampledstream(Dataset, Datastream): # Datastream -> Dataset
-	_StreamTable = Dataset._MaterialsTable
+	_StreamTable = Dataset._BufferTable
 
 	n_samples = hparam(required=True, space=spaces.Naturals(), inherit=True)
+
 
 	def __init__(self, n_samples, *args, stream_table=None, default_len=None, **kwargs):
 		if default_len is None:
@@ -30,12 +31,13 @@ class Sampledstream(Dataset, Datastream): # Datastream -> Dataset
 		self.n_samples = n_samples
 		self._stream_materials = stream_table
 
+
 	def _prepare(self, **kwargs):
 		out = super()._prepare( **kwargs)
 
 		# replacing stream with fixed samples
 		n_samples = self.n_samples
-		batch = self.Batch(source=self, indices=None, size=n_samples) # mostly for caching
+		batch = self._Batch(source=self, indices=None, size=n_samples) # mostly for caching
 		for key, material in self.named_buffers():
 			self._stream_materials[key] = material
 			self.register_buffer(key, batch[key], space=material.space)

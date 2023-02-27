@@ -183,14 +183,21 @@ class FunctionToolCraft(FunctionCraft, ToolCraft):
 		return self._get_from_fn(self._get_instance_fn(instance), ctx, gizmo)
 
 
-	def signatures(self, owner: Type[AbstractCrafty] = None):
+	def _get_from_fn(self, fn, ctx, gizmo):
+		return fn(ctx)
+
+
+
+class ContextToolCraft(FunctionToolCraft):
+	def __init__(self, label: str, *, inputs=None, fn=None, **kwargs):
+		raise NotImplementedError # TODO: use inputs for the signature
+		super().__init__(label=label, fn=fn, **kwargs)
+
+
+	def signatures(self, owner: Type[AbstractCrafty] = None): # TODO: use inputs for the signature
 		assert owner is not None
 		label = self._validate_label(owner, self.label)
 		yield self._Signature(label, meta='context')
-
-
-	def _get_from_fn(self, fn, ctx, gizmo):
-		return fn(ctx)
 
 
 
@@ -248,9 +255,15 @@ class MachineCraft(FunctionToolCraft, TransformCraft):
 
 
 
-class BatchCraft(FunctionToolCraft):
+class BatchCraft(ContextToolCraft):
 	def _get_from_fn(self, fn, ctx, gizmo):
 		return fn(getattr(ctx, 'batch', ctx))
+
+
+	def signatures(self, owner: Type[AbstractCrafty] = None):
+		assert owner is not None
+		label = self._validate_label(owner, self.label)
+		yield self._Signature(label, meta='batch')
 
 
 
@@ -414,7 +427,8 @@ class SpacedCraft(LabelCraft):
 
 
 class ContextedCraft(LabelCraft):
-	from_context = FunctionToolCraft
+	from_context = ContextToolCraft
+	from_batch = BatchCraft
 
 
 

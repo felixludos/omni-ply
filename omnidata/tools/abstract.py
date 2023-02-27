@@ -40,9 +40,9 @@ class AbstractTool(Gizmoed): # leaf/source
 		yield self
 
 
-	def validate_context(self, ctx: 'AbstractContext'):
-		'''makes sure the context is valid for this tool, and returns a new context if necessary'''
-		return ctx
+	# def validate_context(self, ctx: 'AbstractContext'):
+	# 	'''makes sure the context is valid for this tool, and returns a new context if necessary'''
+	# 	return ctx
 
 
 	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
@@ -102,10 +102,9 @@ class AbstractSourcedKit(AbstractKit):
 
 
 
-class AbstractMogul:
-	# def resources(self) -> Iterator['AbstractTool']:
-	# 	raise NotImplementedError
-	pass
+class AbstractMogul: # controls/manages/creates/generates contexts => trainers, experiments, etc.
+	def resources(self) -> Iterator['AbstractSchema']:
+		raise NotImplementedError
 
 
 
@@ -139,9 +138,33 @@ class AbstractContext(AbstractKit):
 
 
 
+class AbstractSchema:
+	def as_scope(self, ctx: 'AbstractContext') -> 'AbstractScope':
+		pass
+
+
+
+class AbstractScopable(AbstractSchema, AbstractTool):
+	'''
+	 A tool can specify a scope for the given context to use when accessing its gizmos.
+
+	 For example, datasets can specify a scope for the context to use when accessing their data.
+
+	 Can raise a `InvalidContextError` if the context is not valid for this tool
+	 (e.g. if it doesn't have the required data, like a `size`)
+	 '''
+
+
+
+class AbstractResource(AbstractTool):
+	def as_schema(self, mogul: AbstractMogul):
+		raise NotImplementedError
+
+
+
 class AbstractScope(AbstractContext):
 	def gizmoto(self) -> Iterator[str]: # iterates over external gizmos (products)
-		raise NotImplementedError
+		yield from self.gizmos()
 
 
 	def gizmo_to(self, external: str) -> str: # global -> local
@@ -153,10 +176,19 @@ class AbstractScope(AbstractContext):
 
 
 
+##########################################################################################
+
+
+
 class AbstractSpaced:
 	def space_of(self, gizmo: str) -> spaces.Dim:
 		raise NotImplementedError
 
+
+
+class AbstractChangableSpace(AbstractSpaced): # TODO: build into `space` crafts
+	def change_space_of(self, gizmo: str, space: spaces.Dim):
+		raise NotImplementedError
 
 
 ##########################################################################################

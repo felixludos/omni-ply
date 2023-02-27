@@ -1,5 +1,6 @@
 # from ..persistent import Fingerprinted
 from ..parameters import hparam, with_hparams, Parameterized
+from ..tools import Industrial, material, machine, space
 
 from .abstract import AbstractBatchable
 from .routers import DataCollection, AutoCollection, BranchedDataRouter, AliasedCollection, CountableDataRouter
@@ -10,40 +11,41 @@ from .progression import SetProgression, StreamProgression
 from .batches import Batchable, Epochable
 
 
-class Materialed: # compatibility
-	class Material:
-		pass
-	pass
 
 class Buffer(TensorSource, SpacedSource, BuildableData): # TODO: should be epochable
 	pass
 
 
-class _FeaturedDataRouter(AutoCollection, AliasedCollection, Materialed, DataCollection, BuildableData):
+
+class _FeaturedDataRouter(AutoCollection, AliasedCollection, Industrial, DataCollection, BuildableData):
 	pass
 
 
 
 class Datastream(Batchable, _FeaturedDataRouter): # not countable (but batchable)
-	class Material(_FeaturedDataRouter.Material):
-		pass
+	pass
+
+
+
+class Subset(Epochable, IndexView):
+	pass
+
 
 
 class Dataset(Splitable, CountableDataRouter, Epochable, _FeaturedDataRouter):
 	_Buffer = Buffer
-	class Material(_FeaturedDataRouter.Material):
-		pass
-	class Subset(Epochable, IndexView):
-		pass
+	_Subset = Subset
 
 
 
 class SimpleDataset(Dataset):
 	_is_ready = True
 
+
 	def __init__(self, *unnamed_data, **named_data):
 		super().__init__()
 		self._register_init_data(unnamed_data, named_data)
+
 
 	def _register_init_data(self, unnamed_data, named_data):
 		for i, x in enumerate(unnamed_data):

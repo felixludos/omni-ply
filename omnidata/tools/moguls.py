@@ -7,22 +7,22 @@ from .abstract import AbstractMogul, AbstractContext
 
 
 
-class StreamMogul(AbstractMogul):
+class IterableMogul(AbstractMogul):
 	def __iter__(self):
 		raise NotImplementedError
 
 
-	def current_context(self):
-		raise NotImplementedError
 
-
-
-class ContinuousMogul(StreamMogul):
+class IteratorMogul(IterableMogul):
 	def __iter__(self):
 		return self
 
 
 	def __next__(self):
+		raise NotImplementedError
+
+
+	def current_context(self):
 		raise NotImplementedError
 
 
@@ -33,13 +33,13 @@ class ContinuousMogul(StreamMogul):
 
 
 
-class LimitMogul(StreamMogul):
+class LimitMogul(IterableMogul):
 	def __len__(self):
 		raise NotImplementedError
 
 
 
-class SelectionMogul(StreamMogul):
+class SelectionMogul(IterableMogul):
 	def __getitem__(self, item):
 		raise NotImplementedError
 
@@ -60,8 +60,30 @@ class BuildingContextMogul(AbstractMogul):
 ########################################################################################################################
 
 
+class SimpleMogul(AbstractMogul):
+	def __init__(self, sources, **kwargs):
+		self._sources = sources
 
-class OptimMogul(StreamMogul):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################################################################################################################
+
+
+
+class OptimMogul(IterableMogul):
 	@property
 	def iteration_count(self) -> int: # of the optimizer
 		raise NotImplementedError
@@ -80,7 +102,7 @@ class OptimBudgetMogul(OptimMogul):
 
 
 
-class BatchMogul(StreamMogul):
+class BatchMogul(IterableMogul):
 	@property
 	def batch_size(self):
 		raise NotImplementedError

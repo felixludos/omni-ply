@@ -1,7 +1,8 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Hashable, Iterator, Iterable, Type, Set
 from collections import UserDict
 
-from .abstract import AbstractContext, AbstractKit, AbstractTool, AbstractAssessible, AbstractScope, AbstractAssessment
+from .abstract import AbstractContext, AbstractKit, AbstractTool, AbstractAssessible, AbstractScope, \
+	AbstractAssessment, AbstractSourcedKit
 from .errors import MissingGizmoError, ToolFailedError
 from .assessments import Signatured
 
@@ -16,7 +17,7 @@ class ContextBase(AbstractContext, AbstractKit, AbstractAssessible, Signatured):
 		return f'{self.__class__.__name__}({", ".join(self.gizmos())})'
 
 
-	def _get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
+	def _get_from(self, ctx: AbstractContext, gizmo: str):
 		for tool in self.vendors(gizmo):
 			try:
 				return tool.get_from(self, gizmo)
@@ -169,14 +170,15 @@ class ScopedContext(SimpleContext):
 
 
 
-class SizedContext(ContextBase):
-	@property
-	def size(self):
-		return self._size
-
+class SizedContext(AbstractContext):
 	def __init__(self, *args, size=None, **kwargs):
 		super().__init__(**kwargs)
 		self._size = size
+
+
+	@property
+	def size(self):
+		return self._size
 
 
 
@@ -199,6 +201,10 @@ class Cached(ContextBase, UserDict):
 
 	def cached(self):
 		yield from self.keys()
+
+
+	def clear_cache(self):
+		self.data.clear()
 
 
 	def _get_from(self, ctx, gizmo):

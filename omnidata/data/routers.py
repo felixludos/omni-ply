@@ -8,28 +8,10 @@ from ..structure import Metric, Sampler, Generator
 from ..tools.kits import CraftyKit
 
 from .abstract import AbstractDataRouter, AbstractDataSource, AbstractBatchable, AbstractCountableData, AbstractContext
-from .sources import SpacedSource, SampleSource
+from .errors import UnknownSize
 
 
 prt = get_printer(__file__)
-
-
-# class ExpectingDataRouter(AbstractDataRouter): # TODO: future feature
-# 	def __init_subclass__(cls, materials=None, required_materials=None, **kwargs):
-# 		super().__init_subclass__(**kwargs)
-# 		if required_materials is not None:
-# 			raise NotImplementedError
-# 		if isinstance(materials, str):
-# 			materials = [materials]
-# 		base = getattr(cls, '_expecting_materials', [])
-# 		cls._expecting_materials = base + (materials or [])
-#
-#
-# 	def _prepare(self, source=None, **kwargs):
-# 		super()._prepare(source=source, **kwargs)
-# 		for material in self._expecting_materials:
-# 			if not self.has(material):
-# 				prt.warning(f'Expected material {material!r} not found in {self}')
 
 
 
@@ -38,7 +20,7 @@ class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
 		if buffer_table is None:
 			buffer_table = self._BufferTable()
 		super().__init__(**kwargs)
-		self._tools = buffer_table
+		self._buffers = buffer_table
 	
 	_BufferTable = OrderedDict
 
@@ -48,15 +30,16 @@ class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
 
 	
 	def named_buffers(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
-		for name in self._tools:
+		for name in reversed(self._buffers):
 			yield name, self.get_buffer(name)
 
 
 	def get_buffer(self, name, default=unspecified_argument) -> 'AbstractDataSource':
-		buffer = self._tools.get(name, None)
-		if name in self._tools:
+		buffer = self._buffers.get(name, None)
+		if name in self._buffers:
 			if isinstance(buffer, str):
 				return self.get_buffer(buffer, default=default) # TODO: check for circular references
+			return buffer
 		if default is not unspecified_argument:
 			return default
 		raise self._MissingBuffer(name)
@@ -72,24 +55,29 @@ class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
 	# 	# return {'buffers': {name:buffer.fingerprint() for name, buffer in self.iter_named_buffers()}, 'ready': self.is_ready,
 	# 	#         **super()._fingerprint_data()}
 	# 	raise NotImplementedError
-	
+
+
+	def vendors(self, gizmo: str):
+		if gizmo in self._buffers:
+			yield from self._buffers[gizmo].vendors(gizmo)
+		yield from super().vendors(gizmo)
+
 	
 	def remove_buffer(self, gizmo: str):
-		self._tools.remove(gizmo)
-		if gizmo in self._spaces:
-			self._spaces.remove(gizmo)
+		if gizmo in self._buffers:
+			self._buffers.remove(gizmo)
 
 
 	def register_buffer(self, gizmo: str, buffer: AbstractDataSource):
 		if not isinstance(buffer, AbstractDataSource):
 			prt.warning(f'Expected buffer for {gizmo} in {self}, got: {buffer!r}')
-		self._tools[gizmo] = buffer
+		self._buffers[gizmo] = buffer
 		if gizmo in self._spaces:
 			self._spaces.remove(gizmo)
 		return buffer
 
 
-	def rename_material(self, current: str, new: str):
+	def rename_buffer(self, current: str, new: str):
 		buffer = self.get_buffer(current, None)
 		if buffer is not None:
 			self.remove_buffer(current)
@@ -97,26 +85,24 @@ class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
 
 
 
-class UnknownCount(TypeError):
-	def __init__(self):
-		super().__init__('did you forget to provide a "default_len" in __init__?')
-
-
-
 class CountableDataRouter(AbstractDataRouter, AbstractDataSource, AbstractCountableData):
-	def __init__(self, default_len=None, **kwargs):
-		super().__init__(**kwargs)
-		self._default_len = default_len
-
-	_UnknownCount = UnknownCount
-
 	@property
 	def size(self):
-		if self.is_ready:
-			return next(self.tools()).size
-		if self._default_len is not None:
-			return self._default_len
-		raise self._UnknownCount()
+		return self._compute_size() if self.is_ready else self._expected_size()
+
+
+	_UnknownSize = UnknownSize
+
+
+	def _compute_size(self):
+		for tool in self.tools():
+			if isinstance(tool, AbstractCountableData):
+				return tool.size
+		raise self._UnknownSize()
+
+
+	def _expected_size(self): # should be implemented by subclasses
+		raise self._UnknownSize()
 
 
 
@@ -139,12 +125,12 @@ class AutoCollection(DataCollection):
 
 
 class AliasedCollection(DataCollection):
-	def register_material_alias(self, name: str, *aliases: str):
+	def register_buffer_alias(self, name: str, *aliases: str):
 		'''
-		Registers aliases for a material.
+		Registers aliases for a buffer.
 
 		Args:
-			name: original name of the material
+			name: original name of the buffer
 			*aliases: all the new aliases
 
 		Returns:
@@ -160,45 +146,13 @@ class AliasedCollection(DataCollection):
 
 
 
-# class CachedDataRouter(AbstractDataRouter):
-# 	def cached(self) -> Iterator[str]:
-# 		raise NotImplementedError
-#
-# 	def __str__(self):
-# 		cached = set(self.cached())
-# 		return f'{self._title()}(' \
-# 		       f'{", ".join((key if key in cached else "{" + key + "}") for key in self.available())})'
-
-
-
-# def __setattr__(self, key, value):
-# 	if isinstance(value, AbstractCollection):
-# 		self._register_multi_material(value, *value.available())
-# 	if isinstance(value, AbstractMaterial):
-# 		self.register_material(key, value)
-# 	super().__setattr__(key, value)
-#
-# def __delattr__(self, name):
-# 	if name in self._registered_materials:
-# 		self.remove_material(name)
-# 	super().__delattr__(name)
-
-
-
-
-class Observation(SampleSource, AbstractDataRouter):
-	_sample_key = 'observation'
-
+class Observation(AbstractDataRouter): # SampleSource
 	@property
 	def din(self):
 		return self.observation_space
-
 	@property
 	def observation_space(self):
 		return self.space_of('observation')
-	@observation_space.setter
-	def observation_space(self, space):
-		self.get_buffer('observation').space = space
 
 
 
@@ -206,14 +160,9 @@ class Supervised(Observation, Metric):
 	@property
 	def dout(self):
 		return self.target_space
-
-
 	@property
 	def target_space(self):
 		return self.space_of('target')
-	@target_space.setter
-	def target_space(self, space):
-		self.get_buffer('target').space = space
 
 
 	def difference(self, a, b, standardize=None):
@@ -233,21 +182,16 @@ class Labeled(Supervised):#, alias={'target': 'label'}):
 	@property
 	def label_space(self):
 		return self.space_of('label')
-	@label_space.setter
-	def label_space(self, space):
-		self.get_buffer('label').space = space
 
 
 
 class Synthetic(Labeled):#, alias={'label': 'mechanism'}): # TODO: include auto alias
 	_distinct_mechanisms = True
 
+
 	@property
 	def mechanism_space(self):
 		return self.space_of('mechanism')
-	@mechanism_space.setter
-	def mechanism_space(self, space):
-		self.get_buffer('mechanism').space = space
 
 
 	def transform_to_mechanisms(self, data):

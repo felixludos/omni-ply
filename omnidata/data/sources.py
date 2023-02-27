@@ -36,8 +36,8 @@ class Shufflable(Seeded):
 
 
 
-class BatchableSource(AbstractBatchable):
-	Batch = None
+# class BatchableSource(AbstractBatchable):
+# 	_Batch = None
 
 
 
@@ -66,17 +66,18 @@ class SpacedSource(AbstractDataSource):
 
 
 
-class SampleSource(AbstractDataSource, Sampler):
-	_sample_key = None
-	def _sample(self, shape, *, sample_key=None):
-		if sample_key is unspecified_argument:
-			sample_key = self._sample_key
-		N = shape.numel()
-		samples = self.sample_material(sample_key, N)
-		return util.split_dim(samples, *shape)
-
-	def sample_material(self, N, key):
-		return self.get_from(N, key)
+# class SampleSource(AbstractDataSource, Sampler):
+# 	_sample_key = None
+# 	def _sample(self, shape, *, sample_key=None):
+# 		if sample_key is unspecified_argument:
+# 			sample_key = self._sample_key
+# 		N = shape.numel()
+# 		samples = self.sample_buffer(sample_key, N)
+# 		return util.split_dim(samples, *shape)
+#
+#
+# 	def sample_buffer(self, N, key):
+# 		return self.get_from(N, key)
 
 
 
@@ -107,7 +108,7 @@ class Subsetable(AbstractDataSource, AbstractCountableData, Shufflable):
 			part1, part2 = part2, part1
 		return part1, part2
 	
-	Subset = None # indexed view
+	_Subset = None # indexed view
 	def subset(self, cut=None, *, indices=None, shuffle=False):
 		# if not hard_copy:
 		# 	raise NotImplementedError # TODO: hard copy
@@ -116,7 +117,7 @@ class Subsetable(AbstractDataSource, AbstractCountableData, Shufflable):
 			indices, _ = self._split_indices(indices=self._shuffle_indices(self.size) \
 				if shuffle else torch.arange(self.size), cut=cut)
 		indices = self.validate_context(indices)
-		return self.Subset(source=self, indices=indices)
+		return self._Subset(source=self, indices=indices)
 	
 
 
@@ -173,18 +174,21 @@ class Splitable(Subsetable):
 
 
 
-class TensorSource(AbstractCountableData, AbstractDataSource):
+class TensorSource(AbstractCountableData, AbstractDataSource): # TODO: make batchable
 	def __init__(self, data=None, **kwargs):
 		super().__init__(**kwargs)
 		self._data = data
+
 
 	@property
 	def is_ready(self):
 		return self._data is not None
 
+
 	@property
 	def size(self):
 		return len(self._data)
+
 
 	@property
 	def data(self):
@@ -192,6 +196,7 @@ class TensorSource(AbstractCountableData, AbstractDataSource):
 	@data.setter
 	def data(self, data):
 		self._data = data
+
 
 	def _get_from(self, source, key=None):
 		if source is None or not isinstance(source, IndexSelector):

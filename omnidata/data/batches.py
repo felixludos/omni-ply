@@ -1,48 +1,54 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
 
+from omnibelt import unspecified_argument
+
 from ..parameters import hparam, with_hparams, Parameterized
 
 from .abstract import AbstractBatchable, AbstractCountableData, AbstractSelector, AbstractView, AbstractBatch
-from .views import ViewBase, SizeSelector, IndexSelector, CachedView, IndexView
-from .progression import StreamProgression, SetProgression
+from .views import ViewBase, SizeSelector, IndexSelector, IndexView
+from .progression import AbstractProgression, StreamProgression, SetProgression
 
 
 
 class BatchableBase(AbstractBatchable):
-	Batch = None # should get checked/used by Progression
-	Progression = None
+	# _Batch = None # should get checked/used by Progression
+	_Progression = None
 
-	@classmethod
-	def _parse_context(cls, source):
-		raise NotImplementedError
-		if source is None or isinstance(source, AbstractSelector):
-			return source
-		# if source is None:
-		# 	return cls.Batch()
-		if isinstance(source, int):
-			return cls.Batch(size=source)
-		if isinstance(source, Iterable):
-			return cls.Batch(indices=source)
-		raise NotImplementedError(source)
+	# @classmethod
+	# def _parse_context(cls, source):
+	# 	raise NotImplementedError
+	# 	if source is None or isinstance(source, AbstractSelector):
+	# 		return source
+	# 	# if source is None:
+	# 	# 	return cls.Batch()
+	# 	if isinstance(source, int):
+	# 		return cls._Batch(size=source)
+	# 	if isinstance(source, Iterable):
+	# 		return cls._Batch(indices=source)
+	# 	raise NotImplementedError(source)
 
 
-	def iterate(self, batch_size=None, **kwargs):
+	def iterate(self, batch_size: Optional[int] = unspecified_argument, **kwargs):
 		self.prepare()
-		return self.Progression(source=self, batch_size=batch_size, **kwargs)
+		if batch_size is not unspecified_argument:
+			kwargs['batch_size'] = batch_size
+		return self._Progression(self, **kwargs)
 
 
 
 class BatchableView(BatchableBase, ViewBase):
-	def iterate(self, batch_size=None, **kwargs):
+	def iterate(self, batch_size: Optional[int] = unspecified_argument, **kwargs):
 		self.prepare()
-		if self.Progression is None:
-			return self.source.Progression(source=self, batch_size=batch_size, **kwargs)
-		return self.Progression(source=self, batch_size=batch_size, **kwargs)
+		if batch_size is not unspecified_argument:
+			kwargs['batch_size'] = batch_size
+		if self._Progression is None:
+			return self.source._Progression(self, **kwargs)
+		return self._Progression(self, **kwargs)
 
 
 
 class Batchable(BatchableBase, Parameterized):
-	Progression = StreamProgression
+	_Progression = StreamProgression
 
 	batch_size = hparam(inherit=True)
 
@@ -66,7 +72,7 @@ class Batchable(BatchableBase, Parameterized):
 
 
 class Epochable(Batchable, AbstractCountableData):
-	Progression = SetProgression
+	_Progression = SetProgression
 
 	epoch_limit = hparam(inherit=True)
 	shuffle_batches = hparam(False, inherit=True, hidden=True)
@@ -87,15 +93,17 @@ class Epochable(Batchable, AbstractCountableData):
 
 
 class BatchBase(Epochable, BatchableView, CachedView, SizeSelector, AbstractBatch):
-	def __init__(self, progress=None, **kwargs):
+	def __init__(self, progress: AbstractProgression = None, **kwargs):
 		super().__init__(progress=progress, **kwargs)
 		self._progress = progress
+
 
 	@property
 	def source(self):
 		if self._source is None:
 			return self.progress.source
 		return self._source
+
 
 	@property
 	def progress(self):
@@ -108,22 +116,14 @@ class IndexBatch(IndexView, BatchBase):
 
 
 
-# class SourceBatch(BatchBase):
-# 	pass
-# class SourceEpochable(Epochable):
-# 	class Batch(Epochable):
-# 		pass
-
-
-
 class StreamBatch(BatchBase):
 	pass
-Batchable.Batch = StreamBatch
+Batchable._Batch = StreamBatch
 
 
 class Batch(IndexBatch):
 	pass
-Epochable.Batch = Batch
+Epochable._Batch = Batch
 
 
 
