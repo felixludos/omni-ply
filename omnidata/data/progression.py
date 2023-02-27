@@ -4,22 +4,20 @@ import math
 import torch
 
 from ..features import Prepared, ProgressBarred
-from ..tools.moguls import BatchMogul, IteratorMogul, SelectionMogul, LimitMogul, \
-	BatchBudgetMogul, EpochMogul, EpochBudgetMogul
+from ..tools.moguls import BatchStatMogul, IteratorMogul, SelectionMogul, LimitMogul, \
+	BatchBudgetStatMogul, EpochStatMogul, EpochBudgetMogul, SimpleMogul
 
 from .abstract import AbstractProgression
 from .sources import Shufflable
 
 
 
-class AbstractBudgetProgression(AbstractProgression, BatchBudgetMogul):
+class AbstractBudgetProgression(AbstractProgression, BatchBudgetStatMogul):
 	pass
 
 
 
-
-
-class ProgressionBase(AbstractProgression, Prepared):
+class ProgressionBase(SimpleMogul, AbstractProgression, Prepared):
 	def __init__(self, batch_size, *, batch_cls=None, **kwargs):
 		super().__init__(**kwargs)
 		if batch_cls is not None:
@@ -127,7 +125,7 @@ class BudgetProgression(ProgressionBase, AbstractBudgetProgression):
 
 
 
-class EpochProgression(ProgressionBase, EpochMogul):
+class EpochProgression(ProgressionBase, EpochStatMogul):
 	def __init__(self, batch_size, *, epoch_size=None, strict_batch_size=False, **kwargs):
 		super().__init__(batch_size=batch_size, **kwargs)
 		self._selections = None

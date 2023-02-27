@@ -101,9 +101,14 @@ class AbstractSourcedKit(AbstractKit):
 		raise NotImplementedError
 
 
+	def tools(self) -> Iterator['AbstractTool']:
+		for source in self.sources():
+			yield from source.tools()
+
+
 
 class AbstractMogul: # controls/manages/creates/generates contexts => trainers, experiments, etc.
-	def resources(self) -> Iterator['AbstractSchema']:
+	def schemas(self) -> Iterator['AbstractSchema']:
 		raise NotImplementedError
 
 

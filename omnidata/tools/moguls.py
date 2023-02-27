@@ -3,7 +3,10 @@ import math
 
 # moguls generate contexts
 
-from .abstract import AbstractMogul, AbstractContext
+from ..features import Prepared
+
+from .abstract import AbstractMogul, AbstractContext, AbstractSourcedKit, AbstractResource, \
+	AbstractTool, AbstractSchema
 
 
 
@@ -60,22 +63,50 @@ class BuildingContextMogul(AbstractMogul):
 ########################################################################################################################
 
 
-class SimpleMogul(AbstractMogul):
-	def __init__(self, sources, **kwargs):
+
+class CreativeMogul(AbstractMogul):
+	_Context = None
+
+
+	def _create_context(self, *args, **kwargs):
+		return self._Context(*args, **kwargs)
+
+
+
+class SimpleMogul(CreativeMogul, AbstractSourcedKit):
+	def __init__(self, *, sources=None, schemas=None, **kwargs):
+		if sources is None:
+			sources = []
+		if schemas is None:
+			schemas = []
+		super().__init__(**kwargs)
 		self._sources = sources
+		self._schemas = schemas
 
 
+	def sources(self) -> Iterator[AbstractTool]:
+		yield from reversed(self._sources)
 
 
+	def schemas(self) -> Iterator[AbstractTool]:
+		yield from reversed(self._schemas)
 
 
+	def add_source(self, *sources: AbstractTool):
+		for source in sources:
+			self._sources.append(source)
+			schema = source.as_schema(self) if isinstance(source, AbstractResource) else None
+			if schema is None:
+				schema = source
+			self._schemas.append(schema)
+		return self
 
 
-
-
-
-
-
+	def _create_context(self, *args, **kwargs):
+		ctx = super()._create_context(*args, **kwargs)
+		for schema in self.schemas():
+			ctx.add_source(schema)
+		return ctx
 
 
 
@@ -102,7 +133,7 @@ class OptimBudgetMogul(OptimMogul):
 
 
 
-class BatchMogul(IterableMogul):
+class BatchStatMogul(IterableMogul):
 	@property
 	def batch_size(self):
 		raise NotImplementedError
@@ -117,7 +148,7 @@ class BatchMogul(IterableMogul):
 
 
 
-class EpochMogul(BatchMogul, LimitMogul):
+class EpochStatMogul(BatchStatMogul, LimitMogul):
 	@property
 	def epoch_size(self):
 		raise NotImplementedError
@@ -134,7 +165,7 @@ class EpochMogul(BatchMogul, LimitMogul):
 
 
 
-class BatchBudgetMogul(BatchMogul):
+class BatchBudgetStatMogul(BatchStatMogul):
 	@staticmethod
 	def compute_budget(samples_per_batch, strict_batch_size=False,
 	                   sample_limit=None, batch_limit=None, strict_limit=True):
@@ -184,7 +215,7 @@ class BatchBudgetMogul(BatchMogul):
 
 
 
-class EpochBudgetMogul(BatchBudgetMogul, EpochMogul):
+class EpochBudgetMogul(BatchBudgetStatMogul, EpochStatMogul):
 	@staticmethod
 	def compute_epoch_budget(dataset_size, samples_per_batch, strict_batch_size=True,
 	                   epochs=None, sample_limit=None, batch_limit=None, strict_limit=True):
@@ -241,6 +272,51 @@ class EpochBudgetMogul(BatchBudgetMogul, EpochMogul):
 
 ########################################################################################################################
 
+
+
+class BatchMogul(BatchStatMogul, SimpleMogul, Prepared):
+	def __init__(self, batch_size, **kwargs):
+		super().__init__(**kwargs)
+		self._current_batch = None
+		self._batch_size = batch_size
+		self._sample_count = 0
+		self._batch_count = 0
+
+
+	def current_context(self):
+		if self._current_batch is None:
+			return self.next_batch()
+		return self._current_batch
+
+
+	@property
+	def batch_size(self):
+		return self._batch_size
+
+
+	@property
+	def sample_count(self) -> int:
+		return self._sample_count
+	@property
+	def batch_count(self) -> int:
+		return self._batch_count
+
+
+	def next_batch(self):
+		self.prepare()
+		batch = self._next_batch()
+		self._sample_count += batch.size
+		self._batch_count += 1
+		self._current_batch = batch
+		return batch
+
+
+	def _next_batch(self):
+		return self._create_context(size=self._batch_size)
+
+
+
+########################################################################################################################
 
 
 class SimpleTrainer(DynamicMogul):

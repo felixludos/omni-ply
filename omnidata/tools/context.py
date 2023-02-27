@@ -2,7 +2,7 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 from collections import UserDict
 
 from .abstract import AbstractContext, AbstractKit, AbstractTool, AbstractAssessible, AbstractScope, \
-	AbstractAssessment, AbstractSourcedKit
+	AbstractAssessment, AbstractSourcedKit, AbstractMogul, AbstractSchema, AbstractResource
 from .errors import MissingGizmoError, ToolFailedError
 from .assessments import Signatured
 
@@ -136,37 +136,10 @@ class SimpleContext(ContextBase):
 
 
 class ScopedContext(SimpleContext):
-	_Scope = ScopeBase
-
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self._vendors = {}
-		self._scopes = []
-
-
-	def _as_scope(self, tool):
-		if isinstance(tool, AbstractScope):
-			return tool
-		return self._Scope(tool)
-
-
-	def add_scope(self, scope):
-		self._scopes.append(scope)
-		for gizmo in scope.gizmoto():
-			self._vendors[gizmo] = scope
-
-
-	def add_tool(self, tool):
-		self.add_scope(self._as_scope(tool))
-		super().add_tool(tool)
-
-
-	def vendors(self, gizmo: str) -> Iterator['AbstractScope']:
-		yield self._vendors[gizmo]
-
-
-	def scopes(self):
-		yield from self._vendors.values()
+	def add_source(self, scope: Union[AbstractSchema, AbstractScope]):
+		if isinstance(scope, AbstractSchema):
+			scope = scope.as_scope(self)
+		self.add_tool(scope)
 
 
 

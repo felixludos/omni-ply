@@ -8,7 +8,7 @@ from ..persistent import AbstractFingerprinted
 from ..tools.abstract import AbstractTool, AbstractKit, AbstractSourcedKit, \
 	AbstractSpaced, AbstractContext, AbstractMogul, AbstractScope, AbstractSchema
 from ..tools.errors import MissingGizmoError
-from ..tools.moguls import BatchMogul, IteratorMogul
+from ..tools.moguls import BatchStatMogul, IteratorMogul
 
 from .errors import MissingBuffer
 
@@ -207,7 +207,7 @@ class AbstractSelector(AbstractScope):
 
 
 
-class AbstractProgression(BatchMogul, IteratorMogul, AbstractSourcedKit, AbstractSchema):
+class AbstractProgression(BatchStatMogul, IteratorMogul, AbstractSourcedKit, AbstractSchema):
 	def __next__(self):
 		return self.next_batch()
 
