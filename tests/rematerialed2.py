@@ -734,6 +734,146 @@ def train_loop2(config):
 
 
 
+def train_loop3(config):
+
+	dataset = config.pull('dataset')
+
+	model = config.build_with('model', dataset)
+
+	trainer = config.pull('trainer', None)
+
+	trainer.add_model(model)
+	trainer.fit(dataset)
+
+
+
+	model = build_with(config, 'model')
+
+	trainer.add_model(model)
+
+	train_output = trainer.fit(dataset)
+
+	eval_output = trainer.evaluate(dataset)
+
+	return out
+
+	context = config.pull('context') # context is the trainer here!
+
+	dataset = config.pull('dataset')
+	# context.add(dataset) # automatic!
+
+	model = config.pull('model')
+	# context.add(model) # automatic!
+
+	# do stuff with dataset and model
+	return context.fit()
+
+
+class SimpleFunction:
+	@space('input') # is settable
+	def din(self):
+		raise NotImplementedError
+	@space('output')
+	def dout(self):
+		raise NotImplementedError
+
+
+	@machine('output')
+	def forward(self, input):
+		raise NotImplementedError
+
+
+
+
+class Layer(SimpleFunction):
+	width = hparam(space=spaces.Naturals(min=1))
+
+	nonlin = submodule('elu', builder='nonlin')
+
+	enable_bias = hparam(True)
+
+
+	@space('input')
+	def din(self, output): # means output has be to known to determine din
+		return spaces.Unbound(self.width)
+	@space('output')
+	def dout(self, input): # means input has be to known to determine dout
+		return spaces.Unbound(self.width)
+
+
+	def _prepare(self):
+		self.w = torch.randn(self.dout.width, self.din.width)
+		if self.enable_bias:
+			self.b = torch.randn(self.dout.width)
+
+
+	@machine('output') # optional, since SimpleFunction already defines this machine
+	def forward(self, input):
+		out = self.w @ input
+		if self.enable_bias:
+			out += self.b
+		if self.nonlin is not None:
+			out = self.nonlin(out)
+		return out
+
+
+	@space.infer(din='input', dout='output')
+	def __init__(self, din=None, dout=None, **kwargs):
+		super().__init__(**kwargs)
+		assert din is not None or dout is not None
+		if din is not None:
+			self.din = din
+		if dout is not None:
+			self.dout = dout
+		if din is not None and dout is not None:
+			self.width = self.dout.width
+
+
+
+@inherit_hparams('width', 'nonlin', 'enable_bias')
+class DLayer(Layer):
+	dropout = submodule(0.0, builder='dropout', space=spaces.Bound(min=0.0, max=1.0))
+
+
+	def forward(self, input):
+		return self.dropout(super().forward(input))
+
+
+
+class MLP:
+	hidden = submodule(builder='layer')
+	out_layer = submodule(builder='layer')
+
+
+	@machine('features')
+	def extract_features(self, input):
+		return self.hidden(input)
+
+
+	@machine('output')
+	def forward(self, features):
+		return self.out_layer(features)
+
+
+
+class MultilayerBuilder(LayerBuilder):
+	pass
+
+
+
+
+class AutoMLP(MLP):
+	hidden = hparam(None)
+
+
+
+	out_layer = Layer(width=1, nonlin='sigmoid')
+
+
+
+
+
+
 
 
 

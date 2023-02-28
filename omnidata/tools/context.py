@@ -8,13 +8,23 @@ from .assessments import Signatured
 
 
 
-class ContextBase(AbstractContext, AbstractKit, AbstractAssessible, Signatured):
+class AbstractDynamicContext(AbstractContext):
+	def add_source(self, source) -> 'AbstractDynamicContext':
+		raise NotImplementedError
+
+
+
+class ContextBase(AbstractContext, AbstractSourcedKit, AbstractAssessible, Signatured):
 	def context_id(self) -> Hashable:
 		return id(self)
 
 
 	def __str__(self):
 		return f'{self.__class__.__name__}({", ".join(self.gizmos())})'
+
+
+	def vendors(self, gizmo: str) -> Iterator['AbstractTool']:
+		yield from self.sources()
 
 
 	def _get_from(self, ctx: AbstractContext, gizmo: str):
@@ -30,22 +40,18 @@ class ContextBase(AbstractContext, AbstractKit, AbstractAssessible, Signatured):
 		return self._get_from(ctx, gizmo)
 
 
-	def vendors(self, gizmo: str) -> Iterator['AbstractScope']:
-		yield from self.tools()
-
-
 	def assess(self, assessment: AbstractAssessment):
 		super().assess(assessment)
-		for tool in self.tools():
-			if isinstance(tool, AbstractAssessible):
-				assessment.add_edge(self, tool)
-				assessment.expand(tool)
+		for source in self.sources():
+			if isinstance(source, AbstractAssessible):
+				assessment.add_edge(self, source)
+				assessment.expand(source)
 
 
 	def signatures(self, owner = None) -> Iterator['AbstractSignature']:
-		for tool in self.tools():
-			if isinstance(tool, Signatured):
-				yield from tool.signatures(self)
+		for source in self.sources():
+			if isinstance(source, Signatured):
+				yield from source.signatures(self)
 
 
 
@@ -115,31 +121,27 @@ class ScopeBase(NestedContext, AbstractScope):
 
 
 
-class SimpleContext(ContextBase):
-	def __init__(self, tools=None, **kwargs):
-		if tools is None:
-			tools = []
+class DynamicContext(ContextBase, AbstractDynamicContext):
+	def __init__(self, *, sources=None, **kwargs):
+		if sources is None:
+			sources = []
 		super().__init__(**kwargs)
-		self._tools = tools
+		prev = []
+		if len(sources):
+			prev = list(sources)
+			sources.clear()
+		self._sources = sources
+		for source in prev:
+			self.add_source(source)
 
 
-	def add_tool(self, tool):
-		self._tools.append(tool)
-	def add_tools(self, tools):
-		for tool in tools:
-			self.add_tool(tool)
+	def add_source(self, source): # a source can be a scope
+		self._sources.append(source)
+		return self
 
 
-	def tools(self):
-		yield from self._tools
-
-
-
-class ScopedContext(SimpleContext):
-	def add_source(self, scope: Union[AbstractSchema, AbstractScope]):
-		if isinstance(scope, AbstractSchema):
-			scope = scope.as_scope(self)
-		self.add_tool(scope)
+	def sources(self): # N-O
+		yield from reversed(self._sources)
 
 
 

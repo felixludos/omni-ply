@@ -107,12 +107,6 @@ class AbstractSourcedKit(AbstractKit):
 
 
 
-class AbstractMogul: # controls/manages/creates/generates contexts => trainers, experiments, etc.
-	def schemas(self) -> Iterator['AbstractSchema']:
-		raise NotImplementedError
-
-
-
 class AbstractContext(AbstractKit):
 	@property
 	def context_id(self) -> Hashable:
@@ -143,13 +137,19 @@ class AbstractContext(AbstractKit):
 
 
 
-class AbstractSchema:
-	def as_scope(self, ctx: 'AbstractContext') -> 'AbstractScope':
-		pass
+class AbstractDynamicKit(AbstractKit):
+	def add_source(self, source: AbstractTool):
+		raise NotImplementedError
 
 
 
-class AbstractScopable(AbstractSchema, AbstractTool):
+class AbstractResource:
+	def validate_context(self, ctx: AbstractContext) -> AbstractContext:
+		return ctx
+
+
+
+class AbstractScopable(AbstractResource, AbstractTool):
 	'''
 	 A tool can specify a scope for the given context to use when accessing its gizmos.
 
@@ -159,11 +159,27 @@ class AbstractScopable(AbstractSchema, AbstractTool):
 	 (e.g. if it doesn't have the required data, like a `size`)
 	 '''
 
+	def validate_context(self, ctx: AbstractContext) -> AbstractContext:
+		scope = self.as_scope()
+		return ctx if scope is None else scope
 
 
-class AbstractResource(AbstractTool):
-	def as_schema(self, mogul: AbstractMogul):
+
+class AbstractMogul: # controls/manages/creates/generates contexts => trainers, experiments, etc.
+	def resources(self) -> Iterator[AbstractResource]:
 		raise NotImplementedError
+
+
+
+class AbstractSourceable(AbstractTool):
+	def as_resource(self, mogul: AbstractMogul):
+		raise NotImplementedError
+
+
+
+class AbstractSchema(AbstractTool):
+	def as_scope(self, ctx: AbstractContext) -> 'AbstractScope':
+		pass
 
 
 

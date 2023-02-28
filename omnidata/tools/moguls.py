@@ -6,7 +6,7 @@ import math
 from ..features import Prepared
 
 from .abstract import AbstractMogul, AbstractContext, AbstractSourcedKit, AbstractResource, \
-	AbstractTool, AbstractSchema
+	AbstractTool, AbstractSchema, AbstractDynamicKit, AbstractScopable
 
 
 
@@ -48,19 +48,76 @@ class SelectionMogul(IterableMogul):
 
 
 
-class DynamicMogul(AbstractMogul):
-	def add_tool(self, tool):
-		raise NotImplementedError
-
-
-
 class BuildingContextMogul(AbstractMogul):
 	def build_context(self) -> AbstractContext:
 		raise NotImplementedError
 
 
 
+# class SchemaMogul(AbstractMogul):
+# 	def schemas(self) -> Iterator[AbstractSchema]:
+# 		raise NotImplementedError
+
+
+
+class ValidationMogul(AbstractMogul):
+	def validate_context(self, ctx: AbstractContext) -> AbstractContext:
+		return ctx
+
+
+
 ########################################################################################################################
+
+
+
+class SimpleMogul(AbstractMogul):
+	def __init__(self, resources=None, **kwargs):
+		if resources is None:
+			resources = []
+		super().__init__(**kwargs)
+		self._resources = resources
+
+
+	def resources(self) -> Iterator[AbstractResource]:
+		yield from reversed(self._resources)
+
+
+
+class AbstractDynamicKit(AbstractKit):
+	def add_source(self, source: AbstractTool):
+		raise NotImplementedError
+
+
+
+class DefaultResourceMogul(SimpleMogul, AbstractDynamicKit):
+	class _DefaultResource(AbstractResource):
+		def __init__(self, source: AbstractTool, **kwargs):
+			super().__init__(**kwargs)
+			self._source = source
+
+
+		@property
+		def source(self) -> AbstractTool:
+			return self._source
+
+
+		def validate_context(self, ctx: AbstractDynamicKit) -> AbstractDynamicKit:
+			source = self._source.as_scope(ctx) if isinstance(self._source, AbstractSchema) else self._source
+			ctx.add_source(source)
+			return ctx
+
+
+	def add_source(self, source: AbstractTool):
+		if isinstance(source, AbstractSchema):
+			source = source.as_resource(self)
+		elif isinstance(source, AbstractResource):
+			pass
+		else:
+			source = self._DefaultSchema(source)
+
+		self._resources.append(source)
+
+		return self
 
 
 
@@ -70,6 +127,15 @@ class CreativeMogul(AbstractMogul):
 
 	def _create_context(self, *args, **kwargs):
 		return self._Context(*args, **kwargs)
+
+
+
+class SchemaCreativeMogul(CreativeMogul, SchemaMogul):
+	def _create_context(self, *args, **kwargs):
+		ctx = super()._create_context(*args, **kwargs)
+		for schema in self.schemas():
+			ctx = schema.validate_context(ctx)
+		return ctx
 
 
 
@@ -90,6 +156,12 @@ class SimpleMogul(CreativeMogul, AbstractSourcedKit):
 
 	def schemas(self) -> Iterator[AbstractTool]:
 		yield from reversed(self._schemas)
+
+
+	def validate_context(self, ctx: AbstractContext) -> AbstractContext:
+		for schema in self.schemas():
+			ctx = schema.validate_context(ctx)
+		return ctx
 
 
 	def add_source(self, *sources: AbstractTool):
@@ -133,7 +205,7 @@ class OptimBudgetMogul(OptimMogul):
 
 
 
-class BatchStatMogul(IterableMogul):
+class BatchMogul(IterableMogul):
 	@property
 	def batch_size(self):
 		raise NotImplementedError
@@ -148,7 +220,7 @@ class BatchStatMogul(IterableMogul):
 
 
 
-class EpochStatMogul(BatchStatMogul, LimitMogul):
+class EpochStatMogul(BatchMogul, LimitMogul):
 	@property
 	def epoch_size(self):
 		raise NotImplementedError
@@ -165,7 +237,7 @@ class EpochStatMogul(BatchStatMogul, LimitMogul):
 
 
 
-class BatchBudgetStatMogul(BatchStatMogul):
+class BatchBudgetStatMogul(BatchMogul):
 	@staticmethod
 	def compute_budget(samples_per_batch, strict_batch_size=False,
 	                   sample_limit=None, batch_limit=None, strict_limit=True):
@@ -272,51 +344,6 @@ class EpochBudgetMogul(BatchBudgetStatMogul, EpochStatMogul):
 
 ########################################################################################################################
 
-
-
-class BatchMogul(BatchStatMogul, SimpleMogul, Prepared):
-	def __init__(self, batch_size, **kwargs):
-		super().__init__(**kwargs)
-		self._current_batch = None
-		self._batch_size = batch_size
-		self._sample_count = 0
-		self._batch_count = 0
-
-
-	def current_context(self):
-		if self._current_batch is None:
-			return self.next_batch()
-		return self._current_batch
-
-
-	@property
-	def batch_size(self):
-		return self._batch_size
-
-
-	@property
-	def sample_count(self) -> int:
-		return self._sample_count
-	@property
-	def batch_count(self) -> int:
-		return self._batch_count
-
-
-	def next_batch(self):
-		self.prepare()
-		batch = self._next_batch()
-		self._sample_count += batch.size
-		self._batch_count += 1
-		self._current_batch = batch
-		return batch
-
-
-	def _next_batch(self):
-		return self._create_context(size=self._batch_size)
-
-
-
-########################################################################################################################
 
 
 class SimpleTrainer(DynamicMogul):
