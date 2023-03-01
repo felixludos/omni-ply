@@ -783,55 +783,111 @@ class SimpleFunction:
 		raise NotImplementedError
 
 
+from omnidata import Prepared
+from omnidata.tools import space, machine
 
 
-class Layer(SimpleFunction):
-	width = hparam(space=spaces.Naturals(min=1))
-
-	nonlin = submodule('elu', builder='nonlin')
-
-	enable_bias = hparam(True)
+class MissingSpace(TypeError):
+	pass
 
 
+class Linear(Prepared):
 	@space('input')
-	def din(self, output): # means output has be to known to determine din
-		return spaces.Unbound(self.width)
+	def din(self):
+		raise MissingSpace
 	@space('output')
-	def dout(self, input): # means input has be to known to determine dout
-		return spaces.Unbound(self.width)
+	def dout(self):
+		raise MissingSpace
 
 
 	def _prepare(self):
+		super()._prepare()
 		self.w = torch.randn(self.dout.width, self.din.width)
-		if self.enable_bias:
-			self.b = torch.randn(self.dout.width)
 
 
 	@machine('output') # optional, since SimpleFunction already defines this machine
 	def forward(self, input):
-		out = self.w @ input
+		return self.w @ input
+
+
+class Width(Linear):
+	width = hparam(space=spaces.Naturals(min=1))
+
+	@space('input')
+	def din(self):
+		return None
+	@space('output')
+	def dout(self):
+		return None
+
+
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
+		if self.din is None:
+			self.din = spaces.Unbound(self.width)
+		if self.dout is None:
+			self.dout = spaces.Unbound(self.width)
+
+
+
+class Affine(Linear):
+	enable_bias = hparam(True)
+
+
+	def _prepare(self):
+		super()._prepare()
+		if self.enable_bias:
+			self.b = torch.randn(self.dout.width)
+
+
+	def forward(self, input):
+		out = super().forward(input)
 		if self.enable_bias:
 			out += self.b
-		if self.nonlin is not None:
-			out = self.nonlin(out)
 		return out
 
 
-	@space.infer(din='input', dout='output')
-	def __init__(self, din=None, dout=None, **kwargs):
-		super().__init__(**kwargs)
-		assert din is not None or dout is not None
-		if din is not None:
-			self.din = din
-		if dout is not None:
-			self.dout = dout
-		if din is not None and dout is not None:
-			self.width = self.dout.width
+
+class Layer(Linear):
+	nonlin = submodule('relu', builder='nonlin')
+
+
+	def forward(self, input):
+		return self.nonlin(super().forward(input))
+
+
+	# @space('input')
+	# def din(self, output): # means output has be to known to determine din
+	# 	return spaces.Unbound(self.width)
+	# @space('output')
+	# def dout(self, input): # means input has be to known to determine dout
+	# 	return spaces.Unbound(self.width)
+
+
+	# @classmethod
+	# def build(cls, din=None, dout=None, **kwargs):
+	# 	if din is not None:
+	# 		kwargs['din'] = din
+	# 	if dout is not None:
+	# 		kwargs['dout'] = dout
+	# 	return cls(**kwargs)
+	#
+	#
+	# @space.infer(din='input', dout='output')
+	# def __init__(self, din=None, dout=None, **kwargs):
+	# 	super().__init__(**kwargs)
+	# 	assert din is not None or dout is not None
+	# 	if din is not None:
+	# 		self.din = din
+	# 	if dout is not None:
+	# 		self.dout = dout
+	# 	if din is not None and dout is not None:
+	# 		self.width = self.dout.width
 
 
 
 @inherit_hparams('width', 'nonlin', 'enable_bias')
-class DLayer(Layer):
+class Dropout_Layer(Layer):
 	dropout = submodule(0.0, builder='dropout', space=spaces.Bound(min=0.0, max=1.0))
 
 
@@ -840,8 +896,122 @@ class DLayer(Layer):
 
 
 
-class MLP:
-	hidden = submodule(builder='layer')
+from torch import nn
+
+
+
+class OldMLP(nn.Sequential):
+	def _build_layers(self, din, dout, hidden, nonlin, **kwargs):
+		if hidden is None:
+			hidden = [64, 64]
+		if nonlin is None:
+			nonlin = nn.ELU
+		layers = []
+		if din is None:
+			din = spaces.Unbound()
+		if dout is None:
+			dout = spaces.Unbound()
+		if isinstance(hidden, int):
+			hidden = [hidden]
+		for i, w in enumerate(hidden):
+			if i == 0:
+				layers.append(nn.Linear(din.width, w))
+			else:
+				layers.append(nn.Linear(hidden[i-1], w))
+			layers.append(nonlin())
+		layers.append(nn.Linear(hidden[-1], dout.width))
+		return layers
+
+
+	def __init__(self, *, din=None, dout=None, hidden=None, nonlin=None, **kwargs):
+		layers = self._build_layers(din, dout, hidden, nonlin, **kwargs)
+		super().__init__(*layers)
+
+
+
+# class NaiveBuilder:
+# 	def build_with_context(self, config, context):
+# 		# dynamic capture build()
+# 		pass
+
+
+
+class BetterMLP(Prepared):
+	hidden = hparam()
+	nonlin = hparam('elu')
+	out_nonlin = hparam(None)
+
+	_layer_builder = 'affine'
+	_nonlin_builder = 'nonlin'
+
+
+	def _prepare(self):
+		super()._prepare()
+
+		layer_builder = get_builder(self._layer_builder)
+		nonlin_builder = get_builder(self._nonlin_builder)
+
+		dims = [self.din.width] + self.hidden + [self.dout.width]
+		self.layers = nn.ModuleList()
+		for i in range(len(dims)-1):
+			self.layers.append(layer_builder.build(din=dims[i], dout=dims[i+1]))
+			if i < len(dims)-2:
+				self.layers.append(nonlin_builder.build(self.nonlin))
+			elif self.out_nonlin is not None:
+				self.layers.append(nonlin_builder.build(self.out_nonlin))
+
+
+	@machine('output')
+	def forward(self, input):
+		out = input
+		for layer in self.layers:
+			out = layer(out)
+		return out
+
+
+	# @classmethod
+	# def build():
+
+
+
+class EvenBetterMLP:
+	hidden = submodule(builder='multilayer')
+	out_layer = submodule(builder='layer')
+
+	@classmethod
+	def build(cls, *, din=None, dout=None, hidden, out_layer, **kwargs):
+		# hidden is an instance of the 'multilayer' builder
+		# out_layer is an instance of the 'layer' builder
+
+		if isinstance(hidden.value, int):
+			hidden.value = [hidden.value]
+		if isinstance(hidden.value, list):
+			if din is not None:
+				hidden.value = [din.width] + hidden.value
+			if dout is not None:
+				hidden.value = hidden.value + [dout.width]
+
+			out_layer['din'] = hidden.value[-1]
+			out_layer['dout'] = dout.width
+			hidden.value = hidden.value[:-1]
+
+
+
+	@machine('output')
+	def forward(self, input):
+		out = self.hidden(input)
+		return self.out_layer(out)
+
+
+
+class BestMLLP:
+	hidden = submachine(builder='multilayer', input='input', output='features')
+	out_layer = submachine(builder='layer', input='features', output='output')
+
+
+
+class SimpleMLP:
+	hidden = submodule(builder='multilayer')
 	out_layer = submodule(builder='layer')
 
 
@@ -856,7 +1026,23 @@ class MLP:
 
 
 
-class MultilayerBuilder(LayerBuilder):
+class MultiLayerBuilder(LayerBuilder):
+	@classmethod
+	def plan(cls, layers, **kwargs):
+		args = super().plan(**kwargs)
+
+		for layer in layers:
+			layer['din'] = cls.dout
+
+
+		args['layers'] = [layer.construct() for layer in layers]
+		return args
+
+
+
+class MLP(LayerBuilder):
+
+
 	pass
 
 
