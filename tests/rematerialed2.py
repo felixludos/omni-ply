@@ -702,6 +702,14 @@ class Extracted(Observation, replacements={'observation': 'original'}):
 
 
 
+
+
+
+
+
+
+
+
 def train_loop(config):
 
 	context = config.pull('context')
@@ -769,22 +777,19 @@ def train_loop3(config):
 	return context.fit()
 
 
-class SimpleFunction:
-	@space('input') # is settable
-	def din(self):
-		raise NotImplementedError
-	@space('output')
-	def dout(self):
-		raise NotImplementedError
+from omnidata import Prepared
+from omnidata.tools import space, machine
 
+
+class SimpleFunction:
+
+	din = space('input')
+	dout = space('output')
 
 	@machine('output')
 	def forward(self, input):
 		raise NotImplementedError
 
-
-from omnidata import Prepared
-from omnidata.tools import space, machine
 
 
 class MissingSpace(TypeError):
@@ -808,6 +813,15 @@ class Linear(Prepared):
 	@machine('output') # optional, since SimpleFunction already defines this machine
 	def forward(self, input):
 		return self.w @ input
+
+
+# class BetterLinear:
+# 	@classmethod
+# 	def plan(cls, din=None, dout=None):
+# 		if din is None and dout is None:
+# 			raise ValueError('Either din or dout must be specified')
+# 		if din is None:
+# 			pass
 
 
 class Width(Linear):
@@ -1003,8 +1017,60 @@ class EvenBetterMLP:
 		return self.out_layer(out)
 
 
-
 class BestMLLP:
+	hidden = submodule(builder='multilayer')
+	out_layer = submodule(builder='layer')
+
+
+
+class AE:
+	encoder = submachine(builder='encoder', input='observation', output='latent')
+	decoder = submachine(builder='decoder', input='latent', output='reconstruction')
+
+
+	@machine('loss')
+	def compute_loss(self, observation, reconstruction):
+		return F.mse_loss(reconstruction, observation)
+
+
+
+class VAE(AE):
+	encoder = submachine(builder='encoder', input='observation', output='posterior')
+
+	num_modes = hparam(1)
+
+	@space('posterior')
+	def posterior_space(self, latent):
+		return spaces.Unbound(2 * latent.width * self.num_modes)
+
+
+	@machine('latent')
+	def sample_latent(self, posterior):
+		mu, sigma = posterior.chunk(2, dim=-1)
+		sigma = sigma.exp()
+		eps = torch.randn_like(sigma)
+		return mu + sigma * eps
+
+
+	@machine('reg_loss')
+	def compute_reg_loss(self, posterior):
+		mu, sigma = posterior.chunk(2, dim=-1)
+		return -0.5 * torch.sum(1 + sigma - mu.pow(2) - sigma.exp())
+
+
+	@machine('rec_loss')
+	def compute_rec_loss(self, reconstruction, observation):
+		return super().compute_loss(reconstruction, observation)
+
+
+	@machine('loss')
+	def compute_loss(self, rec_loss, reg_loss):
+		return rec_loss + reg_loss
+
+
+
+
+class BestMLP:
 	hidden = submachine(builder='multilayer', input='input', output='features')
 	out_layer = submachine(builder='layer', input='features', output='output')
 
@@ -1026,7 +1092,144 @@ class SimpleMLP:
 
 
 
-class MultiLayerBuilder(LayerBuilder):
+class MLP(nn.Sequential):
+	def __init__(self, layers=(), **kwargs):
+		super().__init__(*layers)
+
+
+
+class Linear2(nn.Linear):
+	din = space('input')
+	dout = space('output')
+
+
+	def comply(self, schema):
+		# check that set spaces are compatible with schema
+		# update missing (local) spaces
+		self.din = schema.space_of('input')
+		self.dout = schema.space_of('output')
+
+
+	def _prepare(self):
+		self.linear = nn.Linear(self.din.width, self.dout.width)
+
+
+	@machine('output')
+	def forward(self, input):
+		return self.linear(input)
+
+
+class WidthLInear2(Linear2):
+	width = hparam()
+
+	def _fillin_spaces(self, input=None, output=None):
+		assert input is not None or output is not None
+		if input is not None:
+			self.din = input
+		if output is not None:
+			self.dout = output
+		if self.din is None:
+			self.din = spaces.Unbound(self.width)
+		if self.dout is None:
+			self.dout = spaces.Unbound(self.width)
+
+
+class MultiLayer(SimpleFunction):
+	layers = submodule(None)
+
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs) # <--- this is where the spaces are filled in based on context
+		self._build_layers()
+
+
+	def forward(self, input):
+		out = input
+		for layer in self.layers:
+			out = layer(out)
+		return out
+
+
+	def _create_layer_builders(self, dims):
+		raise NotImplementedError
+
+
+	def _build_layers(self, builders=None):
+		dims = self.layers
+
+		if dims is None:
+			dims = []
+		if isinstance(dims, int):
+			dims = [dims]
+		if isinstance(dims, list):
+			if self.din is not None:
+				dims = [self.din] + dims
+			if self.dout is not None:
+				dims = dims + [self.dout]
+
+			builders = self._create_layer_builders(dims)
+
+		layers = []
+		for builder, din, dout in zip(builders, dims[:-1], dims[1:]):
+			builder.set_space('input', din)
+			builder.set_space('output', dout)
+			layer = builder.build() # <--- this is where the layer is instantiated
+			layers.append(layer)
+
+		self.layers = layers
+
+		layers = self.layers
+		if len(layers):
+			self.din = layers[0].din
+			self.dout = layers[-1].dout
+
+
+
+class SimpleMultiLayer(MultiLayer):
+	_layer_builder = 'layer'
+
+	def _create_layer_builders(self, dims):
+		return [get_builder(self._layer_builder) for d in dims[:-1]]
+
+
+
+class MultiLayerBuilder:
+	hidden = hparam()
+	nonlin = hparam('elu')
+
+	din = space('input')
+	dout = space('output')
+
+	def validate(self, obj):
+		if isinstance(obj, int):
+			obj = [obj]
+		if isinstance(obj, list):
+			return self.build(hidden=obj)
+		return obj
+
+
+	def product(self, *args, **kwargs):
+		return MLP
+
+
+	def _build_layer(self, din, dout, **kwargs):
+		return nn.Linear(din, dout), nonlin()
+
+
+	def build(self, *, hidden: AbstractSchema, nonlin: AbstractSchema, **kwargs):
+
+		if isinstance(hidden, int):
+			hidden = [hidden]
+		if isinstance(hidden, list):
+			hidden = [din.width] + hidden + [dout.width]
+
+		layers = []
+		for i in range(len(hidden)-1):
+			layers.append(nn.Linear(hidden[i], hidden[i+1]))
+			if i < len(hidden)-2:
+				layers.append(nonlin())
+		return MLP(*layers)
+
+
 	@classmethod
 	def plan(cls, layers, **kwargs):
 		args = super().plan(**kwargs)
