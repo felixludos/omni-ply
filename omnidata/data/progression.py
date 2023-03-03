@@ -4,6 +4,7 @@ import math
 import torch
 
 from ..features import Prepared, ProgressBarred
+from ..tools.abstract import AbstractScope, AbstractTool, AbstractResource
 from ..tools.moguls import BatchMogul, IteratorMogul, SelectionMogul, LimitMogul, \
 	BatchBudgetStatMogul, EpochStatMogul, EpochBudgetMogul, SimpleMogul
 
@@ -18,12 +19,24 @@ class AbstractBudgetProgression(AbstractProgression, BatchBudgetStatMogul):
 
 
 class ProgressionBase(SimpleMogul, AbstractProgression, Prepared):
-	def __init__(self, batch_size, **kwargs):
+	def __init__(self, batch_size, *, source=None, **kwargs):
 		super().__init__(**kwargs)
+		self._source = None
+		self._resource = None
+		self.source = source
 		self._current_batch = None
 		self._batch_size = batch_size
 		self._sample_count = 0
 		self._batch_count = 0
+
+
+	@property
+	def source(self) -> AbstractTool:
+		return self._source
+	@source.setter
+	def source(self, value: AbstractTool):
+		self._source = value
+		self._resource = self._as_resource(value)
 
 
 	def current_context(self):
@@ -56,55 +69,6 @@ class ProgressionBase(SimpleMogul, AbstractProgression, Prepared):
 
 	def _next_batch(self):
 		return self._create_context(size=self._batch_size)
-
-
-	def __init__(self, batch_size, *, batch_cls=None, **kwargs):
-		super().__init__(**kwargs)
-		if batch_cls is not None:
-			self._Batch = batch_cls
-		self._current_batch = None
-		self._batch_size = batch_size
-		self._sample_count = 0
-		self._batch_count = 0
-
-
-	def current_context(self):
-		if self._current_batch is None:
-			return self.next_batch()
-		return self._current_batch
-
-
-	@property
-	def batch_size(self):
-		return self._batch_size
-
-
-	@property
-	def sample_count(self) -> int:
-		return self._sample_count
-	@property
-	def batch_count(self) -> int:
-		return self._batch_count
-
-
-	_Batch = None
-	def _create_batch(self, **kwargs):
-		return self._Batch(progress=self, **kwargs)
-
-
-	def next_batch(self):
-		self.prepare()
-		batch = self._next_batch()
-		for source in self.sources():
-			batch = source.validate_context(batch)
-		self._sample_count += batch.size
-		self._batch_count += 1
-		self._current_batch = batch
-		return batch
-
-
-	def _next_batch(self):
-		return self._create_batch(size=self._batch_size)
 
 
 

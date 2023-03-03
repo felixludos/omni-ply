@@ -207,7 +207,12 @@ class AbstractSelector(AbstractScope):
 
 
 
-class AbstractProgression(BatchMogul, IteratorMogul, AbstractSourcedKit, AbstractSchema):
+class AbstractProgression(BatchMogul, IteratorMogul, AbstractSourcedKit):
+	@property
+	def source(self) -> AbstractTool:
+		raise NotImplementedError
+
+
 	def __next__(self):
 		return self.next_batch()
 

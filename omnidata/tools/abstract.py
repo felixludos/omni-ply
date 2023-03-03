@@ -138,7 +138,19 @@ class AbstractContext(AbstractKit):
 
 
 class AbstractDynamicKit(AbstractKit):
-	def add_source(self, source: AbstractTool):
+	def include(self, *sources: AbstractTool) -> 'AbstractDynamicKit':
+		raise NotImplementedError
+
+
+
+class AbstractDynamicContext(AbstractDynamicKit, AbstractContext):
+	def include(self, *sources: AbstractTool) -> 'AbstractDynamicContext':
+		raise NotImplementedError
+
+
+
+class AbstractResourceable(AbstractTool):
+	def as_resource(self, mogul: 'AbstractMogul') -> 'AbstractResource':
 		raise NotImplementedError
 
 
@@ -159,6 +171,10 @@ class AbstractScopable(AbstractResource, AbstractTool):
 	 (e.g. if it doesn't have the required data, like a `size`)
 	 '''
 
+	def as_scope(self) -> Optional['AbstractScope']:
+		pass
+
+
 	def validate_context(self, ctx: AbstractContext) -> AbstractContext:
 		scope = self.as_scope()
 		return ctx if scope is None else scope
@@ -168,18 +184,6 @@ class AbstractScopable(AbstractResource, AbstractTool):
 class AbstractMogul: # controls/manages/creates/generates contexts => trainers, experiments, etc.
 	def resources(self) -> Iterator[AbstractResource]:
 		raise NotImplementedError
-
-
-
-class AbstractSourceable(AbstractTool):
-	def as_resource(self, mogul: AbstractMogul):
-		raise NotImplementedError
-
-
-
-class AbstractSchema(AbstractTool):
-	def as_scope(self, ctx: AbstractContext) -> 'AbstractScope':
-		pass
 
 
 
@@ -197,6 +201,11 @@ class AbstractScope(AbstractContext):
 
 
 
+class AbstractReproducableScope(AbstractScopable, AbstractScope):
+	pass
+
+
+
 ##########################################################################################
 
 
@@ -210,6 +219,10 @@ class AbstractSpaced:
 class AbstractChangableSpace(AbstractSpaced): # TODO: build into `space` crafts
 	def change_space_of(self, gizmo: str, space: spaces.Dim):
 		raise NotImplementedError
+
+
+class AbstractSchema(AbstractSpaced):
+	pass
 
 
 ##########################################################################################

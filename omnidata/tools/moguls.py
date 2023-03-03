@@ -6,7 +6,7 @@ import math
 from ..features import Prepared
 
 from .abstract import AbstractMogul, AbstractContext, AbstractSourcedKit, AbstractResource, \
-	AbstractTool, AbstractSchema, AbstractDynamicKit, AbstractScopable
+	AbstractTool, AbstractDynamicKit, AbstractScopable, AbstractResourceable, AbstractDynamicContext
 
 
 
@@ -70,26 +70,21 @@ class ValidationMogul(AbstractMogul):
 
 
 
-class SimpleMogul(AbstractMogul):
-	def __init__(self, resources=None, **kwargs):
-		if resources is None:
-			resources = []
-		super().__init__(**kwargs)
-		self._resources = resources
-
-
-	def resources(self) -> Iterator[AbstractResource]:
-		yield from reversed(self._resources)
-
-
-
-class AbstractDynamicKit(AbstractKit):
-	def add_source(self, source: AbstractTool):
-		raise NotImplementedError
+# class SimpleMogul(AbstractMogul):
+# 	def __init__(self, resources=None, **kwargs):
+# 		if resources is None:
+# 			resources = []
+# 		super().__init__(**kwargs)
+# 		self._resources = resources
+#
+#
+# 	def resources(self) -> Iterator[AbstractResource]:
+# 		yield from reversed(self._resources)
 
 
 
-class DefaultResourceMogul(SimpleMogul, AbstractDynamicKit):
+
+class DefaultResourceMogul(AbstractMogul, AbstractDynamicKit):
 	class _DefaultResource(AbstractResource):
 		def __init__(self, source: AbstractTool, **kwargs):
 			super().__init__(**kwargs)
@@ -101,22 +96,26 @@ class DefaultResourceMogul(SimpleMogul, AbstractDynamicKit):
 			return self._source
 
 
-		def validate_context(self, ctx: AbstractDynamicKit) -> AbstractDynamicKit:
-			source = self._source.as_scope(ctx) if isinstance(self._source, AbstractSchema) else self._source
-			ctx.add_source(source)
-			return ctx
+		def validate_context(self, ctx: AbstractDynamicContext) -> AbstractContext:
+			return ctx.include(self.source)
 
 
-	def add_source(self, source: AbstractTool):
-		if isinstance(source, AbstractSchema):
-			source = source.as_resource(self)
-		elif isinstance(source, AbstractResource):
-			pass
-		else:
-			source = self._DefaultSchema(source)
+	def __init__(self, *, resources=None, **kwargs):
+		if resources is None:
+			resources = []
+		super().__init__(**kwargs)
+		self._resources = resources
 
-		self._resources.append(source)
+	def _as_resource(self, source: AbstractTool):
+		resource = source.as_resource(self) if isinstance(source, AbstractResourceable) else None
+		if resource is None:
+			resource = self._DefaultResource(source)
+		return resource
 
+
+	def include(self, *sources: AbstractTool):
+		for source in sources:
+			self._resources.append(self._as_resource(source))
 		return self
 
 
@@ -130,55 +129,20 @@ class CreativeMogul(AbstractMogul):
 
 
 
-class SchemaCreativeMogul(CreativeMogul, SchemaMogul):
+class ValidatedCreativeMogul(CreativeMogul, AbstractResource):
 	def _create_context(self, *args, **kwargs):
-		ctx = super()._create_context(*args, **kwargs)
-		for schema in self.schemas():
-			ctx = schema.validate_context(ctx)
-		return ctx
-
-
-
-class SimpleMogul(CreativeMogul, AbstractSourcedKit):
-	def __init__(self, *, sources=None, schemas=None, **kwargs):
-		if sources is None:
-			sources = []
-		if schemas is None:
-			schemas = []
-		super().__init__(**kwargs)
-		self._sources = sources
-		self._schemas = schemas
-
-
-	def sources(self) -> Iterator[AbstractTool]:
-		yield from reversed(self._sources)
-
-
-	def schemas(self) -> Iterator[AbstractTool]:
-		yield from reversed(self._schemas)
+		return self.validate_context(super()._create_context(*args, **kwargs))
 
 
 	def validate_context(self, ctx: AbstractContext) -> AbstractContext:
-		for schema in self.schemas():
-			ctx = schema.validate_context(ctx)
+		for resource in self.resources():
+			ctx = resource.validate_context(ctx)
 		return ctx
 
 
-	def add_source(self, *sources: AbstractTool):
-		for source in sources:
-			self._sources.append(source)
-			schema = source.as_schema(self) if isinstance(source, AbstractResource) else None
-			if schema is None:
-				schema = source
-			self._schemas.append(schema)
-		return self
 
-
-	def _create_context(self, *args, **kwargs):
-		ctx = super()._create_context(*args, **kwargs)
-		for schema in self.schemas():
-			ctx.add_source(schema)
-		return ctx
+class SimpleMogul(DefaultResourceMogul, ValidatedCreativeMogul):
+	pass
 
 
 
@@ -381,6 +345,9 @@ class Checkpoint(SimpleTrainer):
 class Evaluatable(SimpleTrainer):
 	def evaluate(self, dataset): # valset or testset
 		pass
+
+
+
 
 
 

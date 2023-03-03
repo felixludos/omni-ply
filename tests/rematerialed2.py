@@ -1134,38 +1134,34 @@ class WidthLInear2(Linear2):
 			self.dout = spaces.Unbound(self.width)
 
 
-class MultiLayer(SimpleFunction):
+class MultiLayer(nn.Sequential, SimpleFunction):
 	layers = submodule(None)
 
-	def __init__(self, **kwargs):
-		super().__init__(**kwargs) # <--- this is where the spaces are filled in based on context
-		self._build_layers()
-
-
-	def forward(self, input):
-		out = input
-		for layer in self.layers:
-			out = layer(out)
-		return out
+	def __init__(self, layers=None, **kwargs):
+		if layers is None:
+			layers = self._build_layers()
+		super().__init__(*layers, **kwargs) # <--- this is where the spaces are filled in based on context
 
 
 	def _create_layer_builders(self, dims):
 		raise NotImplementedError
 
 
-	def _build_layers(self, builders=None):
-		dims = self.layers
-
+	def _build_layers(self, *, dims=None, builders=None):
 		if dims is None:
-			dims = []
-		if isinstance(dims, int):
-			dims = [dims]
-		if isinstance(dims, list):
-			if self.din is not None:
-				dims = [self.din] + dims
-			if self.dout is not None:
-				dims = dims + [self.dout]
+			dims = self.layers
 
+			if dims is None:
+				dims = []
+			if isinstance(dims, int):
+				dims = [dims]
+			if isinstance(dims, list):
+				if self.din is not None:
+					dims = [self.din] + dims
+				if self.dout is not None:
+					dims = dims + [self.dout]
+
+		if builders is None:
 			builders = self._create_layer_builders(dims)
 
 		layers = []
@@ -1181,6 +1177,12 @@ class MultiLayer(SimpleFunction):
 		if len(layers):
 			self.din = layers[0].din
 			self.dout = layers[-1].dout
+
+
+
+@inherit_hparams('layers')
+class MLP(MultiLayer):
+	out_layer = submodule(builder='layer')
 
 
 
@@ -1250,13 +1252,38 @@ class MLP(LayerBuilder):
 
 
 
-
 class AutoMLP(MLP):
 	hidden = hparam(None)
 
 
 
 	out_layer = Layer(width=1, nonlin='sigmoid')
+
+
+
+class Trainer:
+	def fit(self, dataset):
+
+		for batch in self.iterate(dataset):
+			self.step(batch)
+
+		return self.summarize()
+
+
+
+def train_loop4(config):
+
+	dataset = config.pull('dataset')
+
+	model = config.pull('model')
+
+	trainer = config.pull('trainer').include(dataset)
+	trainer.set_model(model)
+
+	# for batch in trainer:
+	# 	optimizer.step(batch)
+	# return model
+	return trainer.fit(dataset)
 
 
 
