@@ -16,13 +16,13 @@ prt = get_printer(__file__)
 
 
 class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
+	_BufferTable = OrderedDict
+
 	def __init__(self, *, buffer_table=None, **kwargs):
 		if buffer_table is None:
 			buffer_table = self._BufferTable()
 		super().__init__(**kwargs)
 		self._buffers = buffer_table
-	
-	_BufferTable = OrderedDict
 
 
 	def __len__(self):
@@ -92,8 +92,6 @@ class CountableDataRouter(AbstractDataRouter, AbstractDataSource, AbstractCounta
 
 
 	_UnknownSize = UnknownSize
-
-
 	def _compute_size(self):
 		for tool in self.tools():
 			if isinstance(tool, AbstractCountableData):

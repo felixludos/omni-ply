@@ -1286,8 +1286,40 @@ def train_loop4(config):
 	return trainer.fit(dataset)
 
 
+def train_loop5(config):
+
+	dataset = config.pull('dataset')
+
+	model = config.pull('model')
+
+	trainer = config.pull('trainer')
+
+	trainer.set_model(model)
+
+	# for batch in trainer:
+	# 	optimizer.step(batch)
+	# return model
+	return trainer.fit(dataset)
 
 
+
+def train_loop5(config):
+	dataset = config.pull('dataset')
+
+	traindata, valdata = dataset.split(0.8)
+
+	model = config.pull('model')
+
+	trainer = config.pull('trainer')
+
+	trainer.set_model(model)
+
+	# for batch in dataset:
+	# 	optimizer.step(batch)
+	# return model
+
+	trainer.fit(traindata)
+	return trainer.evaluate(valdata)
 
 
 

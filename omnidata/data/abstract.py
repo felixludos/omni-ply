@@ -191,33 +191,37 @@ class AbstractSelector(AbstractScope):
 
 
 
-# class AbstractIndexedData(AbstractCountableData):
-# 	def __init__(self, *, indices=None, **kwargs):
-# 		super().__init__(**kwargs)
-#
-#
-# 	@property
-# 	def size(self):
-# 		return len(self.indices)
-#
-#
-# 	@property
-# 	def indices(self):
-# 		raise NotImplementedError
+class AbstractIndexedData(AbstractCountableData):
+	def __init__(self, *, indices=None, **kwargs):
+		super().__init__(**kwargs)
+
+
+	@property
+	def size(self):
+		return len(self.indices)
+
+
+	@property
+	def indices(self):
+		raise NotImplementedError
 
 
 
 class AbstractProgression(BatchMogul, IteratorMogul, AbstractSourcedKit):
+	def set_source(self, source: AbstractTool) -> 'AbstractProgression':
+		raise NotImplementedError
+
+
 	@property
 	def source(self) -> AbstractTool:
 		raise NotImplementedError
 
 
 	def __next__(self):
-		return self.next_batch()
+		return self.create_batch()
 
 
-	def next_batch(self):
+	def create_batch(self) -> AbstractContext:
 		raise NotImplementedError
 
 

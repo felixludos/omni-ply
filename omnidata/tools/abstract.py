@@ -170,13 +170,31 @@ class AbstractScopable(AbstractResource, AbstractTool):
 	 Can raise a `InvalidContextError` if the context is not valid for this tool
 	 (e.g. if it doesn't have the required data, like a `size`)
 	 '''
+	def create_scope(self, ctx: AbstractContext) -> Optional['AbstractTool']:
+		return self
 
-	def as_scope(self) -> Optional['AbstractScope']:
+
+	def validate_context(self, ctx: AbstractContext) -> AbstractContext:
+		scope = self.as_scope(ctx)
+		return ctx if scope is None else ctx.include(scope)
+
+
+
+class AbstractScopeGenerator(AbstractResource, AbstractTool):
+	'''
+	 A tool can specify a scope for the given context to use when accessing its gizmos.
+
+	 For example, datasets can specify a scope for the context to use when accessing their data.
+
+	 Can raise a `InvalidContextError` if the context is not valid for this tool
+	 (e.g. if it doesn't have the required data, like a `size`)
+	 '''
+	def as_scope(self, ctx: AbstractContext) -> Optional['AbstractScope']:
 		pass
 
 
 	def validate_context(self, ctx: AbstractContext) -> AbstractContext:
-		scope = self.as_scope()
+		scope = self.as_scope(ctx)
 		return ctx if scope is None else scope
 
 

@@ -1,14 +1,22 @@
 # from ..persistent import Fingerprinted
-from ..parameters import hparam, with_hparams, Parameterized
-from ..tools import Industrial, material, machine, space
+from ..tools import Industrial
 
-from .abstract import AbstractBatchable
-from .routers import DataCollection, AutoCollection, BranchedDataRouter, AliasedCollection, CountableDataRouter
+from .routers import DataCollection, AutoCollection, AliasedCollection, CountableDataRouter
 from .views import IndexView
 from .sources import Splitable, TensorSource, SpacedSource, BuildableData
-from .progression import SetProgression, StreamProgression
-# from .materials import Materialed
-from .batches import Batchable, Epochable
+from .batches import Batchable, Epochable, BatchBase, IndexBatch
+
+
+
+class StreamBatch(BatchBase):
+	pass
+Batchable._Batch = StreamBatch
+
+
+
+class Batch(IndexBatch):
+	pass
+Epochable._Batch = Batch
 
 
 
@@ -40,7 +48,6 @@ class Dataset(Splitable, CountableDataRouter, Epochable, _FeaturedDataRouter):
 
 class SimpleDataset(Dataset):
 	_is_ready = True
-
 
 	def __init__(self, *unnamed_data, **named_data):
 		super().__init__()

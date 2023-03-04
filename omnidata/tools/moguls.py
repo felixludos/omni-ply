@@ -54,12 +54,6 @@ class BuildingContextMogul(AbstractMogul):
 
 
 
-# class SchemaMogul(AbstractMogul):
-# 	def schemas(self) -> Iterator[AbstractSchema]:
-# 		raise NotImplementedError
-
-
-
 class ValidationMogul(AbstractMogul):
 	def validate_context(self, ctx: AbstractContext) -> AbstractContext:
 		return ctx
@@ -130,14 +124,18 @@ class CreativeMogul(AbstractMogul):
 
 
 class ValidatedCreativeMogul(CreativeMogul, AbstractResource):
-	def _create_context(self, *args, **kwargs):
-		return self.validate_context(super()._create_context(*args, **kwargs))
-
-
-	def validate_context(self, ctx: AbstractContext) -> AbstractContext:
+	def _validate_context(self, ctx: AbstractContext) -> AbstractContext: # as a driver or an observer
 		for resource in self.resources():
 			ctx = resource.validate_context(ctx)
 		return ctx
+
+
+	def _create_context(self, *args, **kwargs): # as a driver
+		return self._validate_context(super()._create_context(*args, **kwargs))
+
+
+	def validate_context(self, ctx: AbstractContext) -> AbstractContext: # as an observer
+		return self._validate_context(ctx)
 
 
 

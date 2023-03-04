@@ -8,46 +8,39 @@ from ..tools.abstract import AbstractScope, AbstractTool, AbstractResource
 from ..tools.moguls import BatchMogul, IteratorMogul, SelectionMogul, LimitMogul, \
 	BatchBudgetStatMogul, EpochStatMogul, EpochBudgetMogul, SimpleMogul
 
-from .abstract import AbstractProgression
+from .abstract import AbstractProgression, AbstractBatch
+from .errors import BudgetExceeded, EpochEnd, UnknownSize
 from .sources import Shufflable
 
 
 
-class AbstractBudgetProgression(AbstractProgression, BatchBudgetStatMogul):
-	pass
-
-
-
 class ProgressionBase(SimpleMogul, AbstractProgression, Prepared):
-	def __init__(self, batch_size, *, source=None, **kwargs):
+	def __init__(self, source: Optional[AbstractTool] = None, **kwargs):
 		super().__init__(**kwargs)
 		self._source = None
 		self._resource = None
-		self.source = source
-		self._current_batch = None
-		self._batch_size = batch_size
+		self._current_context = None
 		self._sample_count = 0
 		self._batch_count = 0
+		if source is not None:
+			self.set_source(source)
+
+
+	def set_source(self, source: AbstractTool):
+		self._source = source
+		self._resource = self._as_resource(source)
+		return self
 
 
 	@property
 	def source(self) -> AbstractTool:
 		return self._source
-	@source.setter
-	def source(self, value: AbstractTool):
-		self._source = value
-		self._resource = self._as_resource(value)
 
 
-	def current_context(self):
-		if self._current_batch is None:
-			return self.next_batch()
-		return self._current_batch
-
-
-	@property
-	def batch_size(self):
-		return self._batch_size
+	def current_context(self) -> AbstractBatch:
+		if self._current_context is None:
+			return self.create_batch()
+		return self._current_context
 
 
 	@property
@@ -58,100 +51,99 @@ class ProgressionBase(SimpleMogul, AbstractProgression, Prepared):
 		return self._batch_count
 
 
-	def next_batch(self):
-		self.prepare()
-		batch = self._next_batch()
-		self._sample_count += batch.size
+	def _validate_context(self, ctx: AbstractBatch) -> AbstractBatch:
+		ctx = super()._validate_context(ctx)
+		self._sample_count += ctx.size
 		self._batch_count += 1
-		self._current_batch = batch
-		return batch
+		self._current_context = ctx
+		return ctx
 
 
-	def _next_batch(self):
-		return self._create_context(size=self._batch_size)
+	def create_batch(self) -> AbstractBatch:
+		self.prepare()
+		return self._create_context()
 
 
 
-_inf = float('inf')
-
-class BudgetProgression(ProgressionBase, AbstractBudgetProgression):
-	def __init__(self, batch_size, *, sample_limit=None, batch_limit=None,
-	             strict_limit=True, strict_batch_size=False, **kwargs):
-		super().__init__(batch_size=batch_size, **kwargs)
-		self._sample_limit = sample_limit
-		self._batch_limit = batch_limit
-
-		self._strict_limit = strict_limit
-		self._strict_batch_size = strict_batch_size
-
-		self._total_samples = None
-		self._total_batches = None
-
-
-	def _next_batch(self):
-		if self.done:
-			raise StopIteration
-		size = self._batch_size if self._strict_batch_size else min(self._batch_size, self.remaining_samples)
-		return self._create_batch(size=size)
-
-
-	def _prepare(self, *args, **kwargs):
-		super()._prepare(*args, **kwargs)
-		self._total_samples, self._total_batches = self.compute_budget(
-			samples_per_batch=self.batch_size, strict_batch_size=self._strict_batch_size,
-			sample_limit=self._sample_limit, batch_limit=self._batch_limit, strict_limit=self._strict_limit,
-		)
+class BatchProgression(ProgressionBase):
+	def __init__(self, batch_size: Optional[int] = None, **kwargs):
+		super().__init__(**kwargs)
+		self._batch_size = batch_size
 
 
 	@property
-	def budget_samples(self) -> Optional[int]:
-		return self._total_samples
-	@property
-	def budget_batches(self) -> Optional[int]:
-		return self._total_batches
+	def batch_size(self):
+		return self._batch_size
 
 
-	@property
-	def remaining_samples(self):
-		if self._total_samples is None:
-			return _inf
-		return self._total_samples - self.sample_count
-	@property
-	def remaining_batches(self):
-		if self._total_batches is None:
-			return _inf
-		return self._total_batches - self.batch_count
-
-
-	@property
-	def done(self):
-		return self.remaining_samples <= 0 or self.remaining_batches <= 0
+	def _create_context(self, *args, size=None, **kwargs):
+		if size is None:
+			size = self.batch_size
+		return self._create_context(*args, size=size, **kwargs)
 
 
 
 class EpochProgression(ProgressionBase, EpochStatMogul):
-	def __init__(self, batch_size, *, epoch_size=None, strict_batch_size=False, **kwargs):
-		super().__init__(batch_size=batch_size, **kwargs)
-		self._selections = None
-		self._sel_index = 0
+	def __init__(self, epoch_size: Optional[int] = None, **kwargs):
+		super().__init__(**kwargs)
+		self._indices = None
+		self._order_index = 0
 		self._epoch_size = epoch_size
-		self._strict_batch_size = strict_batch_size
+
+		self._batch_in_epoch = 0
+		self._samples_in_epoch = 0
 
 
-	def _epoch_end(self):
-		raise StopIteration
+	def set_source(self, source: AbstractTool):
+		self._indices = None
+		return super().set_source(source)
 
 
-	def _next_batch(self):
-		if self._selections is None:
+	def _setup_epoch(self, remaining: Optional[torch.Tensor] = None):
+		self._indices = self._generate_sample_order()
+		if remaining is not None:
+			self._indices = torch.cat([remaining, self._indices])
+		self._order_index = 0
+		self._batch_in_epoch = 0
+		self._samples_in_epoch = 0
+
+
+	_EpochEnd = EpochEnd
+	def _reset_epoch(self):
+		remaining = None
+		if self._indices is not None:
+			remaining = self.epoch_size - self._order_index
+			remaining = self._indices[self._order_index:self._order_index + remaining]
+		self._setup_epoch(remaining)
+
+
+	def _validate_context(self, ctx: AbstractBatch) -> AbstractBatch:
+		ctx = super()._validate_context(ctx)
+		self._batch_in_epoch += 1
+		self._samples_in_epoch += ctx.size
+		return ctx
+
+
+	def _next_batch_indices(self, size: int) -> torch.Tensor:
+		remaining = self.epoch_size - self._order_index
+		if remaining < size:
+			self._reset_epoch()
+			return self._next_batch_indices(size)
+		indices = self._indices[self._order_index:self._order_index + size]
+		self._order_index += size
+		return indices
+
+
+	def _create_context(self, *args, indices: Optional[torch.Tensor] = None, size: Optional[int] = None, **kwargs):
+		if self._indices is None:
 			self._setup_epoch()
 
-		if self._sel_index >= len(self._selections):
-			self._epoch_end()
+		if size is None:
+			size = self.batch_size
+		if indices is None:
+			indices = self._next_batch_indices(size)
 
-		batch = self._create_batch(indices=self._selections[self._sel_index])
-		self._sel_index += 1
-		return batch
+		return super()._create_context(*args, indices=indices, **kwargs)
 
 
 	def _prepare(self, *args, **kwargs):
@@ -159,195 +151,57 @@ class EpochProgression(ProgressionBase, EpochStatMogul):
 		assert self.batch_size <= self.epoch_size, f'Batch size ({self.batch_size}) must be ' \
 		                                           f'less than or equal to epoch size ({self.epoch_size})'
 
+
 	@property
-	def epoch_size(self):
+	def epoch_size(self) -> int:
+		if self._epoch_size is None:
+			return self.source.size
 		return self._epoch_size
 	@epoch_size.setter
-	def epoch_size(self, epoch_size):
+	def epoch_size(self, epoch_size: int):
 		self._epoch_size = epoch_size
 
 
-	def _generate_sample_order(self):
+	@property
+	def batch_in_epoch(self) -> int:
+		return self._batch_in_epoch
+	@property
+	def samples_in_epoch(self) -> int:
+		return self._samples_in_epoch
+
+
+	def _generate_sample_order(self) -> torch.Tensor:
 		return torch.arange(self.epoch_size)
-
-
-	def _generate_selections(self, indices):
-		sels = list(indices.split(self.batch_size))
-		if self._strict_batch_size and len(sels) and len(sels[-1]) != self.batch_size:
-			sels.pop()
-		return sels
-
-
-	def _setup_epoch(self):
-		self._selections = self._generate_selections(self._generate_sample_order())
-		self._sel_index = 0
 
 
 
 class ShuffleProgression(EpochProgression, Shufflable):
-	def __init__(self, batch_size, *, shuffle=False, **kwargs):
-		super().__init__(batch_size=batch_size, **kwargs)
+	def __init__(self, *, shuffle: Optional[bool] = False, **kwargs):
+		super().__init__(**kwargs)
 		self._shuffle_batches = shuffle
 
 
-	def _generate_sample_order(self):
+	def _generate_sample_order(self) -> torch.Tensor:
 		if self._shuffle_batches:
 			return self._shuffle_indices(self.epoch_size)
 		return super()._generate_sample_order()
 
 
 
-class InfiniteProgression(EpochProgression):
-	def __init__(self, batch_size, infinite=False, **kwargs):
-		super().__init__(batch_size=batch_size, **kwargs)
-		self._infinite = infinite
-		self._completed_epochs = 0
+#### top-level classes
 
 
-	def _epoch_end(self):
-		if self._infinite:
-			self._completed_epochs += 1
-			self._setup_epoch()
-		else:
-			raise StopIteration
-
-	# @property
-	# def remaining_batches_in_epoch(self) -> Optional[int]:
-	# 	if self._infinite:
-	# 		return None
-	# 	return len(self._selections) - self._sel_index
-	#
-	# @property
-	# def remaining_samples_in_epoch(self) -> Optional[int]:
-	# 	if self._infinite:
-	# 		return None
-	# 	if self._strict_batch_size:
-	# 		return self.remaining_batches_in_epoch * self.batch_size
-	# 	return self.epoch_size - self.sample_count
-
-
-	@property
-	def current_epoch(self) -> int:
-		return self.completed_epochs + 1
-
-
-	@property
-	def completed_epochs(self) -> int:
-		return self._completed_epochs
-
-
-
-class EpochBudgetProgression(InfiniteProgression, ShuffleProgression, BudgetProgression,
-                             AbstractBudgetProgression, EpochBudgetMogul):
-	def __init__(self, batch_size, *, epochs=None, **kwargs):
-		super().__init__(batch_size=batch_size, **kwargs)
-		self._epochs = epochs
-		self._full_epochs = None
-
-
-	def _prepare(self, *args, **kwargs):
-		super()._prepare(*args, **kwargs)
-
-		if self._epochs is None \
-				and self._sample_limit is None \
-				and self._batch_limit is None \
-				and not self._infinite:
-			self._epochs = 1
-
-		self._total_samples, self._total_batches, self._full_epochs = self.compute_epoch_budget(
-			dataset_size=self.epoch_size, samples_per_batch=self.batch_size,
-			strict_batch_size=self._strict_batch_size,
-			epochs=self._epochs, sample_limit=self._sample_limit,
-			batch_limit=self._batch_limit, strict_limit=self._strict_limit
-		)
-
-
-	def _epoch_end(self):
-		self._completed_epochs += 1
-		self._setup_epoch()
-
-
-	def _next_batch(self):
-		if self.done:
-			raise StopIteration
-		return super()._next_batch()
-
-
-	def _generate_selections(self, indices):
-		sels = super()._generate_selections(indices)
-		if self._strict_limit and self.remaining_samples < self.batch_size:
-			sels[0] = sels[0][:self.remaining_samples]
-			sels = sels[:1]
-		return sels
-
-
-	@property
-	def full_epochs(self) -> Optional[int]:
-		return self._full_epochs
-
-
-	@property
-	def remaining_epochs(self):
-		if self._full_epochs is None:
-			return float('inf')
-		return self._full_epochs - self.current_epoch
-
-
-
-class BarredProgression(ProgressionBase, ProgressBarred):
-	def __init__(self, batch_size, *, use_pbar=False, pbar_samples=True, **kwargs):
-		super().__init__(batch_size=batch_size, **kwargs)
-		self._use_pbar = use_pbar
-		self._pbar_samples = pbar_samples
-
-
-	def _create_pbar(self, *, unit=None, **kwargs):
-		if unit is None:
-			unit = 'smpl' if self._pbar_samples else 'batch'
-		return super()._create_pbar(unit=unit, **kwargs)
-
-
-	def _prepare(self, *args, **kwargs):
-		super()._prepare(*args, **kwargs)
-		if self._use_pbar:
-			self._create_pbar()
-
-
-	def _next_batch(self):
-		pbar = self._pbar
-		try:
-			batch = super()._next_batch()
-		except StopIteration:
-			if pbar is not None:
-				pbar.close()
-			raise
-		else:
-			if pbar is not None:
-				pbar.update(self.batch_size if self._pbar_samples else 1)
-			return batch
-
-
-	def set_description(self, desc):
-		if self._pbar is not None:
-			self._pbar.set_description(desc)
-
-
-
-class TrackedProgression(BarredProgression, AbstractBudgetProgression): # TODO: add a progress bar
-	def _create_pbar(self, total=None, **kwargs):
-		if total is None:
-			total = self.budget_samples if self._pbar_samples else self.budget_batches
-		return super()._create_pbar(total=total, **kwargs)
-
-
-
-class StreamProgression(TrackedProgression, BudgetProgression):
+class SetProgression(BatchProgression, EpochProgression):
 	pass
 
 
 
-class SetProgression(TrackedProgression, EpochBudgetProgression):
+class StreamProgression(BatchProgression):
 	pass
+
+
+
+
 
 
 

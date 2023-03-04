@@ -6,7 +6,7 @@ from ..features import Seeded, Prepared
 from ..tools.abstract import AbstractScope
 from ..tools.context import SizedContext, Cached
 
-from .abstract import AbstractView, AbstractRouterView, AbstractBatch, AbstractIndexedData, AbstractDataRouter, \
+from .abstract import AbstractView, AbstractRouterView, AbstractBatch, AbstractDataRouter, AbstractIndexedData, \
 	AbstractProgression, AbstractBatchable, AbstractSelector, AbstractCountableData, AbstractCountableRouterView
 
 
@@ -53,9 +53,9 @@ class SingleIndexSelector(SizeSelector):
 
 
 
-class IndexSelector(SizeSelector, AbstractIndexedData):
-	def __init__(self, indices, *, size: Optional[int] = None, **kwargs):
-		super().__init__(indices=indices, size=size, **kwargs)
+class IndexView(ViewBase, AbstractIndexedData):
+	def __init__(self, indices, **kwargs):
+		super().__init__(indices=indices, **kwargs)
 		self._indices = indices
 
 
@@ -64,13 +64,8 @@ class IndexSelector(SizeSelector, AbstractIndexedData):
 		return self._indices
 
 
-	@property
-	def size(self):
-		if self._size is None:
-			return len(self.indices)
-		return self._size
 
-
+class IndexSelector(SizeSelector, AbstractIndexedData):
 	def compose(self, other: AbstractSelector) -> AbstractSelector:
 		# TODO: check case where other is just the indices directly
 		if isinstance(other, IndexSelector) and other.indices is not None:
@@ -78,10 +73,15 @@ class IndexSelector(SizeSelector, AbstractIndexedData):
 		return self
 
 
+	@property
+	def size(self):
+		if self._size is None:
+			return len(self.indices)
+		return self._size
 
-class IndexView(IndexSelector, AbstractCountableRouterView): # -> Subset
-	def validate_context(self, selection: 'AbstractSelector'):
-		return super().validate_context(selection.compose(self))
+# class IndexView(IndexSelector, AbstractCountableRouterView): # -> Subset
+# 	def validate_context(self, selection: 'AbstractSelector'):
+# 		return super().validate_context(selection.compose(self))
 
 
 
