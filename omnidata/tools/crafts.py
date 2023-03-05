@@ -322,8 +322,8 @@ class IndexSampleCraft(FunctionToolCraft):
 
 
 class CachedPropertyCraft(ReplaceableCraft, cached_property):
-	def __init__(self, gizmo: str, *, func=None, **kwargs):
-		super().__init__(gizmo=gizmo, func=func, **kwargs)
+	def __init__(self, label: str, *, func=None, **kwargs):
+		super().__init__(label=label, func=func, **kwargs)
 
 
 	def copy(self, label: str = None, **kwargs):

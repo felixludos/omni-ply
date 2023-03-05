@@ -270,7 +270,7 @@ class BuildableSpec(SubmoduleSpec):
 
 
 class SpeccedBase(AbstractParameterized):
-	Spec = None
+	_Spec = None
 
 	@classmethod
 	def init_from_spec(cls, spec):
@@ -282,7 +282,7 @@ class SpeccedBase(AbstractParameterized):
 
 	@agnostic
 	def spec(self, *, hidden=True, auto_expand=False, **kwargs):
-		spec = self.Spec(src=self, base=self, hidden=hidden, auto_expand=auto_expand, **kwargs)
+		spec = self._Spec(src=self, base=self, hidden=hidden, auto_expand=auto_expand, **kwargs)
 		if auto_expand:
 			spec.prepare()
 		return spec

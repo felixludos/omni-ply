@@ -7,7 +7,7 @@ import omnifig as fig
 
 from .abstract import AbstractBuilder, AbstractParameterized
 from .hyperparameters import HyperparameterBase
-from .parameterized import InheritableParameterized
+from .parameterized import ParameterizedBase
 from ..structure import spaces
 
 prt = logging.Logger('Building')
@@ -17,7 +17,7 @@ ch.setLevel(0)
 prt.addHandler(ch)
 
 
-class BuilderBase(InheritableParameterized, AbstractBuilder):
+class BuilderBase(ParameterizedBase, AbstractBuilder):
 	pass
 
 
@@ -212,10 +212,10 @@ get_builder = builder_registry.get_class
 class MultiBuilderBase(BuilderBase):
 	_IdentParameter = HyperparameterBase
 
-	def __init_subclass__(cls, _register_ident=True, default_ident=None, **kwargs):
-		super().__init_subclass__(**kwargs)
-		if _register_ident:
-			cls._register_hparam('ident', cls._IdentParameter(name='ident', required=True), prepend=True)
+	# def __init_subclass__(cls, _register_ident=True, default_ident=None, **kwargs):
+	# 	super().__init_subclass__(**kwargs)
+	# 	if _register_ident:
+	# 		cls._register_hparam('ident', cls._IdentParameter(name='ident', required=True), prepend=True)
 
 	def __init__(self, ident=unspecified_argument, **kwargs):
 		super().__init__(**kwargs)
@@ -273,24 +273,24 @@ class RegistryBuilderBase(MultiBuilderBase):
 	_default_products = None # these are inherited when set (unless overridden in __init_subclass__)
 	_default_ident = None
 
-	def __init_subclass__(cls, create_registry=None, default_ident=None, products=None, **kwargs):
-		if create_registry is None:
-			create_registry = cls._product_registry is None
-		if default_ident is None:
-			default_ident = cls._default_ident
-		if products is None:
-			products = {}
-		if cls._default_products is not None:
-			products.update(cls._default_products)
-		super().__init_subclass__(_register_ident=create_registry, **kwargs)
-		if create_registry:
-			cls._product_registry = cls._product_registry_type()
-			for name, prod in products.items():
-				cls.register_product(name, prod)
-			if default_ident is not None:
-				cls._register_ident(default_ident, is_default=True)
-		elif default_ident is not None:
-			cls.ident = default_ident
+	# def __init_subclass__(cls, create_registry=None, default_ident=None, products=None, **kwargs):
+	# 	if create_registry is None:
+	# 		create_registry = cls._product_registry is None
+	# 	if default_ident is None:
+	# 		default_ident = cls._default_ident
+	# 	if products is None:
+	# 		products = {}
+	# 	if cls._default_products is not None:
+	# 		products.update(cls._default_products)
+	# 	super().__init_subclass__(_register_ident=create_registry, **kwargs)
+	# 	if create_registry:
+	# 		cls._product_registry = cls._product_registry_type()
+	# 		for name, prod in products.items():
+	# 			cls.register_product(name, prod)
+	# 		if default_ident is not None:
+	# 			cls._register_ident(default_ident, is_default=True)
+	# 	elif default_ident is not None:
+	# 		cls.ident = default_ident
 
 
 	@agnosticproperty
@@ -346,12 +346,12 @@ class RegistryBuilderBase(MultiBuilderBase):
 
 
 
-class HierarchyBuilderBase(RegistryBuilderBase, create_registry=False):
-	def __init_subclass__(cls, branch=None, create_registry=None, **kwargs):
-		if branch is not None:
-			create_registry = create_registry is None or create_registry
-			cls._update_hierarchy_address(branch)
-		super().__init_subclass__(create_registry=create_registry, **kwargs)
+class HierarchyBuilderBase(RegistryBuilderBase, ):#create_registry=False):
+	# def __init_subclass__(cls, branch=None, create_registry=None, **kwargs):
+	# 	if branch is not None:
+	# 		create_registry = create_registry is None or create_registry
+	# 		cls._update_hierarchy_address(branch)
+	# 	super().__init_subclass__(create_registry=create_registry, **kwargs)
 
 	_hierarchy_address = None
 	_hierarchy_address_delimiter = '/'
@@ -366,18 +366,18 @@ class RegisteredProductBase(BuildableBase):
 	ident = None
 	_owning_registry = None
 
-	def __init_subclass__(cls, ident=None, registry=None, is_default=False, **kwargs):
-		super().__init_subclass__(**kwargs)
-		if ident is None:
-			ident = getattr(cls, 'ident', None)
-		else:
-			setattr(cls, 'ident', ident)
-		if registry is None:
-			registry = getattr(cls, '_owning_registry', None)
-		else:
-			setattr(cls, '_owning_registry', registry)
-		if ident is not None and registry is not None:
-			registry.register_product(ident, cls, is_default=is_default)
+	# def __init_subclass__(cls, ident=None, registry=None, is_default=False, **kwargs):
+	# 	super().__init_subclass__(**kwargs)
+	# 	if ident is None:
+	# 		ident = getattr(cls, 'ident', None)
+	# 	else:
+	# 		setattr(cls, 'ident', ident)
+	# 	if registry is None:
+	# 		registry = getattr(cls, '_owning_registry', None)
+	# 	else:
+	# 		setattr(cls, '_owning_registry', registry)
+	# 	if ident is not None and registry is not None:
+	# 		registry.register_product(ident, cls, is_default=is_default)
 
 
 

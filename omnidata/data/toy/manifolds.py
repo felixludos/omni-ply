@@ -5,7 +5,7 @@ import torch
 # from ..materials import Materialed, material
 from ...structure import spaces, Decoder, Generator, NormalDistribution
 from ...features import Seeded
-from ...parameters import hparam, inherit_hparams
+from ...parameters import submodule, hparam, inherit_hparams
 from ...tools import material, machine, space
 
 from ..flavors import Synthetic, Sampledstream
@@ -13,7 +13,7 @@ from ..top import Datastream
 
 
 
-class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
+class ManifoldStream(Synthetic, Datastream, Seeded, Generator):
 	def generate(self, N: int): # generates observations
 		return self.generate_observation_from_mechanism(self.generate_mechanism(N))
 
@@ -31,7 +31,6 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
 
 
 class Deterministic(ManifoldStream, Decoder):
-	@machine('observation')
 	def generate_observation_from_mechanism(self, mechanism):
 		return self.decode(mechanism)
 
@@ -123,12 +122,6 @@ class SwissRoll(ManifoldStream):
 
 
 
-@inherit_hparams('n_samples', 'Ax', 'Ay', 'Az', 'freq', 'tmin', 'tmax')
-class SwissRollDataset(Sampledstream, SwissRoll):
-	pass
-
-
-
 class Helix(ManifoldStream):
 	n_helix = hparam(2, space=spaces.Naturals())
 
@@ -179,9 +172,41 @@ class Helix(ManifoldStream):
 
 
 
-@inherit_hparams('n_samples', 'n_helix', 'periodic_strand', 'Rx', 'Ry', 'Rz', 'w')
-class HelixDataset(Sampledstream, Helix):
-	pass
+@inherit_hparams('n_samples')
+class SwissRollDataset(Sampledstream):
+	Ax = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
+	Ay = hparam(21., space=spaces.HalfBound(min=0.))
+	Az = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
+
+	freq = hparam(0.5, space=spaces.HalfBound(min=0.))
+	tmin = hparam(3., space=spaces.HalfBound(min=0.))
+	tmax = hparam(9., space=spaces.HalfBound(min=0.))
+
+
+	@submodule
+	def stream(self):
+		return SwissRoll(Ax=self.Ax, Ay=self.Ay, Az=self.Az, freq=self.freq,
+		                 tmin=self.tmin, tmax=self.tmax)
+
+
+
+@inherit_hparams('n_samples')
+class HelixDataset(Sampledstream):
+	n_helix = hparam(2, space=spaces.Naturals())
+
+	periodic_strand = hparam(False, space=spaces.Binary())
+
+	Rx = hparam(1., space=spaces.HalfBound(min=0.))
+	Ry = hparam(1., space=spaces.HalfBound(min=0.))
+	Rz = hparam(1., space=spaces.HalfBound(min=0.))
+
+	w = hparam(1., space=spaces.HalfBound(min=0.))
+
+
+	@submodule
+	def stream(self):
+		return Helix(n_helix=self.n_helix, periodic_strand=self.periodic_strand,
+		             Rx=self.Rx, Ry=self.Ry, Rz=self.Rz, w=self.w)
 
 
 

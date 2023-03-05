@@ -1,9 +1,11 @@
 from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, Callable, Generator, Type, Iterable, \
 	Iterator, NamedTuple, ContextManager
 import logging
+from functools import cached_property
 from omnibelt import unspecified_argument, defaultproperty, autoproperty, referenceproperty
-from .abstract import AbstractHyperparameter
 
+from .abstract import AbstractHyperparameter
+from .errors import MissingValueError
 
 prt = logging.Logger('Hyperparameters')
 ch = logging.StreamHandler()
@@ -12,230 +14,154 @@ ch.setLevel(0)
 prt.addHandler(ch)
 
 
-class _hyperparameter_property(defaultproperty):
-	def register_with(self, obj, name):
-		raise NotImplementedError
+
+class DefaultProperty:
+	_unknown = object()
+
+	def __init__(self, default=unspecified_argument, *, fget=None, fset=None, fdel=None, cache=True, **kwargs):
+		if default is unspecified_argument:
+			default = self._unknown
+		fget, default = self._check_fget(fget, default)
+		super().__init__(**kwargs)
+		self.attrname = None
+		self.cache = cache
+		self.default = default
+		self.fget = fget
+		self.fset = fset
+		self.fdel = fdel
 
 
-# manual -> cache -> config -> (builder) -> fget -> default
+	def _check_fget(self, fget=None, default=unspecified_argument):
+		if fget is None:
+			if callable(default) and not isinstance(default, type) and default.__qualname__ != default.__name__:
+				return default, unspecified_argument  # decorator has no other args
+			return None, default  # no fget provided (optionally can be added with __call__)
+		return fget, default  # fget was specified as keyword argument
 
-class HyperparameterBase(_hyperparameter_property, autoproperty, AbstractHyperparameter):
-	# space = defaultproperty(None)
-	# required = defaultproperty(False)
-	# hidden = defaultproperty(False)
-	# fixed = defaultproperty(False)
 
-	@classmethod
-	def extract_from(cls, param: 'HyperparameterBase', **kwargs):
-		info = {
-			'name': param.name,
-			'src': param.src,
-			'default': param.default,
-			'hidden': param.hidden,
-			'required': param.required,
-			'space': param.space,
-			'fixed': param.fixed,
-			'cache': param.cache,
-			'fget': param.fget,
-			'fset': param.fset,
-			'fdel': param.fdel,
-		}
-		info.update(kwargs)
-		return cls(**info)
+	def __set_name__(self, owner, name):
+		if self.attrname is None:
+			self.attrname = name
+		elif name != self.attrname:
+			raise TypeError(
+				"Cannot assign the same cached_property to two different names "
+				f"({self.attrname!r} and {name!r})."
+			)
 
-	def __init__(self, default=unspecified_argument, *, space=None, required=False, hidden=False, fixed=False,
-	             **kwargs):
-		# if space is unspecified_argument:
-		# 	space = self.space
-		# if hidden is unspecified_argument:
-		# 	hidden = self.hidden
-		# if required is unspecified_argument:
-		# 	required = self.required
-		# if fixed is unspecified_argument:
-		# 	fixed = self.fixed
+
+	_MissingValueError = MissingValueError
+
+
+	def __get__(self, instance, owner=None):
+		if instance is None:
+			return self
+		if self.attrname is None:
+			raise TypeError(
+				"Cannot use cached_property instance without calling __set_name__ on it.")
+		try:
+			cache = instance.__dict__
+		except AttributeError:  # not all objects have __dict__ (e.g. class defines slots)
+			msg = (
+				f"No '__dict__' attribute on {type(instance).__name__!r} "
+				f"instance to cache {self.attrname!r} property."
+			)
+			raise TypeError(msg) from None
+		val = cache.get(self.attrname, self._unknown)
+		if val is self._unknown: # TODO: make thread safe
+			if self.fget is None:
+				if self.default is self._unknown:
+					raise self._MissingValueError(f'No value for {self.attrname!r} property')
+				return self.default
+			val = self.fget.__get__(instance, owner)()
+			if self.cache:
+				try:
+					cache[self.attrname] = val
+				except TypeError:
+					msg = (
+						f"The '__dict__' attribute on {type(instance).__name__!r} instance "
+						f"does not support item assignment for caching {self.attrname!r} property."
+					)
+					raise TypeError(msg) from None
+		return val
+
+
+	def __set__(self, instance, value):
+		if self.fset is None:
+			return instance.__dict__.setdefault(self.attrname, value)
+
+		try:
+			setter = self.fset.__get__(instance, type(instance))
+		except AttributeError:
+			setter = self.fset
+
+		setter(value)
+
+
+	def __delete__(self, instance):
+		if self.fdel is None:
+			return delattr(instance, self.attrname)
+
+		try:
+			deleter = self.fdel.__get__(instance, type(instance))
+		except AttributeError:
+			deleter = self.fdel
+
+		deleter()
+
+
+	def __call__(self, fn):
+		return self.getter(fn)
+
+
+	def getter(self, fget):
+		self.fget = fget
+		return self
+
+
+	def setter(self, fset):
+		self.fset = fset
+		return self
+
+
+	def deleter(self, fdel):
+		self.fdel = fdel
+		return self
+
+
+
+class HyperparameterBase(DefaultProperty, AbstractHyperparameter): # TODO: add 'cached' option
+	def __init__(self, default=unspecified_argument, *, space=None, hidden=None, required=None, **kwargs):
 		super().__init__(default=default, **kwargs)
 		self.space = space
-		self.required = required
 		self.hidden = hidden
-		self.fixed = fixed
+		self.required = required
 
 
-	def copy(self, *, space=unspecified_argument, hidden=unspecified_argument,
-	         required=unspecified_argument, fixed=unspecified_argument,
-	         **kwargs):
-		if space is unspecified_argument:
-			space = self.space
-		if hidden is unspecified_argument:
-			hidden = self.hidden
-		if required is unspecified_argument:
-			required = self.required
-		if fixed is unspecified_argument:
-			fixed = self.fixed
-		return super().copy(space=space, hidden=hidden, required=required, fixed=fixed, **kwargs)
-
-	def __str__(self):
-		name = '' if self.name is None else self.name
-		default = '' if self.default is self.unknown else f', default={self.default}'
-		return f'{self.__class__.__name__}({name}{default})'
-
-	def __repr__(self):
-		name = f'{id(self)[-8:]}' if self.name is None else self.name
-		return f'<{self.__class__.__name__}:{name}>'
-
-	def register_with(self, obj, name, **kwargs):
-		if name != self.name:
-			self = self.copy(name=name, **kwargs)
-		return obj.register_hparam(self.name, self)
-
-	def validate_value(self, value):
-		return value
-
-	def create_value(self, base, owner=None): # TODO: maybe make thread-safe by using a lock
-		return self.validate_value(super().create_value(base, owner=owner))
-		
-	def update_value(self, base, value):
-		return super().update_value(base, self.validate_value(value))
-
-	# def _get_cached_value(self, base):
-	# 	if base is self.src:
-	# 		return self.cached_value
-	# 	return super()._get_cached_value(base)
-	#
-	# def _set_cached_value(self, base, value):
-	# 	if base is self.src:
-	# 		self.cached_value = value
-	# 	else:
-	# 		super()._set_cached_value(base, value)
-	#
-	# def _clear_cache(self, base):
-	# 	if base is self.src:
-	# 		self.cached_value = self.unknown
-	# 	else:
-	# 		super()._clear_cache(base)
-
-	
-class ConfigHyperparameter(HyperparameterBase):
-	# aliases = defaultproperty(None)
-	# silent = defaultproperty(None)
-
-	def __init__(self, default=unspecified_argument, *, aliases=None, silent=None, no_config_cache=False, **kwargs):
-		# if aliases is unspecified_argument:
-		# 	aliases = self.aliases
-		# if silent is unspecified_argument:
-		# 	silent = self.silent
-		if aliases is None:
-			aliases = {}
-		super().__init__(default=default, **kwargs)
-		self.aliases = aliases
-		self.silent = silent
-		self.no_config_cache = no_config_cache
-
-	@classmethod
-	def extract_from(cls, param: 'HyperparameterBase', **kwargs):
-		return super().extract_from(param, aliases=getattr(param, 'aliases', None),
-		                            silent=getattr(param, 'silent', None), **kwargs)
-		
-	def copy(self, *, aliases=unspecified_argument, silent=unspecified_argument, required=unspecified_argument,
-	         no_config_cache=unspecified_argument, **kwargs):
-		if aliases is unspecified_argument:
-			aliases = self.aliases
-		if silent is unspecified_argument:
-			silent = self.silent
-		if no_config_cache is unspecified_argument:
-			no_config_cache = self.no_config_cache
-		return super().copy(aliases=aliases, silent=silent, no_config_cache=no_config_cache, **kwargs)
-
-	def _extract_from_config(self, config, name, default):
-		# can be changed to use peek or create for extra features
-
-		aliases = self.aliases.get(self.name, ())
-		silent = self.silent
-		return config.pulls(name, *aliases, default=default, silent=silent)
-
-	def create_value(self, base, owner=None):  # TODO: maybe make thread-safe by using a lock
-		if not isinstance(base, type): # base is and instance
-			config = getattr(base, 'my_config', None)
-			if config is not None:
-				default = config._empty_default if (self.default is self.unknown or self.fget is not None) else self.default
-				try:
-					result = self._extract_from_config(config, self.name, default)
-				except config.SearchFailed:
-					pass
-				else:
-					value = self.validate_value(result)
-					if not self.cache and not self.no_config_cache:
-						self._set_cached_value(base, value)
-					return value
-		return super().create_value(base, owner=owner)
+	def __set_name__(self, owner, name):
+		super().__set_name__(owner, name)
+		if self.hidden is None and self.attrname.startswith('_'):
+			self.hidden = True
 
 
 
 class InheritableHyperparameter(HyperparameterBase):
-	def __init__(self, default=unspecified_argument, *, inherit=False, **kwargs):
+	def __init__(self, default=unspecified_argument, *, inherit=None, **kwargs):
 		super().__init__(default=default, **kwargs)
 		self.inherit = inherit
 
-	@classmethod
-	def extract_from(cls, param: 'HyperparameterBase', **kwargs):
-		return super().extract_from(param, inherit=getattr(param, 'inherit', False), **kwargs)
 
 
-class RefHyperparameter(HyperparameterBase): # TODO: test, a lot
-	name = referenceproperty('ref')
-	default = referenceproperty('ref')
-	cache = referenceproperty('ref')
-
-	hidden = referenceproperty('ref')
-	space = referenceproperty('ref')
-	required = defaultproperty('ref')
-	fixed = defaultproperty('ref')
-
-	fget = referenceproperty('ref')
-	fset = referenceproperty('ref')
-	fdel = referenceproperty('ref')
-
-	def __init__(self, ref=None, **kwargs):
-		super().__init__(**kwargs)
-		self.ref = ref
-
-	def copy(self, *, ref=unspecified_argument, **kwargs):
-		if ref is unspecified_argument:
-			ref = None
-		return super().copy(ref=ref, **kwargs)
-
-	def register_with(self, obj, name):
-		return super().register_with(obj, name, ref=self)
 
 
-class hparam(_hyperparameter_property):
-	def __init__(self, default=unspecified_argument, **info):
-		assert 'name' not in info, 'Cannot manually set name in hparam'
-		super().__init__(default=default)
-		self.info = info
-
-	_default_base = HyperparameterBase
-	_registration_fn_name = 'register_hparam'
 
 
-	def register_with(self, obj, name):
-		reg_fn = getattr(obj, self._registration_fn_name)
-		kwargs = self._get_registration_args()
-		if reg_fn is None:
-			if self._default_base is None:
-				raise ValueError(f'No registration function found on {obj} and no default base set')
-			setattr(obj, self.name, self._default_base(name, **kwargs))
-		else:
-			reg_fn(name, **kwargs)
 
 
-	def _get_registration_args(self):
-		kwargs = self.info.copy()
-		if self.default is not self.unknown:
-			kwargs['default'] = self.default
-		kwargs['fget'] = self.fget
-		kwargs['fset'] = self.fset
-		kwargs['fdel'] = self.fdel
-		kwargs['src'] = self.src
-		return kwargs
+
+
+
+
+
+
 
 

@@ -1,7 +1,7 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
 
 from collections import OrderedDict
-from omnibelt import get_printer, unspecified_argument
+from omnibelt import get_printer, unspecified_argument, filter_duplicates
 
 from .. import util
 from ..structure import Metric, Sampler, Generator
@@ -25,8 +25,8 @@ class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
 		self._buffers = buffer_table
 
 
-	def __len__(self):
-		return len(self._tools)
+	# def __len__(self):
+	# 	return len(self._tools)
 
 	
 	def named_buffers(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
@@ -55,6 +55,10 @@ class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
 	# 	# return {'buffers': {name:buffer.fingerprint() for name, buffer in self.iter_named_buffers()}, 'ready': self.is_ready,
 	# 	#         **super()._fingerprint_data()}
 	# 	raise NotImplementedError
+
+
+	def gizmos(self) -> Iterator[str]:
+		yield from filter_duplicates(self._buffers, super().gizmos())
 
 
 	def vendors(self, gizmo: str):

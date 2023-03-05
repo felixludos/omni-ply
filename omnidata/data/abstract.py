@@ -16,17 +16,20 @@ from .errors import MissingBuffer
 prt = get_printer(__file__)
 
 
-class AbstractData(Prepared, AbstractFingerprinted): # TODO: make fingerprinted
+class AbstractData(AbstractFingerprinted): # TODO: make fingerprinted
 	def copy(self):
 		return duplicate_instance(self) # shallow copy
 
 
 	def _title(self):
 		return self.__class__.__name__
+	@property
+	def title(self):
+		return self._title()
 
 
 	def __str__(self):
-		return self._title()
+		return self.title
 
 
 
@@ -41,7 +44,7 @@ class AbstractCountableData(AbstractData):
 
 
 
-class AbstractDataSource(AbstractData, AbstractTool, AbstractSpaced):
+class AbstractDataSource(AbstractData, AbstractSpaced, AbstractTool, Prepared):
 	# @classmethod
 	# def _parse_context(cls, context: AbstractContext):
 	# 	return context
@@ -113,7 +116,7 @@ class AbstractView(AbstractDataSource):
 
 
 	def _title(self):
-		return f'{super()._title()}{"<" + self.source._title() + ">" if self.source is not None else ""}'
+		return f'{super()._title()}{"<" + self.source.title + ">" if self.source is not None else ""}'
 
 
 	@property
@@ -226,7 +229,7 @@ class AbstractProgression(BatchMogul, IteratorMogul, AbstractSourcedKit):
 
 
 
-class AbstractBatch(AbstractSelector, AbstractRouterView, AbstractContext):
+class AbstractBatch(AbstractRouterView, AbstractSelector):
 	def __init__(self, progress: AbstractProgression, **kwargs):
 		super().__init__(**kwargs)
 

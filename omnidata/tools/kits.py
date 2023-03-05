@@ -12,7 +12,7 @@ from .assessments import AbstractSignature, Signatured
 
 
 
-class CraftyKit(IndividualCrafty, AbstractKit, AbstractSpaced):
+class CraftyKit(IndividualCrafty, AbstractSpaced, AbstractKit):
 	class _SkillTool(AbstractTool): # collects all skills (of the whole mro) of one gizmo
 		def __init__(self, label: str, **kwargs):
 			super().__init__(**kwargs)
@@ -67,8 +67,8 @@ class CraftyKit(IndividualCrafty, AbstractKit, AbstractSpaced):
 
 	def space_of(self, gizmo: str):
 		if gizmo in self._spaces:
-			return self._spaces[gizmo][0].space_of(self, gizmo)
-		return self._tools[gizmo].space_of(self, gizmo)
+			return self._spaces[gizmo][0].space_of(gizmo)
+		return self._tools[gizmo].space_of(gizmo)
 
 
 	def vendors(self, gizmo: str):

@@ -1,0 +1,9 @@
+
+
+
+class MissingValueError(AttributeError):
+	pass
+
+
+
+

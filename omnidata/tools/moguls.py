@@ -308,41 +308,41 @@ class EpochBudgetMogul(BatchBudgetStatMogul, EpochStatMogul):
 
 
 
-class SimpleTrainer(DynamicMogul):
-	def __init__(self, model, *, optim=None, **kwargs):
-		if optim is None:
-			optim = model.default_optim()
-		super().__init__(**kwargs)
-		self.model = model
-		self.optim = optim
-
-
-	def fit(self, dataset):
-		for ctx in self.iterate(dataset):
-			out = self.step(ctx)
-		raise NotImplementedError
-		# return out
-
-
-	@staticmethod
-	def iterate(dataset):
-		yield from dataset
-
-
-	def step(self, ctx):
-		self.optim.step(ctx)
-
-
-
-class Checkpoint(SimpleTrainer):
-	def checkpoint(self, ctx):
-		pass
-
-
-
-class Evaluatable(SimpleTrainer):
-	def evaluate(self, dataset): # valset or testset
-		pass
+# class SimpleTrainer(DynamicMogul):
+# 	def __init__(self, model, *, optim=None, **kwargs):
+# 		if optim is None:
+# 			optim = model.default_optim()
+# 		super().__init__(**kwargs)
+# 		self.model = model
+# 		self.optim = optim
+#
+#
+# 	def fit(self, dataset):
+# 		for ctx in self.iterate(dataset):
+# 			out = self.step(ctx)
+# 		raise NotImplementedError
+# 		# return out
+#
+#
+# 	@staticmethod
+# 	def iterate(dataset):
+# 		yield from dataset
+#
+#
+# 	def step(self, ctx):
+# 		self.optim.step(ctx)
+#
+#
+#
+# class Checkpoint(SimpleTrainer):
+# 	def checkpoint(self, ctx):
+# 		pass
+#
+#
+#
+# class Evaluatable(SimpleTrainer):
+# 	def evaluate(self, dataset): # valset or testset
+# 		pass
 
 
 

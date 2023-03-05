@@ -9,7 +9,7 @@ import torch
 from ..structure import Generator, Sampler
 from .. import util
 from ..features import Seeded
-from ..parameters import Buildable
+# from ..parameters import Buildable
 from .abstract import AbstractDataRouter, AbstractDataSource, \
 	AbstractSelector, AbstractBatchable, AbstractCountableData
 from .views import SizeSelector, IndexSelector
@@ -17,9 +17,8 @@ from .views import SizeSelector, IndexSelector
 prt = get_printer(__file__)
 
 
-
-class BuildableData(AbstractDataSource, Buildable):
-	pass
+# class BuildableData(Buildable, AbstractDataSource):
+# 	pass
 
 
 

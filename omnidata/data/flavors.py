@@ -6,7 +6,7 @@ from pathlib import Path
 from omnibelt import unspecified_argument, agnostic, agnosticproperty, md5
 
 from ..structure import spaces
-from ..parameters import hparam
+from ..parameters import hparam, submodule
 from ..persistent import Rooted
 from ..features import Named
 
@@ -16,20 +16,25 @@ from .top import Dataset, Datastream, Buffer
 
 
 
-class Sampledstream(Dataset, Datastream): # Datastream -> Dataset
-	_StreamTable = Dataset._BufferTable
+class Sampledstream(Dataset): # Datastream -> Dataset
+	stream = submodule(builder='stream')
 
 	n_samples = hparam(required=True, space=spaces.Naturals(), inherit=True)
 
 
-	def __init__(self, n_samples, *args, stream_table=None, default_len=None, **kwargs):
-		if default_len is None:
-			default_len = n_samples
-		if stream_table is None:
-			stream_table = self._StreamTable()
-		super().__init__(*args, default_len=default_len, **kwargs)
+	def __init__(self, n_samples: int, **kwargs):
+		super().__init__(**kwargs)
 		self.n_samples = n_samples
-		self._stream_materials = stream_table
+		for gizmo in self.stream.gizmos():
+			self.register_buffer(gizmo, space=self.stream.space_of(gizmo))
+
+
+	def _expected_size(self):
+		return self.n_samples
+
+
+	def _title(self):
+		return f'{self.stream.title}[{self.n_samples}]'
 
 
 	def _prepare(self, **kwargs):
@@ -37,25 +42,26 @@ class Sampledstream(Dataset, Datastream): # Datastream -> Dataset
 
 		# replacing stream with fixed samples
 		n_samples = self.n_samples
-		batch = self._Batch(source=self, indices=None, size=n_samples) # mostly for caching
-		for key, material in self.named_buffers():
-			self._stream_materials[key] = material
-			self.register_buffer(key, batch[key], space=material.space)
+		batch = self.stream.batch(n_samples) # fix seed, and optionally sample in smaller batches
+		for gizmo in batch.gizmos():
+			self.get_buffer(gizmo).data = batch[gizmo]
 		return out
 
 
 
 class ObservationDataset(Observation, Dataset):
-	class Batch(Observation, Dataset.Batch):
-		pass
+	pass
+	# class Batch(Observation, Dataset.Batch):
+	# 	pass
 	# class View(Observation, Dataset.View):
 	# 	pass
 
 
 
 class SupervisedDataset(Supervised, ObservationDataset):
-	class Batch(Supervised, ObservationDataset.Batch):
-		pass
+	pass
+	# class Batch(Supervised, ObservationDataset.Batch):
+	# 	pass
 	# class View(Supervised, ObservationDataset.View):
 	# 	pass
 
@@ -67,8 +73,8 @@ class LabeledDataset(Labeled, SupervisedDataset):
 		self.register_material_alias('target', 'label')
 
 
-	class Batch(Labeled, SupervisedDataset.Batch):
-		pass
+	# class Batch(Labeled, SupervisedDataset.Batch):
+	# 	pass
 	# class View(Labeled, SupervisedDataset.View):
 	# 	pass
 
@@ -94,10 +100,10 @@ class SyntheticDataset(Synthetic, LabeledDataset):
 		self.register_material_alias('target', 'mechanism' if self._use_mechanisms else 'label')
 
 
-	class Batch(Synthetic, LabeledDataset.Batch):
-		@property
-		def _distinct_mechanisms(self):
-			return self.source._distince_mechanisms
+	# class Batch(Synthetic, LabeledDataset.Batch):
+	# 	@property
+	# 	def _distinct_mechanisms(self):
+	# 		return self.source._distince_mechanisms
 	# class View(Synthetic, LabeledDataset.View):
 	# 	@property
 	# 	def _distinct_mechanisms(self):
@@ -191,7 +197,7 @@ class DownloadableRouter(RootedRouter):
 			if self._auto_download:
 				self.download()
 			else:
-				raise self.DatasetNotDownloaded(self.name)
+				raise self.DatasetNotDownloaded(self.title)
 		super()._prepare(source=source, **kwargs)
 
 	@agnostic

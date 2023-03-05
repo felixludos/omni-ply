@@ -3,7 +3,7 @@
 from .crafts import MachineCraft, ContextedCraft, SpacedCraft, OptionalCraft, DefaultCraft, LoggingCraft, \
 	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft
 from .kits import MaterialedCrafty, AssessibleCrafty, SignaturedCrafty, RelabeledKit
-from .context import SizedContext, ScopedContext, DynamicContext, ScopeBase, Cached
+from .context import SizedContext, DynamicContext, ScopeBase, Cached
 
 
 
@@ -42,8 +42,7 @@ class Context(Cached, SizedContext, DynamicContext):
 	def __init__(self, *args, tools=None, **kwargs):
 		super().__init__(**kwargs)
 		if tools is not None:
-			for tool in tools:
-				self.add_tool(tool)
+			self.include(*tools)
 
 
 

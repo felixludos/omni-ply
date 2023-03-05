@@ -2,7 +2,7 @@ from typing import Optional, Type
 
 from omnibelt import unspecified_argument
 
-from ..parameters import hparam, with_hparams, Parameterized
+# from ..parameters import hparam, with_hparams, Parameterized
 
 from .abstract import AbstractBatchable, AbstractCountableData, AbstractBatch
 from .views import ViewBase, SizeSelector, IndexSelector

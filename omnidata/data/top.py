@@ -1,9 +1,10 @@
 # from ..persistent import Fingerprinted
 from ..tools import Industrial
+from ..parameters import Parameterized
 
 from .routers import DataCollection, AutoCollection, AliasedCollection, CountableDataRouter
 from .views import IndexView
-from .sources import Splitable, TensorSource, SpacedSource, BuildableData
+from .sources import Splitable, TensorSource, SpacedSource#, BuildableData
 from .batches import Batchable, Epochable, BatchBase, IndexBatch
 
 
@@ -20,12 +21,12 @@ Epochable._Batch = Batch
 
 
 
-class Buffer(TensorSource, SpacedSource, BuildableData): # TODO: should be epochable
+class Buffer(TensorSource, SpacedSource, Parameterized):#, BuildableData): # TODO: should be epochable
 	pass
 
 
 
-class _FeaturedDataRouter(AutoCollection, AliasedCollection, Industrial, DataCollection, BuildableData):
+class _FeaturedDataRouter(AutoCollection, AliasedCollection, Industrial, DataCollection, Parameterized):#, BuildableData):
 	pass
 
 

@@ -2,15 +2,9 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 from collections import UserDict
 
 from .abstract import AbstractContext, AbstractKit, AbstractTool, AbstractAssessible, AbstractScope, \
-	AbstractAssessment, AbstractSourcedKit, AbstractMogul, AbstractSchema, AbstractResource
+	AbstractAssessment, AbstractSourcedKit, AbstractMogul, AbstractSchema, AbstractResource, AbstractDynamicContext
 from .errors import MissingGizmoError, ToolFailedError
 from .assessments import Signatured
-
-
-
-class AbstractDynamicContext(AbstractContext):
-	def add_source(self, source) -> 'AbstractDynamicContext':
-		raise NotImplementedError
 
 
 
@@ -131,12 +125,11 @@ class DynamicContext(ContextBase, AbstractDynamicContext):
 			prev = list(sources)
 			sources.clear()
 		self._sources = sources
-		for source in prev:
-			self.add_source(source)
+		self.include(*prev)
 
 
-	def add_source(self, source): # a source can be a scope
-		self._sources.append(source)
+	def include(self, *sources: AbstractTool): # a source can be a scope
+		self._sources.extend(reversed(sources))
 		return self
 
 
