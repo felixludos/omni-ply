@@ -5,8 +5,7 @@ import torch
 
 from ..features import Prepared, ProgressBarred
 from ..tools.abstract import AbstractScope, AbstractTool, AbstractResource
-from ..tools.moguls import BatchMogul, IteratorMogul, SelectionMogul, LimitMogul, \
-	BatchBudgetStatMogul, EpochStatMogul, EpochBudgetMogul, SimpleMogul
+from ..tools.moguls import BatchMogul, IteratorMogul, SelectionMogul, LimitMogul, EpochStatMogul, SimpleMogul
 
 from .abstract import AbstractProgression, AbstractBatch
 from .errors import BudgetExceeded, EpochEnd, UnknownSize
@@ -14,7 +13,7 @@ from .sources import Shufflable
 
 
 
-class ProgressionBase(SimpleMogul, AbstractProgression, Prepared):
+class ProgressionBase(SimpleMogul, AbstractProgression):
 	def __init__(self, source: Optional[AbstractTool] = None, **kwargs):
 		super().__init__(**kwargs)
 		self._source = None
@@ -37,6 +36,11 @@ class ProgressionBase(SimpleMogul, AbstractProgression, Prepared):
 		return self._source
 
 
+	@property
+	def current_batch(self) -> AbstractBatch:
+		return self._current_context
+
+
 	def current_context(self) -> AbstractBatch:
 		if self._current_context is None:
 			return self.create_batch()
@@ -52,16 +56,16 @@ class ProgressionBase(SimpleMogul, AbstractProgression, Prepared):
 
 
 	def _validate_context(self, ctx: AbstractBatch) -> AbstractBatch:
-		ctx = super()._validate_context(ctx)
+		ctx: AbstractBatch = super()._validate_context(ctx)
 		self._sample_count += ctx.size
 		self._batch_count += 1
 		self._current_context = ctx
 		return ctx
 
 
-	def create_batch(self) -> AbstractBatch:
+	def create_batch(self, size=None) -> AbstractBatch:
 		self.prepare()
-		return self._create_context()
+		return self._create_context(size=size)
 
 
 
@@ -79,7 +83,7 @@ class BatchProgression(ProgressionBase):
 	def _create_context(self, *args, size=None, **kwargs):
 		if size is None:
 			size = self.batch_size
-		return self._create_context(*args, size=size, **kwargs)
+		return super()._create_context(*args, size=size, **kwargs)
 
 
 

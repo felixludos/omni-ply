@@ -26,11 +26,13 @@ class AbstractParameterized:
 		raise NotImplementedError
 
 
-	def hyperparameters(self):
+	@classmethod
+	def hyperparameters(cls):
 		raise NotImplementedError
 
 
-	def named_hyperparameters(self):
+	@classmethod
+	def named_hyperparameters(cls):
 		raise NotImplementedError
 
 
@@ -39,10 +41,10 @@ class AbstractParameterized:
 		raise NotImplementedError
 
 
-	def __setattr__(self, key, value):
-		if isinstance(value, AbstractHyperparameter):
-			raise ValueError('Hyperparameters must be set to the class (not an instance)')
-		super().__setattr__(key, value)
+	# def __setattr__(self, key, value):
+	# 	if isinstance(value, AbstractHyperparameter):
+	# 		raise ValueError('Hyperparameters must be set to the class (not an instance)')
+	# 	super().__setattr__(key, value)
 
 
 

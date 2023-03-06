@@ -94,7 +94,7 @@ class FingerprintedParameterized(ParameterizedBase, Fingerprinted):
 	def _fingerprint_data(self):
 		data = super()._fingerprint_data()
 		hparams = {}
-		for k, val in self.named_hyperparameters():
+		for k, val in self.named_hyperparameters(hidden=True):
 			try:
 				hparams[k] = getattr(self, k)
 			except AttributeError:

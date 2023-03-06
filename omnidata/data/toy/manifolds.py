@@ -30,7 +30,7 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Generator):
 
 
 
-class Deterministic(ManifoldStream, Decoder):
+class DeterministicManifold(ManifoldStream, Decoder):
 	def generate_observation_from_mechanism(self, mechanism):
 		return self.decode(mechanism)
 
@@ -40,7 +40,7 @@ class Deterministic(ManifoldStream, Decoder):
 
 
 
-class Distributional(ManifoldStream):
+class DistributionalManifold(ManifoldStream):
 	def generate_observation_from_mechanism(self, mechanism):
 		with self.force_rng(rng=self.rng): # TODO: change force to push
 			return self.decode_distribution(mechanism).sample()
@@ -51,7 +51,7 @@ class Distributional(ManifoldStream):
 
 
 
-class Stochastic(Distributional, Deterministic):
+class StochasticManifold(DistributionalManifold, DeterministicManifold):
 	def _decode_distrib_from_mean(self, mean):
 		raise NotImplementedError
 
@@ -61,7 +61,7 @@ class Stochastic(Distributional, Deterministic):
 
 
 
-class Noisy(Stochastic):
+class Noisy(StochasticManifold):
 	noise_std = hparam(0., space=spaces.HalfBound(min=0.))#, alias='noise-std')
 
 
@@ -70,7 +70,7 @@ class Noisy(Stochastic):
 
 
 
-class SwissRoll(ManifoldStream):
+class SwissRoll(DeterministicManifold):
 	Ax = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
 	Ay = hparam(21., space=spaces.HalfBound(min=0.))
 	Az = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
@@ -106,7 +106,7 @@ class SwissRoll(ManifoldStream):
 
 	@machine('target')
 	def get_target(self, mechanism):
-		return mechanism.narrow(-1,0,1) #if self.target_theta else src['mechanism']
+		return mechanism.narrow(-1,0,1) #if self.target_theta else mechanism
 
 
 	def decode(self, mechanism):
@@ -122,7 +122,7 @@ class SwissRoll(ManifoldStream):
 
 
 
-class Helix(ManifoldStream):
+class Helix(DeterministicManifold):
 	n_helix = hparam(2, space=spaces.Naturals())
 
 	periodic_strand = hparam(False, space=spaces.Binary())
@@ -183,7 +183,7 @@ class SwissRollDataset(Sampledstream):
 	tmax = hparam(9., space=spaces.HalfBound(min=0.))
 
 
-	@submodule
+	@submodule(hidden=True)
 	def stream(self):
 		return SwissRoll(Ax=self.Ax, Ay=self.Ay, Az=self.Az, freq=self.freq,
 		                 tmin=self.tmin, tmax=self.tmax)
@@ -203,7 +203,7 @@ class HelixDataset(Sampledstream):
 	w = hparam(1., space=spaces.HalfBound(min=0.))
 
 
-	@submodule
+	@submodule(hidden=True)
 	def stream(self):
 		return Helix(n_helix=self.n_helix, periodic_strand=self.periodic_strand,
 		             Rx=self.Rx, Ry=self.Ry, Rz=self.Rz, w=self.w)

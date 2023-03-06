@@ -48,6 +48,13 @@ class Sampledstream(Dataset): # Datastream -> Dataset
 		return out
 
 
+	def space_of(self, gizmo: str):
+		try:
+			return super().space_of(gizmo)
+		except KeyError:
+			return self.stream.space_of(gizmo)
+
+
 
 class ObservationDataset(Observation, Dataset):
 	pass

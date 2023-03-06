@@ -28,7 +28,11 @@ class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
 	# def __len__(self):
 	# 	return len(self._tools)
 
-	
+
+	def available_buffers(self) -> Iterator[str]:
+		yield from reversed(self._buffers)
+
+
 	def named_buffers(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
 		for name in reversed(self._buffers):
 			yield name, self.get_buffer(name)
@@ -97,10 +101,13 @@ class CountableDataRouter(AbstractDataRouter, AbstractDataSource, AbstractCounta
 
 	_UnknownSize = UnknownSize
 	def _compute_size(self):
-		for tool in self.tools():
-			if isinstance(tool, AbstractCountableData):
-				return tool.size
-		raise self._UnknownSize()
+		for buffer in self.buffers():
+			if isinstance(buffer, AbstractCountableData):
+				try:
+					return buffer.size
+				except self._UnknownSize:
+					pass
+		return self._expected_size()
 
 
 	def _expected_size(self): # should be implemented by subclasses

@@ -1,0 +1,7 @@
+
+
+
+
+class NotReady(RuntimeError):
+	pass
+

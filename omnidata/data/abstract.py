@@ -8,7 +8,7 @@ from ..persistent import AbstractFingerprinted
 from ..tools.abstract import AbstractTool, AbstractKit, AbstractSourcedKit, \
 	AbstractSpaced, AbstractContext, AbstractMogul, AbstractScope, AbstractSchema
 from ..tools.errors import MissingGizmoError
-from ..tools.moguls import BatchMogul, IteratorMogul
+from ..tools.moguls import BatchMogul, IteratorMogul, CreativeMogul
 
 from .errors import MissingBuffer
 
@@ -56,17 +56,13 @@ class AbstractDataSource(AbstractData, AbstractSpaced, AbstractTool, Prepared):
 
 
 class AbstractDataRouter(AbstractDataSource, AbstractKit):
+	_MissingBuffer = MissingBuffer
+
+
 	def _prepare(self, source=None, **kwargs):
 		super()._prepare(source=source, **kwargs)
 		for buffer in self.buffers():
 			buffer.prepare()
-
-
-	# def __len__(self): # TODO: add a warning suggesting to use `size` instead
-	# 	raise NotImplementedError # number of materials (not number of samples! -> size)
-
-
-	_MissingBuffer = MissingBuffer
 
 
 	def named_buffers(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
@@ -106,7 +102,7 @@ class AbstractDataRouter(AbstractDataSource, AbstractKit):
 
 
 class AbstractView(AbstractDataSource):
-	def __init__(self, source: AbstractDataRouter, **kwargs):
+	def __init__(self, source: AbstractDataRouter = None, **kwargs):
 		super().__init__(**kwargs)
 
 
@@ -183,7 +179,7 @@ class AbstractViewableRouterView(AbstractRouterView, AbstractViewable):
 
 
 
-class AbstractCountableRouterView(AbstractRouterView, AbstractCountableData):
+class AbstractCountableRouterView(AbstractCountableData, AbstractRouterView):
 	pass
 
 
@@ -194,7 +190,7 @@ class AbstractSelector(AbstractScope):
 
 
 
-class AbstractIndexedData(AbstractCountableData):
+class AbstractIndexedData(AbstractCountableRouterView):
 	def __init__(self, *, indices=None, **kwargs):
 		super().__init__(**kwargs)
 
@@ -210,8 +206,13 @@ class AbstractIndexedData(AbstractCountableData):
 
 
 
-class AbstractProgression(BatchMogul, IteratorMogul, AbstractSourcedKit):
-	def set_source(self, source: AbstractTool) -> 'AbstractProgression':
+class AbstractProgression(BatchMogul, IteratorMogul, CreativeMogul, AbstractSourcedKit, Prepared):
+	def set_source(self, source: AbstractDataSource):
+		raise NotImplementedError
+
+
+	@property
+	def current_batch(self) -> 'AbstractBatch':
 		raise NotImplementedError
 
 
@@ -220,27 +221,26 @@ class AbstractProgression(BatchMogul, IteratorMogul, AbstractSourcedKit):
 		raise NotImplementedError
 
 
+	def __str__(self):
+		return f'{self.__class__.__name__}({self.source})'
+
+
 	def __next__(self):
 		return self.create_batch()
 
 
-	def create_batch(self) -> AbstractContext:
+	def create_batch(self, size=None) -> 'AbstractBatch':
 		raise NotImplementedError
 
 
-
-class AbstractBatch(AbstractRouterView, AbstractSelector):
-	def __init__(self, progress: AbstractProgression, **kwargs):
-		super().__init__(**kwargs)
+	def _create_context(self, source=None, **kwargs) -> AbstractContext:
+		return super()._create_context(source=self.source, **kwargs)
 
 
-	@property
-	def progress(self) -> AbstractProgression:
-		raise NotImplementedError
 
-
+class AbstractBatch(AbstractCountableRouterView, AbstractSelector):
 	def new(self):
-		return self.progress.next_batch()
+		return self.source.create_batch()
 
 
 

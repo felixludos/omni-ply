@@ -18,46 +18,33 @@ from .submodules import SubmoduleBase
 
 
 class SubmoduleParameterized(ParameterizedBase):
-	Submodule = SubmoduleBase
+	_Submodule = SubmoduleBase
 
 	@classmethod
-	def register_submodule(cls, name=None, _instance=None, **kwargs):
-		_instance = cls.Submodule(name=name, **kwargs) if _instance is None else cls.Submodule.extract_from(_instance)
-		if name is None:
-			name = _instance.name
-		return cls._register_hparam(name, _instance)
-
-	@agnostic
-	def submodules(self):
-		for key, val in self.named_submodules():
+	def submodules(cls):
+		for key, val in cls.named_submodules():
 			yield val
 
-	@agnostic
-	def named_submodules(self):
-		for key, val in self.named_hyperparameters():
+
+	@classmethod
+	def named_submodules(cls):
+		for key, val in cls.named_hyperparameters():
 			if isinstance(val, SubmoduleBase):
 				yield key, val
 
 
 
 class PreparedParameterized(SubmoduleParameterized, Prepared):
-	@agnostic
 	def _prepare_submodule(self, name, submodule, **kwargs):
 		val = getattr(self, name, None)
 		if isinstance(val, Prepared):
 			val.prepare(**kwargs)
 
 
-	@agnostic
 	def _prepare(self, *args, **kwargs):
 		super()._prepare(*args, **kwargs)
 		for name, submodule in self.named_submodules():
 			self._prepare_submodule(name, submodule)
-
-	@agnostic
-	def reset(self):
-		self._prepared = False
-		self.reset_hparams()
 
 
 

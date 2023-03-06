@@ -11,8 +11,8 @@ from .progression import AbstractProgression, StreamProgression, SetProgression
 
 
 class Batchable(AbstractBatchable):
-	_Batch: Type[AbstractBatch] = None
-	_Progression: Type[AbstractProgression] = StreamProgression
+	# _Batch: Type[AbstractBatch] = None
+	_Progression: Type[AbstractProgression] = None
 
 
 	def iterate(self, batch_size: Optional[int] = unspecified_argument, **kwargs):
@@ -20,11 +20,6 @@ class Batchable(AbstractBatchable):
 		if batch_size is not unspecified_argument:
 			kwargs['batch_size'] = batch_size
 		return self._Progression(**kwargs).set_source(self)
-
-
-
-class Epochable(Batchable):
-	_Progression = SetProgression
 
 
 

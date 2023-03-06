@@ -28,7 +28,7 @@ class RouterViewBase(ViewBase, AbstractRouterView):
 
 
 
-class SizeSelector(SizedContext, RouterViewBase, AbstractCountableData, AbstractSelector):
+class SizeSelector(SizedContext, RouterViewBase, AbstractCountableData, AbstractRouterView, AbstractSelector):
 	def compose(self, other: AbstractSelector) -> AbstractSelector:
 		if isinstance(other, SizeSelector):
 			self._size = min(self._size, other._size)
@@ -53,7 +53,7 @@ class SingleIndexSelector(SizeSelector):
 
 
 
-class IndexView(RouterViewBase, AbstractIndexedData):
+class IndexView(RouterViewBase, AbstractIndexedData, AbstractRouterView):
 	def __init__(self, indices, **kwargs):
 		super().__init__(indices=indices, **kwargs)
 		self._indices = indices

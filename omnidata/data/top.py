@@ -1,47 +1,56 @@
+from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable, Type, Set
+import math
 # from ..persistent import Fingerprinted
 from ..tools import Industrial
-from ..parameters import Parameterized
+from ..parameters import Parameterized, hparam
 
 from .routers import DataCollection, AutoCollection, AliasedCollection, CountableDataRouter
 from .views import IndexView
 from .sources import Splitable, TensorSource, SpacedSource#, BuildableData
-from .batches import Batchable, Epochable, BatchBase, IndexBatch
+from .progression import SetProgression, StreamProgression, AbstractProgression
+from .budgeting import BudgetLoader
+from .batches import Batchable, BatchBase, IndexBatch
 
 
 
-class StreamBatch(BatchBase):
+class Bunch(BatchBase):
 	pass
-Batchable._Batch = StreamBatch
+StreamProgression._Context = Bunch
 
 
 
 class Batch(IndexBatch):
 	pass
-Epochable._Batch = Batch
+SetProgression._Context = Batch
 
 
 
-class Buffer(TensorSource, SpacedSource, Parameterized):#, BuildableData): # TODO: should be epochable
+class Buffer(Batchable, TensorSource, SpacedSource, Parameterized):#, BuildableData): # TODO: should be epochable
+	_Progression = SetProgression
 	pass
 
 
 
-class _FeaturedDataRouter(AutoCollection, AliasedCollection, Industrial, DataCollection, Parameterized):#, BuildableData):
+class _FeaturedDataRouter(Batchable, AutoCollection, AliasedCollection, Industrial, DataCollection, Parameterized):
+	#, BuildableData):
 	pass
 
 
 
-class Datastream(Batchable, _FeaturedDataRouter): # not countable (but batchable)
+class Datastream(_FeaturedDataRouter): # not countable (but batchable)
+	_Progression = StreamProgression
 	pass
 
 
 
-class Subset(Epochable, IndexView):
+class Subset(Batchable, IndexView):
+	_Progression = SetProgression
 	pass
 
 
 
-class Dataset(Splitable, CountableDataRouter, Epochable, _FeaturedDataRouter):
+class Dataset(Splitable, CountableDataRouter, _FeaturedDataRouter):
+	_Progression = SetProgression
 	_Buffer = Buffer
 	_Subset = Subset
 
@@ -63,13 +72,7 @@ class SimpleDataset(Dataset):
 
 
 
-
-
-
-
-
-
-
+######
 
 
 

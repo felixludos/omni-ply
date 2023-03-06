@@ -100,6 +100,11 @@ class DefaultResourceMogul(AbstractMogul, AbstractDynamicKit):
 		super().__init__(**kwargs)
 		self._resources = resources
 
+
+	def resources(self) -> Iterator[AbstractResource]:
+		yield from reversed(self._resources)
+
+
 	def _as_resource(self, source: AbstractTool):
 		resource = source.as_resource(self) if isinstance(source, AbstractResourceable) else None
 		if resource is None:
@@ -196,106 +201,6 @@ class EpochStatMogul(BatchMogul, LimitMogul):
 	@property
 	def completed_epochs(self) -> int:
 		raise NotImplementedError
-
-
-
-class BatchBudgetStatMogul(BatchMogul):
-	@staticmethod
-	def compute_budget(samples_per_batch, strict_batch_size=False,
-	                   sample_limit=None, batch_limit=None, strict_limit=True):
-		if sample_limit is None and batch_limit is None:
-			return None, None  # infinite
-
-		total_samples = None
-		if batch_limit is not None:
-			total_samples = batch_limit * samples_per_batch
-		if sample_limit is not None:
-			total = sample_limit - (sample_limit % samples_per_batch)
-			remainder = sample_limit % samples_per_batch
-			if remainder > 0:
-				if strict_limit and not strict_batch_size:
-					total += remainder
-				elif not strict_limit:
-					total += samples_per_batch
-			if total_samples is None or total < total_samples:
-				total_samples = total
-
-		total_batches = total_samples // samples_per_batch
-		remainder = total_samples % samples_per_batch
-		if not strict_batch_size and remainder > 0:
-			total_batches += 1
-
-		return total_samples, total_batches
-
-
-	@property
-	def budget_samples(self) -> Optional[int]:
-		raise NotImplementedError
-
-
-	@property
-	def budget_batches(self) -> Optional[int]:
-		raise NotImplementedError
-
-
-	@property
-	def remaining_samples(self):
-		return self.budget_samples - self.sample_count
-
-
-	@property
-	def remaining_batches(self):
-		return self.budget_batches - self.batch_count
-
-
-
-class EpochBudgetMogul(BatchBudgetStatMogul, EpochStatMogul):
-	@staticmethod
-	def compute_epoch_budget(dataset_size, samples_per_batch, strict_batch_size=True,
-	                   epochs=None, sample_limit=None, batch_limit=None, strict_limit=True):
-		if epochs is None and sample_limit is None and batch_limit is None:
-			return None, None, None  # infinite
-
-		samples_per_epoch = dataset_size - int(strict_batch_size) * (dataset_size % samples_per_batch)
-		batches_per_epoch = int(math.ceil(samples_per_epoch / samples_per_batch))
-
-		total_samples = None if epochs is None else samples_per_epoch * epochs
-		if batch_limit is not None:
-			total = (batch_limit % batches_per_epoch) * samples_per_batch \
-			        + (batch_limit // batches_per_epoch) * samples_per_epoch
-			if total_samples is None or total < total_samples:
-				total_samples = total
-		if sample_limit is not None:
-			total = samples_per_epoch * (sample_limit // samples_per_epoch)
-			remainder = sample_limit % samples_per_epoch
-			total += samples_per_batch * (remainder // samples_per_batch)
-			remainder = remainder % samples_per_batch
-			if remainder > 0:
-				if strict_limit and not strict_batch_size:
-					total += remainder
-				elif not strict_limit:
-					total += samples_per_batch
-			if total_samples is None or total < total_samples:
-				total_samples = total
-
-		full_epochs = total_samples // samples_per_epoch
-		remainder = total_samples % samples_per_epoch
-		total_batches = full_epochs * batches_per_epoch + remainder // samples_per_batch
-		remainder = remainder % samples_per_batch
-		if not strict_batch_size and remainder > 0:
-			total_batches += 1
-
-		return total_samples, total_batches, full_epochs
-
-
-	@property
-	def full_epochs(self) -> Optional[int]:
-		raise NotImplementedError
-
-
-	@property
-	def remaining_epochs(self):
-		return self.full_epochs - self.completed_epochs
 
 
 
