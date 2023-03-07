@@ -93,8 +93,8 @@ class Dim(Packable, Measure, Sampler, Fingerprinted):
 		}
 	
 
-	def sample(self, *shape):
-		samples = super().sample(*shape)
+	def sample(self, *shape, **kwargs):
+		samples = super().sample(*shape, **kwargs)
 		if self.dtype is not None:
 			samples = samples.to(self.dtype)
 		return samples

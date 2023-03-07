@@ -4,6 +4,7 @@ from omnibelt import method_decorator, agnostic, unspecified_argument
 from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, SkilledCraft, IndividualCrafty
 
 from ..features import Prepared
+from ..structure import spaces
 
 from .abstract import AbstractSpaced, Loggable, AbstractAssessible, AbstractKit, SingleVendor, AbstractTool
 from .errors import ToolFailedError, MissingGizmoError
@@ -12,7 +13,18 @@ from .assessments import AbstractSignature, Signatured
 
 
 
-class CraftyKit(IndividualCrafty, AbstractSpaced, AbstractKit):
+class SpacedTool(AbstractSpaced, AbstractTool):
+	def space_of(self, gizmo: str) -> spaces.Dim:
+		for tool in self.vendors(gizmo):
+			try:
+				return tool.space_of(gizmo)
+			except ToolFailedError:
+				pass
+		raise self._ToolFailedError(f'No tool for {gizmo} in {self}')
+
+
+
+class CraftyKit(IndividualCrafty, SpacedTool, AbstractKit):
 	class _SkillTool(AbstractTool): # collects all skills (of the whole mro) of one gizmo
 		def __init__(self, label: str, **kwargs):
 			super().__init__(**kwargs)
@@ -68,7 +80,8 @@ class CraftyKit(IndividualCrafty, AbstractSpaced, AbstractKit):
 	def space_of(self, gizmo: str):
 		if gizmo in self._spaces:
 			return self._spaces[gizmo][0].space_of(gizmo)
-		return self._tools[gizmo].space_of(gizmo)
+		# return self._tools[gizmo].space_of(gizmo)
+		return super().space_of(gizmo)
 
 
 	def vendors(self, gizmo: str):

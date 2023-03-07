@@ -48,6 +48,13 @@ class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
 			return default
 		raise self._MissingBuffer(name)
 
+
+	# def space_of(self, gizmo: str):
+	# 	buffer = self.get_buffer(gizmo, None)
+	# 	if buffer is not None:
+	# 		return buffer.space_of(gizmo)
+	# 	return super().space_of(gizmo)
+
 	
 	# def _fingerprint_data(self):
 	# 	# data = super()._fingerprint_data()

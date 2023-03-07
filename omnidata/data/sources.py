@@ -9,6 +9,7 @@ import torch
 from ..structure import Generator, Sampler
 from .. import util
 from ..features import Seeded
+from ..structure import spaces
 # from ..parameters import Buildable
 from .abstract import AbstractDataRouter, AbstractDataSource, \
 	AbstractSelector, AbstractBatchable, AbstractCountableData
@@ -174,14 +175,27 @@ class Splitable(Subsetable):
 
 
 class TensorSource(AbstractCountableData, AbstractDataSource): # TODO: make batchable
-	def __init__(self, data=None, **kwargs):
+	def __init__(self, data=None, space=None, **kwargs):
 		super().__init__(**kwargs)
 		self._data = data
+		self._space = space
 
 
 	@property
 	def is_ready(self):
 		return self._data is not None
+
+
+	@property
+	def space(self):
+		return self._space
+	@space.setter
+	def space(self, space):
+		self._space = space
+
+
+	def space_of(self, gizmo: str) -> spaces.Dim:
+		return self.space
 
 
 	@property
@@ -197,7 +211,7 @@ class TensorSource(AbstractCountableData, AbstractDataSource): # TODO: make batc
 		self._data = data
 
 
-	def _get_from(self, source, key=None):
+	def get_from(self, source, gizmo=None):
 		if source is None or not isinstance(source, IndexSelector):
 			return self._data[:source.size] if isinstance(source, SizeSelector) else self._data
 		return self.data[source.indices]

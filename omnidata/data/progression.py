@@ -25,6 +25,10 @@ class ProgressionBase(SimpleMogul, AbstractProgression):
 			self.set_source(source)
 
 
+	def done(self) -> bool:
+		return False
+
+
 	def set_source(self, source: AbstractTool):
 		self._source = source
 		self._resource = self._as_resource(source)
@@ -60,6 +64,7 @@ class ProgressionBase(SimpleMogul, AbstractProgression):
 		self._sample_count += ctx.size
 		self._batch_count += 1
 		self._current_context = ctx
+		ctx.set_progress(self)
 		return ctx
 
 

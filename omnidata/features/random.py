@@ -1,6 +1,7 @@
 from omnibelt import agnostic, unspecified_argument
 import os
 import random
+import inspect
 import numpy as np
 import torch
 
@@ -14,8 +15,10 @@ class RNGManager:
 		super().__init__(*args, **kwargs)
 		self._meta_rng = None
 		self._prime_rngs = []  # TODO: push and pop prime using context manager
+		self._default_rng = None
 		self.master_seed = master_seed
 		self.set_global_seed(self.master_seed)
+		self.get_default_rng()
 
 	def push_prime(self, seed=None, *, rng=None):
 		if rng is None:
@@ -42,9 +45,16 @@ class RNGManager:
 		obj._rng = rng
 		return rng
 
-	def get_personal_rng(self, obj):
+	def get_default_rng(self):
+		if self._default_rng is None:
+			self._default_rng = self.create_rng()
+		return self._default_rng
+
+	def get_personal_rng(self, obj=None):
 		if len(self._prime_rngs):
 			return self._prime_rngs[-1]
+		if obj is None:
+			return self.get_default_rng()
 
 		personal = getattr(obj, '_rng', None)
 		if personal is None:
@@ -88,6 +98,12 @@ class RNGManager:
 	def force_rng(self, seed=unspecified_argument, *, rng=None):
 		if seed is not unspecified_argument or rng is not None:
 			return self.SeedContext(self, seed=seed, rng=rng)
+
+
+	def set_default_rng(self, rng=None):
+		old = self._default_rng
+		self._default_rng = rng
+		return old
 
 
 	class SeedContext:
@@ -149,6 +165,10 @@ def force_rng(seed=unspecified_argument, *, rng=None):
 	return default_rng_manager_type.force_rng(seed=seed, rng=rng)
 
 
+def set_default_rng(rng):
+	return default_rng_manager_type.set_default_rng(rng=rng)
+
+
 def gen_deterministic_seed(base_seed):
 	return default_rng_manager_type._gen_deterministic_seed(base_seed)
 
@@ -188,10 +208,21 @@ class RNG: # descriptor
 	def force_rng(self, seed=unspecified_argument, *, rng=None):
 		return self.manager.force_rng(seed=seed, rng=rng)
 
+	def get_default_rng(self):
+		return self.manager.get_default_rng()
 
-import inspect
+	def set_default_rng(self, rng=None):
+		return self.manager.set_default_rng(rng=rng)
 
-class Seeded:
+
+
+class RNG_Link(RNG):
+	def __get__(self, obj, owner=None):
+		return self.manager.get_default_rng()
+
+
+
+class Seeded: # uses its own RNG unless one is forced
 	rng = RNG() # access only when needed (rather than passing as argument)
 	_seed = None
 
@@ -204,6 +235,9 @@ class Seeded:
 
 	def force_rng(self, seed=unspecified_argument, *, rng=None):
 		return self._get_rng().force_rng(seed=seed, rng=rng)
+
+	def set_default_rng(self, rng=None):
+		return self._get_rng().set_default_rng(rng=rng)
 
 	@classmethod
 	def _get_rng(cls):
@@ -218,6 +252,10 @@ class Seeded:
 	def seed(self):
 		return self._seed
 
+
+
+class Seedable(Seeded): # has no rng of its own, but respects forced rngs
+	rng = RNG_Link()
 
 
 

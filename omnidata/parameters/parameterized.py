@@ -37,7 +37,7 @@ class ParameterizedBase(AbstractParameterized):
 
 
 	def _extract_hparams(self, kwargs):
-		for name, _ in self.named_hyperparameters():
+		for name, _ in self.named_hyperparameters(hidden=True):
 			if name in kwargs:
 				setattr(self, name, kwargs.pop(name))
 		return kwargs

@@ -20,8 +20,7 @@ class ManifoldStream(Synthetic, Datastream, Seeded, Generator):
 
 	@material.from_size('mechanism')
 	def generate_mechanism(self, N: int):
-		with self.force_rng(rng=self.rng):
-			return self.space_of('mechanism').sample(N)
+		return self.space_of('mechanism').sample(N)
 
 
 	@machine('observation')

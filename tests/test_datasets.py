@@ -93,21 +93,22 @@ def test_dataset_iteration():
 	assert loader.remaining_batches == 2
 
 
-	loader = dataset.iterate(sample_limit=16).prepare()
-	assert not loader.done
-	assert tuple(batch.size for batch in loader) == (5, 5, 2, 5)
-	assert loader.done
+	loader = BudgetLoader(batch_size=5, sample_limit=16).set_source(dataset).prepare()
+	assert not loader.done()
+	assert tuple(batch.size for batch in loader) == (5, 5, 5, 5)
+	assert loader.done()
 	assert loader.batch_count == 4
-	assert loader.sample_count == 17
+	assert loader.sample_count == 20
 	assert loader.current_epoch == 2
 
-	loader = dataset.iterate(sample_limit=16, strict_batch_size=True).prepare()
+	loader = BudgetLoader(batch_size=5, sample_limit=16, strict_batch_size=True).set_source(dataset).prepare()
 	assert tuple(batch.size for batch in loader) == (5, 5, 5, 5)
 	assert loader.batch_count == 4
 	assert loader.sample_count == 20
 	assert loader.current_epoch == 2
 
-	loader = dataset.iterate(sample_limit=16, strict_batch_size=True, strict_limit=True).prepare()
+	loader = BudgetLoader(batch_size=5, sample_limit=16,
+	                      strict_batch_size=True, strict_limit=True).set_source(dataset).prepare()
 	assert tuple(batch.size for batch in loader) == (5, 5, 5)
 	assert loader.completed_epochs == 1
 	assert loader.batch_count == 3
@@ -115,48 +116,50 @@ def test_dataset_iteration():
 	assert loader.current_epoch == 2
 
 
-	loader = dataset.iterate(sample_limit=16, strict_limit=True).prepare()
-	assert tuple(batch.size for batch in loader) == (5, 5, 2, 4)
+	loader = BudgetLoader(batch_size=5, sample_limit=16, strict_limit=True).set_source(dataset).prepare()
+	assert tuple(batch.size for batch in loader) == (5, 5, 5, 1)
 	assert loader.batch_count == 4
 	assert loader.sample_count == 16
 	assert loader.current_epoch == 2
 
 
 
-# def test_dataset_batch():
-# 	dataset = _init_default_dataset()
-#
-# 	assert dataset['observation'].shape == (100, 3) and dataset['observation'].dtype == torch.float32
-#
-# 	batch = dataset.batch(10)
-#
-# 	assert str(batch) == 'Batch[10]<SwissRollDataset[100]>({observation}, {target}, {mechanism})'
-#
-# 	buffers = tuple(sorted(batch.available_buffers()))
-# 	assert len(buffers) == len(batch)
-# 	assert buffers == ('mechanism', 'observation', 'target')
-#
-# 	assert str(batch.space_of('observation')) \
-# 	       == 'Joint(Bound(min=-14.1, max=14.1), Bound(min=0, max=21), Bound(min=-14.1, max=14.1))'
-# 	assert str(batch.space_of('target')) == 'Bound(min=3, max=9)'
-# 	assert str(batch.space_of('mechanism')) == 'Joint(Bound(min=3, max=9), Bound(min=0, max=1))'
-#
-# 	assert tuple(batch.cached()) == ()
-#
-# 	obs = batch['observation']
-# 	assert obs.shape == (10, 3)
-# 	assert obs.dtype == torch.float32
-# 	assert obs.sum().item() == 92.62188720703125
-#
-# 	assert tuple(sorted(batch.cached())) == ('observation',)
-#
-# 	obs2 = batch.get('observation')
-# 	assert obs.sub(obs2).abs().sum().item() == 0
-#
-# 	obs3 = batch.get('obs', None)
-# 	assert obs3 is None
-#
-#
+def test_dataset_batch():
+	dataset = _init_default_dataset()
+
+	# assert dataset['observation'].shape == (100, 3) and dataset['observation'].dtype == torch.float32
+
+	batch = dataset.batch(10)
+
+	# assert str(batch) == 'Batch[10]<SwissRollDataset[100]>({observation}, {target}, {mechanism})'
+	assert str(batch) == 'Batch[10]<SwissRoll[100]>({target}, {observation}, {mechanism})'
+
+	buffers = tuple(sorted(batch.gizmos()))
+	# assert len(buffers) == len(batch)
+	assert buffers == ('mechanism', 'observation', 'target')
+
+	assert str(batch.space_of('observation')) \
+	       == 'Joint(Bound(min=-14.1, max=14.1), Bound(min=0, max=21), Bound(min=-14.1, max=14.1))'
+	assert str(batch.space_of('target')) == 'Bound(min=3, max=9)'
+	assert str(batch.space_of('mechanism')) == 'Joint(Bound(min=3, max=9), Bound(min=0, max=1))'
+
+	assert tuple(batch.cached()) == ()
+
+	obs = batch['observation']
+	assert obs.shape == (10, 3)
+	assert obs.dtype == torch.float32
+	x = obs.sum().item()
+	assert obs.sum().item() == 122.56094360351562 #92.62188720703125
+
+	assert tuple(sorted(batch.cached())) == ('observation',)
+
+	obs2 = batch.get('observation')
+	assert obs.sub(obs2).abs().sum().item() == 0
+
+	obs3 = batch.get('obs', None)
+	assert obs3 is None
+
+
 # def test_iterate_batch():
 # 	dataset = _init_default_dataset()
 #

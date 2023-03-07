@@ -6,8 +6,8 @@ from ..tools.moguls import BatchMogul, EpochStatMogul
 from ..parameters import hparam, Parameterized
 
 from .abstract import AbstractProgression, AbstractBatchable, AbstractBatch
+from .errors import BudgetExceeded
 from .progression import ProgressionBase
-
 
 
 
@@ -22,15 +22,17 @@ class BudgetLoader(Parameterized, AbstractProgression):
 	@hparam
 	def epoch_limit(self):
 		if self.epoch_size is not None and self.sample_limit is None and self.batch_limit is None:
+			if self.strict_limit is None:
+				self.strict_limit = True
 			return 1
 
 
-	strict_limit = hparam(False, hidden=True)
-	strict_batch_size = hparam(False, hidden=True)
+	strict_limit = hparam(None, hidden=True)
+	strict_batch_size = hparam(None, hidden=True)
 
 	shuffle = hparam(False, hidden=True)
 	@hparam
-	def infinite(self):
+	def infinite(self): # TODO: deal with circular hparam dependencies
 		return self.sample_limit is None and self.batch_limit is None and self.epoch_limit is None
 
 	# use_pbar = hparam(False, inherit=True, hidden=True) # TODO
@@ -47,12 +49,14 @@ class BudgetLoader(Parameterized, AbstractProgression):
 				pass
 
 
-	def __init__(self, **kwargs):
+	def __init__(self, source: AbstractBatchable = None, **kwargs):
 		super().__init__(**kwargs)
 		self._loader = None
 		self._full_epochs = None
 		self._total_samples = None
 		self._total_batches = None
+		if source is not None:
+			self.set_source(source)
 
 
 	def set_source(self, source: AbstractBatchable, **kwargs):
@@ -73,12 +77,18 @@ class BudgetLoader(Parameterized, AbstractProgression):
 		return self._loader.current_batch
 
 
+	_BudgetExceeded = BudgetExceeded
+
 	def create_batch(self, size: Optional[int] = None) -> AbstractBatch:
+		if self.done():
+			raise self._BudgetExceeded
 		if size is None:
 			size = self.batch_size
-		if self.strict_batch_size:
+		if self.remaining_samples is not None:
 			size = min(size, self.remaining_samples)
-		return self._loader.create_batch(size)
+		ctx = self._loader.create_batch(size)
+		ctx.set_progress(self)
+		return ctx
 
 
 	def _prepare(self, *args, **kwargs):
@@ -109,13 +119,22 @@ class BudgetLoader(Parameterized, AbstractProgression):
 		if batch_limit is not None:
 			total_samples = batch_limit * samples_per_batch
 		if sample_limit is not None:
-			total = sample_limit - (sample_limit % samples_per_batch)
+
 			remainder = sample_limit % samples_per_batch
+			total = sample_limit - remainder
 			if remainder > 0:
 				if strict_limit and not strict_batch_size:
 					total += remainder
 				elif not strict_limit:
 					total += samples_per_batch
+
+			# total = sample_limit - (sample_limit % samples_per_batch)
+			# remainder = sample_limit % samples_per_batch
+			# if remainder > 0:
+			# 	if strict_limit and not strict_batch_size:
+			# 		total += remainder
+			# 	elif not strict_limit:
+			# 		total += samples_per_batch
 			if total_samples is None or total < total_samples:
 				total_samples = total
 
@@ -133,6 +152,9 @@ class BudgetLoader(Parameterized, AbstractProgression):
 		if epochs is None and sample_limit is None and batch_limit is None:
 			return None, None, None  # infinite
 
+		strict_limit = bool(strict_limit)
+		strict_batch_size = bool(strict_batch_size)
+
 		samples_per_epoch = dataset_size - int(strict_batch_size) * (dataset_size % samples_per_batch)
 		batches_per_epoch = int(math.ceil(samples_per_epoch / samples_per_batch))
 
@@ -143,15 +165,22 @@ class BudgetLoader(Parameterized, AbstractProgression):
 			if total_samples is None or total < total_samples:
 				total_samples = total
 		if sample_limit is not None:
-			total = samples_per_epoch * (sample_limit // samples_per_epoch)
-			remainder = sample_limit % samples_per_epoch
-			total += samples_per_batch * (remainder // samples_per_batch)
-			remainder = remainder % samples_per_batch
+			remainder = sample_limit % samples_per_batch
+			total = sample_limit - remainder
 			if remainder > 0:
 				if strict_limit and not strict_batch_size:
 					total += remainder
 				elif not strict_limit:
 					total += samples_per_batch
+			# total = samples_per_epoch * (sample_limit // samples_per_epoch)
+			# remainder = sample_limit % samples_per_epoch
+			# total += samples_per_batch * (remainder // samples_per_batch)
+			# remainder = remainder % samples_per_batch
+			# if remainder > 0:
+			# 	if strict_limit and not strict_batch_size:
+			# 		total += remainder
+			# 	elif not strict_limit:
+			# 		total += samples_per_batch
 			if total_samples is None or total < total_samples:
 				total_samples = total
 
@@ -207,15 +236,24 @@ class BudgetLoader(Parameterized, AbstractProgression):
 			return _inf
 		return self._total_batches - self.batch_count
 	@property
-	def remaining_epochs(self):
+	def remaining_epochs(self): # only lists full epochs
 		if self.epoch_size is not None:
 			if self._full_epochs is None:
 				return _inf
-			return self._full_epochs - self.current_epoch
+			return self._full_epochs - self.completed_epochs
+	@property
+	def remaining_samples_in_epoch(self):
+		if self.epoch_size is not None:
+			return self.epoch_size - self.sample_count % self.epoch_size
+	@property
+	def remaining_batches_in_epoch(self): # only lists full batches
+		if self.epoch_size is not None:
+			return self.remaining_samples_in_epoch // self.batch_size
 
 
-
-
+	def done(self) -> bool:
+		todo = self.remaining_samples
+		return todo is None or todo <= 0
 
 
 

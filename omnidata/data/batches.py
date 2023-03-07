@@ -1,8 +1,9 @@
 from typing import Optional, Type
 
-from omnibelt import unspecified_argument
+from omnibelt import unspecified_argument, filter_duplicates
 
 # from ..parameters import hparam, with_hparams, Parameterized
+from ..tools.top import Cached, DynamicContext
 
 from .abstract import AbstractBatchable, AbstractCountableData, AbstractBatch
 from .views import ViewBase, SizeSelector, IndexSelector
@@ -38,8 +39,24 @@ class BatchableView(Batchable, ViewBase):
 
 
 
-class BatchBase(BatchableView, SizeSelector, AbstractBatch):
-	pass
+class BatchBase(Cached, BatchableView, SizeSelector, DynamicContext, AbstractBatch):
+	def __init__(self, progress: AbstractProgression = None, **kwargs):
+		super().__init__(progress=progress, **kwargs)
+		self._progress = progress
+
+
+	def sources(self):
+		yield from filter_duplicates((self.source, ), super().sources())
+
+
+	def set_progress(self, progress: AbstractProgression):
+		self._progress = progress
+
+
+	@property
+	def progress(self):
+		return self._progress
+
 	# def __init__(self, progress: AbstractProgression = None, **kwargs):
 	# 	super().__init__(progress=progress, **kwargs)
 	# 	self._progress = progress
@@ -55,6 +72,11 @@ class BatchBase(BatchableView, SizeSelector, AbstractBatch):
 	# @property
 	# def progress(self):
 	# 	return self._progress
+
+
+	def __str__(self):
+		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + gizmo + '}') for gizmo in self.gizmos()]
+		return f'{self.title}({", ".join(gizmos)})'
 
 
 

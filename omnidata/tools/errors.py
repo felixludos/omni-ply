@@ -23,4 +23,11 @@ class MissingGizmoError(ToolFailedError, KeyError):
 
 
 
+class MachineError(MissingGizmoError):
+	def __init__(self, gizmo: str, label: str, owner, *, message: Optional[str] = None):
+		if message is None:
+			message = f'Machine {label} (in {owner}) is missing gizmo {gizmo!r}'
+		super().__init__(gizmo, message)
+
+
 

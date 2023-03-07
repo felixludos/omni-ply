@@ -179,7 +179,7 @@ class AbstractViewableRouterView(AbstractRouterView, AbstractViewable):
 
 
 
-class AbstractCountableRouterView(AbstractCountableData, AbstractRouterView):
+class AbstractCountableRouterView(AbstractRouterView, AbstractCountableData):
 	pass
 
 
@@ -190,7 +190,7 @@ class AbstractSelector(AbstractScope):
 
 
 
-class AbstractIndexedData(AbstractCountableRouterView):
+class AbstractIndexedData(AbstractCountableData):
 	def __init__(self, *, indices=None, **kwargs):
 		super().__init__(**kwargs)
 
@@ -239,6 +239,17 @@ class AbstractProgression(BatchMogul, IteratorMogul, CreativeMogul, AbstractSour
 
 
 class AbstractBatch(AbstractCountableRouterView, AbstractSelector):
+	def __init__(self, progress: AbstractProgression = None, **kwargs):
+		super().__init__(**kwargs)
+
+
+	def set_progress(self, progress: AbstractProgression):
+		raise NotImplementedError
+	@property
+	def progress(self) -> AbstractProgression:
+		raise NotImplementedError
+
+
 	def new(self):
 		return self.source.create_batch()
 

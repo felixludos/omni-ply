@@ -29,7 +29,6 @@ class IteratorMogul(IterableMogul):
 		raise NotImplementedError
 
 
-	@property
 	def done(self) -> bool:
 		'''not done guarantees that __next__ will return a new context'''
 		raise NotImplementedError

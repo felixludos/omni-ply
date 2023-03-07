@@ -6,11 +6,12 @@ from collections import OrderedDict
 
 import torch
 
-from omnibelt import method_decorator, agnostic
+from omnibelt import method_decorator, agnostic, filter_duplicates
 from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, SkilledCraft, IndividualCrafty
 
 
 from .abstract import Loggable, AbstractAssessible, AbstractTool
+from .errors import MachineError
 from .assessments import Signatured
 
 
@@ -180,144 +181,203 @@ class FunctionCraft(method_decorator, CopyCraft):
 
 class FunctionToolCraft(FunctionCraft, ToolCraft):
 	def _get_from(self, instance: AbstractCrafty, ctx, gizmo: str):
-		return self._get_from_fn(self._get_instance_fn(instance), ctx, gizmo)
+		return self._get_from_fn(instance, self._get_instance_fn(instance), ctx, gizmo)
 
 
-	def _get_from_fn(self, fn, ctx, gizmo):
+	def _get_from_fn(self, instance, fn, ctx, gizmo):
 		return fn(ctx)
 
 
 
-class ContextToolCraft(FunctionToolCraft):
-	def __init__(self, label: str, *, inputs=None, fn=None, **kwargs):
-		raise NotImplementedError # TODO: use inputs for the signature
-		super().__init__(label=label, fn=fn, **kwargs)
+class CustomArgumentCraft(FunctionToolCraft):
+	def _get_fn_args(self, instance, fn, ctx, gizmo):
+		return (), {}
 
 
-	def signatures(self, owner: Type[AbstractCrafty] = None): # TODO: use inputs for the signature
+	def _get_from_fn(self, instance, fn, ctx, gizmo):
+		args, kwargs = self._get_fn_args(instance, fn, ctx, gizmo)
+		return fn(*args, **kwargs)
+
+
+
+class MetaArgCraft(CustomArgumentCraft):
+	def _known_meta_args(self, owner) -> Iterator[str]:
+		yield from ()
+
+
+	def _known_input_args(self, owner) -> Iterator[str]:
+		yield from ()
+
+
+	def signatures(self, owner: Type[AbstractCrafty] = None):
 		assert owner is not None
 		label = self._validate_label(owner, self.label)
-		yield self._Signature(label, meta='context')
+		yield self._Signature(label, inputs=tuple(self._known_input_args(owner)),
+		                      meta=tuple(self._known_meta_args(owner)))
 
 
 
-class TransformCraft(LabelCraft):
+class SeededCraft(MetaArgCraft):
+	_context_seed_key = 'seed'
+	_context_rng_key = 'rng'
+
+	def __init__(self, label: str, *, include_seed=None, include_rng=None, **kwargs):
+		if include_seed and not isinstance(include_seed, str):
+			include_seed = self._context_seed_key
+		if include_rng and not isinstance(include_rng, str):
+			include_rng = self._context_rng_key
+		super().__init__(label=label, **kwargs)
+		self._include_seed = include_seed
+		self._include_rng = include_rng
+
+
+	def _known_meta_args(self, instance):
+		yield super()._known_meta_args(instance)
+		if self._include_seed:
+			yield self._include_seed
+		if self._include_rng:
+			yield self._include_rng
+
+
+	def _get_fn_args(self, instance, fn, ctx, gizmo):
+		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
+		if self._include_seed:
+			kwargs[self._include_seed] = getattr(ctx, self._context_seed_key, None)
+		if self._include_rng:
+			kwargs[self._include_rng] = getattr(ctx, self._context_rng_key, None)
+		return args, kwargs
+
+
+
+class TransformCraft(MetaArgCraft):
 	@staticmethod
-	def _parse_fn_args(fn: Callable, *, raw: Optional[bool] = False) -> Iterator[Tuple[str, Any]]:
+	def _parse_fn_args(fn: Callable, *, raw: Optional[bool] = False,
+	                   skip: Optional[Set[str]] = None) -> Iterator[Tuple[str, Any]]:
 		params = inspect.signature(fn).parameters
 		param_items = iter(params.items())
 		if raw:
 			next(param_items) # skip self/cls arg
 		for name, param in param_items:
-			yield name, param.default
-
-
-	@classmethod
-	def _fillin_fn_args(cls, fn: Callable, ctx):
-		# TODO: allow for arbitrary default values -> use omnibelt extract_signature
-
-		inp = {}
-		for key, default in cls._parse_fn_args(fn):
-			try:
-				inp[key] = ctx[key]
-			except KeyError:
-				if default is inspect.Parameter.empty:
-					raise
-				inp[key] = default
-
-		return inp
+			if skip is None or name not in skip:
+				yield name, param.default
 
 
 	def _transform_inputs(self, owner, fn, *, raw: Optional[bool] = None):
 		if raw is None:
 			raw = isinstance(owner, type)
-		for key, default in self._parse_fn_args(fn, raw=raw):
-			if default is inspect.Parameter.empty:
-				yield self._validate_label(owner, key)
+		for key, default in self._parse_fn_args(fn, raw=raw, skip=set(self._known_meta_args(owner))):
+			yield self._validate_label(owner, key), default
+
+
+	_MachineError = MachineError
+
+	def _fillin_fn_args(self, owner, fn: Callable, ctx, *, existing=None):
+		# TODO: allow for arbitrary default values -> use omnibelt extract_signature
+
+		if existing is None:
+			existing = {}
+		for key, default in self._transform_inputs(owner, fn, raw=False):
+			try:
+				existing[key] = ctx[key]
+			except KeyError:
+				if default is inspect.Parameter.empty:
+					raise self._MachineError(key, self.label, owner)
+				existing[key] = default
+
+		return existing
+
+
+	def _known_input_args(self, owner) -> Tuple:
+		yield from filter_duplicates(super()._known_input_args(owner),
+		        (key for key, default in self._transform_inputs(owner, self._get_instance_fn(owner), raw=True)
+		            if default is inspect.Parameter.empty))
+
+
+	def _get_fn_args(self, instance, fn, ctx, gizmo):
+		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
+		kwargs.update(self._fillin_fn_args(instance, fn, ctx))
+		return args, kwargs
 
 
 
-class MachineCraft(FunctionToolCraft, TransformCraft):
-	def signatures(self, owner: Type[AbstractCrafty] = None):
-		assert owner is not None
-		label = self._validate_label(owner, self.label)
-		yield self._Signature(label, inputs=tuple(self._transform_inputs(owner, self._get_instance_fn(owner))))
-
-
-	def _get_from(self, instance: AbstractCrafty, ctx, gizmo: str):
-		fn = self._get_instance_fn(instance)
-		inputs = {inp: ctx[inp] for inp in self._transform_inputs(instance, fn, raw=False)}
-		return self._get_from_fn(fn, ctx, gizmo, inputs=inputs)
-
-
-	def _get_from_fn(self, fn, ctx, gizmo, *, inputs=None):
-		return fn(**inputs)
+class MachineCraft(SeededCraft, TransformCraft):
+	pass
 
 
 
-class BatchCraft(ContextToolCraft):
-	def _get_from_fn(self, fn, ctx, gizmo):
-		return fn(getattr(ctx, 'batch', ctx))
-
-
-	def signatures(self, owner: Type[AbstractCrafty] = None):
-		assert owner is not None
-		label = self._validate_label(owner, self.label)
-		yield self._Signature(label, meta='batch')
+class ContextToolCraft(SeededCraft):
+	def _get_fn_args(self, instance, fn, ctx, gizmo):
+		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
+		return (ctx, *args), kwargs
 
 
 
-class SizeCraft(FunctionToolCraft):
-	def _get_from_fn(self, fn, ctx, gizmo):
-		return fn(getattr(ctx, 'size', ctx))
+class BatchCraft(SeededCraft):
+	_context_batch_key = 'batch'
+	def _get_fn_args(self, instance, fn, ctx, gizmo):
+		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
+		return (getattr(ctx, self._context_batch_key, ctx), *args), kwargs
 
 
-	def signatures(self, owner: Type[AbstractCrafty] = None):
-		assert owner is not None
-		label = self._validate_label(owner, self.label)
-		yield self._Signature(label, meta='size')
-
-
-
-class IndexCraft(FunctionToolCraft):
-	def _get_from_fn(self, fn, ctx, gizmo):
-		return fn(getattr(ctx, 'indices', ctx))
-
-
-	def signatures(self, owner: Type[AbstractCrafty] = None):
-		assert owner is not None
-		label = self._validate_label(owner, self.label)
-		yield self._Signature(label, meta='indices')
+	def _known_meta_args(self, instance):
+		yield self._context_batch_key
+		yield super()._known_meta_args(instance)
 
 
 
-class SampleCraft(FunctionToolCraft):
-	def _get_from_fn(self, fn, ctx, gizmo):
-		size = getattr(ctx, 'size', None)
+class SizeCraft(SeededCraft):
+	_context_size_key = 'size'
+	def _get_fn_args(self, instance, fn, ctx, gizmo):
+		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
+		return (getattr(ctx, self._context_size_key, ctx), *args), kwargs
+
+
+	def _known_meta_args(self, instance):
+		yield self._context_size_key
+		yield super()._known_meta_args(instance)
+
+
+
+class IndexCraft(SeededCraft):
+	_context_indices_key = 'indices'
+	def _get_fn_args(self, instance, fn, ctx, gizmo):
+		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
+		return (getattr(ctx, self._context_indices_key, ctx), *args), kwargs
+
+
+	def _known_meta_args(self, instance):
+		yield self._context_indices_key
+		yield super()._known_meta_args(instance)
+
+
+
+class SampleCraft(SeededCraft):
+	_context_size_key = 'size'
+	def _get_from_fn(self, instance, fn, ctx, gizmo):
+		size = getattr(ctx, self._context_size_key, None)
+		args, kwargs = self._get_fn_args(instance, fn, ctx, gizmo)
 		if size is None:
-			return fn()
-		return torch.stack([fn() for _ in range(size)])
-
-
-	def signatures(self, owner: Type[AbstractCrafty] = None):
-		assert owner is not None
-		label = self._validate_label(owner, self.label)
-		yield self._Signature(label)
+			return fn(*args, **kwargs)
+		return torch.stack([fn(*args, **kwargs) for _ in range(size)])
 
 
 
-class IndexSampleCraft(FunctionToolCraft):
-	def _get_from_fn(self, fn, ctx, gizmo):
-		indices = getattr(ctx, 'indices', None)
+class IndexSampleCraft(SeededCraft):
+	_context_index_key = 'index'
+	_context_indices_key = 'indices'
+
+
+	def _get_from_fn(self, instance, fn, ctx, gizmo):
+		indices = getattr(ctx, self._context_indices_key, None)
+		args, kwargs = self._get_fn_args(instance, fn, ctx, gizmo)
 		if indices is None:
-			return fn(getattr(ctx, 'index', ctx))
-		return torch.stack([fn(i) for i in indices])
+			return fn(getattr(ctx, self._context_index_key, ctx), *args, **kwargs)
+		return torch.stack([fn(i, *args, **kwargs) for i in indices])
 
 
-	def signatures(self, owner: Type[AbstractCrafty] = None):
-		assert owner is not None
-		label = self._validate_label(owner, self.label)
-		yield self._Signature(label, meta='index')
+	def _known_meta_args(self, instance):
+		yield self._context_index_key
+		yield super()._known_meta_args(instance)
 
 
 

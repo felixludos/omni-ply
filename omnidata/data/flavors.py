@@ -51,7 +51,7 @@ class Sampledstream(Dataset): # Datastream -> Dataset
 	def space_of(self, gizmo: str):
 		try:
 			return super().space_of(gizmo)
-		except KeyError:
+		except self._ToolFailedError:
 			return self.stream.space_of(gizmo)
 
 

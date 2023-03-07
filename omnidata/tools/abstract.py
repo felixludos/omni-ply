@@ -3,7 +3,7 @@ from omnibelt import unspecified_argument
 
 from omnidata import spaces
 
-from omnidata.tools.errors import ToolFailedError
+from .errors import ToolFailedError, MissingGizmoError
 
 
 
@@ -36,6 +36,10 @@ class SingleVendor(Gizmoed):
 
 
 class AbstractTool(Gizmoed): # leaf/source
+
+	_ToolFailedError = ToolFailedError
+	_MissingGizmoError = MissingGizmoError
+
 	def tools(self) -> Iterator['AbstractTool']:
 		yield self
 
@@ -92,7 +96,7 @@ class AbstractKit(AbstractTool): # branch/router
 				return tool.get_from(ctx, gizmo)
 			except ToolFailedError:
 				tries += 1
-		raise ToolFailedError(f'No tool for {gizmo} in {self} (tried {tries} tool/s)')
+		raise self._ToolFailedError(f'No tool for {gizmo} in {self} (tried {tries} tool/s)')
 
 
 

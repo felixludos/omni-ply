@@ -1,14 +1,17 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Hashable, Iterator, Iterable, Type, Set
 from collections import UserDict
 
-from .abstract import AbstractContext, AbstractKit, AbstractTool, AbstractAssessible, AbstractScope, \
+from ..structure import spaces
+from ..features import Seeded
+
+from .abstract import AbstractContext, AbstractSpaced, AbstractKit, AbstractTool, AbstractAssessible, AbstractScope, \
 	AbstractAssessment, AbstractSourcedKit, AbstractMogul, AbstractSchema, AbstractResource, AbstractDynamicContext
 from .errors import MissingGizmoError, ToolFailedError
 from .assessments import Signatured
 
 
 
-class ContextBase(AbstractContext, AbstractSourcedKit, AbstractAssessible, Signatured):
+class ContextBase(AbstractSpaced, AbstractContext, AbstractSourcedKit, AbstractAssessible, Signatured):
 	def context_id(self) -> Hashable:
 		return id(self)
 
@@ -28,6 +31,14 @@ class ContextBase(AbstractContext, AbstractSourcedKit, AbstractAssessible, Signa
 			except ToolFailedError:
 				pass
 		raise MissingGizmoError(gizmo)
+
+
+	def space_of(self, gizmo: str) -> spaces.Dim:
+		for tool in self.vendors(gizmo):
+			try:
+				return tool.space_of(gizmo)
+			except (AttributeError, ToolFailedError):
+				pass
 
 
 	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
@@ -168,7 +179,7 @@ class Cached(ContextBase, UserDict):
 
 
 	def cached(self):
-		yield from self.keys()
+		yield from self.data.keys()
 
 
 	def clear_cache(self):
@@ -186,6 +197,13 @@ class Cached(ContextBase, UserDict):
 	def __str__(self):
 		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + gizmo + '}') for gizmo in self.gizmos()]
 		return f'{self.__class__.__name__}({", ".join(gizmos)})'
+
+
+
+class SeededContext(AbstractContext, Seeded):
+	pass
+
+
 
 
 
