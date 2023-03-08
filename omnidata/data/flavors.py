@@ -8,7 +8,7 @@ from omnibelt import unspecified_argument, agnostic, agnosticproperty, md5
 from ..structure import spaces
 from ..parameters import hparam, submodule
 from ..persistent import Rooted
-from ..features import Named
+from ..features import Named, Seedable
 
 from .abstract import AbstractDataRouter
 from .routers import Observation, Supervised, Labeled, Synthetic, DataCollection
@@ -16,10 +16,18 @@ from .top import Dataset, Datastream, Buffer
 
 
 
-class Sampledstream(Dataset): # Datastream -> Dataset
+class Sampledstream(Seedable, Dataset): # Datastream -> Dataset
 	stream = submodule(builder='stream')
 
 	n_samples = hparam(required=True, space=spaces.Naturals(), inherit=True)
+
+
+	@hparam
+	def sampler_seed(self):
+		seed = self.seed
+		if seed is None:
+			seed = self._get_rng()
+		return self.seed
 
 
 	def __init__(self, n_samples: int, **kwargs):

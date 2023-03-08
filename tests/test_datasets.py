@@ -149,7 +149,7 @@ def test_dataset_batch():
 	assert obs.shape == (10, 3)
 	assert obs.dtype == torch.float32
 	x = obs.sum().item()
-	assert obs.sum().item() == 122.56094360351562 #92.62188720703125
+	assert obs.sum().item() == 106.3578109741211 #92.62188720703125
 
 	assert tuple(sorted(batch.cached())) == ('observation',)
 

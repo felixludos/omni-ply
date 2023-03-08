@@ -2,7 +2,7 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 import math
 
 from ..features import Prepared
-from ..tools.moguls import BatchMogul, EpochStatMogul
+from ..tools.moguls import BatchMogul, EpochStatMogul, SeedingMogul, SimpleMogul
 from ..parameters import hparam, Parameterized
 
 from .abstract import AbstractProgression, AbstractBatchable, AbstractBatch
@@ -14,7 +14,7 @@ from .progression import ProgressionBase
 _inf = float('inf')
 
 
-class BudgetLoader(Parameterized, AbstractProgression):
+class BudgetLoader(Parameterized, SeedingMogul, SimpleMogul, AbstractProgression):
 	batch_size = hparam(required=True)
 
 	sample_limit = hparam(None)

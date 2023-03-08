@@ -65,6 +65,7 @@ class RNGManager:
 		if rng is None and seed is not unspecified_argument:
 			rng = self.create_rng(seed=seed)
 		obj._rng = rng
+		return rng
 
 	def clear_personal_rng(self, obj):
 		self.replace_personal_rng(obj, rng=None)
@@ -77,7 +78,7 @@ class RNGManager:
 		return self._create_rng(seed)
 
 	@agnostic
-	def _gen_deterministic_seed(self, base_seed):
+	def gen_deterministic_seed(self, base_seed):
 		return self.gen_random_seed(self.create_rng(base_seed))
 
 	@agnostic
@@ -170,7 +171,7 @@ def set_default_rng(rng):
 
 
 def gen_deterministic_seed(base_seed):
-	return default_rng_manager_type._gen_deterministic_seed(base_seed)
+	return default_rng_manager_type.gen_deterministic_seed(base_seed)
 
 
 def gen_random_seed(base_gen=None):
@@ -204,6 +205,7 @@ class RNG: # descriptor
 
 	def reset(self, obj): # TODO
 		self.manager.clear_personal_rng(obj)
+		return self.manager.get_personal_rng(obj)
 
 	def force_rng(self, seed=unspecified_argument, *, rng=None):
 		return self.manager.force_rng(seed=seed, rng=rng)
@@ -213,6 +215,12 @@ class RNG: # descriptor
 
 	def set_default_rng(self, rng=None):
 		return self.manager.set_default_rng(rng=rng)
+
+	def gen_deterministic_seed(self, base_seed):
+		return self.manager.gen_deterministic_seed(base_seed)
+
+	def gen_random_seed(self, base_gen=None):
+		return self.manager.gen_random_seed(base_gen)
 
 
 
@@ -236,8 +244,8 @@ class Seeded: # uses its own RNG unless one is forced
 	def force_rng(self, seed=unspecified_argument, *, rng=None):
 		return self._get_rng().force_rng(seed=seed, rng=rng)
 
-	def set_default_rng(self, rng=None):
-		return self._get_rng().set_default_rng(rng=rng)
+	def set_as_default_rng(self):
+		return self._get_rng().set_default_rng(rng=self.rng)
 
 	@classmethod
 	def _get_rng(cls):
@@ -246,7 +254,7 @@ class Seeded: # uses its own RNG unless one is forced
 	def reset_rng(self, seed=unspecified_argument):
 		if seed is not unspecified_argument:
 			self._seed = seed
-		self._get_rng().reset(self)
+		return self._get_rng().reset(self)
 
 	@property
 	def seed(self):

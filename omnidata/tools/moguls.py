@@ -3,7 +3,7 @@ import math
 
 # moguls generate contexts
 
-from ..features import Prepared
+from ..features import Prepared, Seeded, gen_deterministic_seed
 
 from .abstract import AbstractMogul, AbstractContext, AbstractSourcedKit, AbstractResource, \
 	AbstractTool, AbstractDynamicKit, AbstractScopable, AbstractResourceable, AbstractDynamicContext
@@ -105,6 +105,8 @@ class DefaultResourceMogul(AbstractMogul, AbstractDynamicKit):
 
 
 	def _as_resource(self, source: AbstractTool):
+		if isinstance(source, AbstractResource):
+			return source
 		resource = source.as_resource(self) if isinstance(source, AbstractResourceable) else None
 		if resource is None:
 			resource = self._DefaultResource(source)
@@ -140,6 +142,43 @@ class ValidatedCreativeMogul(CreativeMogul, AbstractResource):
 
 	def validate_context(self, ctx: AbstractContext) -> AbstractContext: # as an observer
 		return self._validate_context(ctx)
+
+
+
+class SeedingMogul(Seeded, AbstractMogul, AbstractDynamicKit):
+	class _Context_Seeder(Seeded, AbstractResource):
+		def __init__(self, seed: int, make_default: Optional[bool] = True, **kwargs):
+			super().__init__(**kwargs)
+			self._start_seed = seed
+			self._steps = 0
+			self._current_seed = seed
+			self._make_default = make_default
+
+
+		@property
+		def seed(self) -> int:
+			return self._start_seed
+
+
+		def next_seed(self) -> int:
+			self._current_seed = gen_deterministic_seed(self._current_seed)
+			self._steps += 1
+			return self._current_seed
+
+
+		def validate_context(self, ctx: Seeded) -> AbstractContext:
+			ctx.reset_rng(self.next_seed())
+			if self._make_default:
+				ctx.set_as_default_rng()
+			return ctx
+
+
+	def __init__(self, context_seeder=None, **kwargs):
+		if context_seeder is None:
+			context_seeder = self._Context_Seeder(self.seed)
+		super().__init__(**kwargs)
+		self._context_seeder = context_seeder
+		self.include(self._context_seeder)
 
 
 
