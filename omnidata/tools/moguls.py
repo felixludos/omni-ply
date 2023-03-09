@@ -3,7 +3,7 @@ import math
 
 # moguls generate contexts
 
-from ..features import Prepared, Seeded, gen_deterministic_seed
+from ..features import Prepared, Seedable, gen_deterministic_seed
 
 from .abstract import AbstractMogul, AbstractContext, AbstractSourcedKit, AbstractResource, \
 	AbstractTool, AbstractDynamicKit, AbstractScopable, AbstractResourceable, AbstractDynamicContext
@@ -145,8 +145,8 @@ class ValidatedCreativeMogul(CreativeMogul, AbstractResource):
 
 
 
-class SeedingMogul(Seeded, AbstractMogul, AbstractDynamicKit):
-	class _Context_Seeder(Seeded, AbstractResource):
+class SeedingMogul(DefaultResourceMogul, Seedable):
+	class _Context_Seeder(AbstractResource, Seedable):
 		def __init__(self, seed: int, make_default: Optional[bool] = True, **kwargs):
 			super().__init__(**kwargs)
 			self._start_seed = seed
@@ -166,17 +166,15 @@ class SeedingMogul(Seeded, AbstractMogul, AbstractDynamicKit):
 			return self._current_seed
 
 
-		def validate_context(self, ctx: Seeded) -> AbstractContext:
+		def validate_context(self, ctx: Seedable) -> AbstractContext:
 			ctx.reset_rng(self.next_seed())
-			if self._make_default:
-				ctx.set_as_default_rng()
 			return ctx
 
 
 	def __init__(self, context_seeder=None, **kwargs):
+		super().__init__(**kwargs)
 		if context_seeder is None:
 			context_seeder = self._Context_Seeder(self.seed)
-		super().__init__(**kwargs)
 		self._context_seeder = context_seeder
 		self.include(self._context_seeder)
 

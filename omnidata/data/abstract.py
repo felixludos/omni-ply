@@ -3,7 +3,7 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 from omnibelt import unspecified_argument, duplicate_instance, get_printer
 
 
-from ..features import Prepared
+from ..features import Prepared, Seedable
 from ..persistent import AbstractFingerprinted
 from ..tools.abstract import AbstractTool, AbstractKit, AbstractSourcedKit, \
 	AbstractSpaced, AbstractContext, AbstractMogul, AbstractScope, AbstractSchema
@@ -32,6 +32,10 @@ class AbstractData(AbstractFingerprinted): # TODO: make fingerprinted
 		return self.title
 
 
+	def __repr__(self):
+		return self.title
+
+
 
 class AbstractCountableData(AbstractData):
 	def _title(self):
@@ -50,9 +54,6 @@ class AbstractDataSource(AbstractData, AbstractSpaced, AbstractTool, Prepared):
 	# 	return context
 	pass
 
-
-	# def validate_context(self, context: AbstractContext):
-	# 	return context
 
 
 class AbstractDataRouter(AbstractDataSource, AbstractKit):
@@ -101,7 +102,7 @@ class AbstractDataRouter(AbstractDataSource, AbstractKit):
 
 
 
-class AbstractView(AbstractDataSource):
+class AbstractView(AbstractDataSource, AbstractContext):
 	def __init__(self, source: AbstractDataRouter = None, **kwargs):
 		super().__init__(**kwargs)
 
@@ -154,8 +155,8 @@ class AbstractRouterView(AbstractView, AbstractDataRouter):
 		return self.source.get_buffer(gizmo, default=default)
 
 
-	def validate_context(self, selection):
-		return self.source.validate_context(selection)
+	# def validate_context(self, selection):
+	# 	return self.source.validate_context(selection)
 
 
 
@@ -179,7 +180,13 @@ class AbstractViewableRouterView(AbstractRouterView, AbstractViewable):
 
 
 
-class AbstractCountableRouterView(AbstractRouterView, AbstractCountableData):
+class AbstractCountableSource(AbstractDataSource, AbstractCountableData):
+	def _validate_selection(self, naive):
+		return naive
+
+
+
+class AbstractCountableRouterView(AbstractRouterView, AbstractCountableSource):
 	pass
 
 
@@ -190,9 +197,15 @@ class AbstractSelector(AbstractScope):
 
 
 
-class AbstractIndexedData(AbstractCountableData):
+class AbstractIndexedData(AbstractCountableSource):
 	def __init__(self, *, indices=None, **kwargs):
 		super().__init__(**kwargs)
+
+
+	def _validate_selection(self, naive):
+		if self.indices is not None:
+			naive = self.indices[naive]
+		return super()._validate_selection(naive)
 
 
 	@property
@@ -207,6 +220,10 @@ class AbstractIndexedData(AbstractCountableData):
 
 
 class AbstractProgression(BatchMogul, IteratorMogul, CreativeMogul, AbstractSourcedKit, Prepared):
+	def __iter__(self):
+		return self
+
+
 	def set_source(self, source: AbstractDataSource):
 		raise NotImplementedError
 
@@ -234,6 +251,7 @@ class AbstractProgression(BatchMogul, IteratorMogul, CreativeMogul, AbstractSour
 
 
 	def _create_context(self, source=None, **kwargs) -> AbstractContext:
+		# self.prepare()
 		return super()._create_context(source=self.source, **kwargs)
 
 
@@ -251,7 +269,7 @@ class AbstractBatch(AbstractCountableRouterView, AbstractSelector):
 
 
 	def new(self):
-		return self.source.create_batch()
+		return self.progress.create_batch()
 
 
 

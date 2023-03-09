@@ -5,7 +5,7 @@ from ..tools import Industrial
 from ..parameters import Parameterized, hparam
 
 from .routers import DataCollection, AutoCollection, AliasedCollection, CountableDataRouter
-from .views import IndexView
+from .views import IndexSelector
 from .sources import Splitable, TensorSource, SpacedSource#, BuildableData
 from .progression import SetProgression, StreamProgression, AbstractProgression
 from .budgeting import BudgetLoader
@@ -20,6 +20,7 @@ StreamProgression._Context = Bunch
 
 
 class Batch(IndexBatch):
+	_Progression = SetProgression
 	pass
 SetProgression._Context = Batch
 
@@ -43,7 +44,7 @@ class Datastream(_FeaturedDataRouter): # not countable (but batchable)
 
 
 
-class Subset(Batchable, IndexView):
+class Subset(Splitable, Batchable, IndexSelector):
 	_Progression = SetProgression
 	pass
 

@@ -148,8 +148,7 @@ def test_dataset_batch():
 	obs = batch['observation']
 	assert obs.shape == (10, 3)
 	assert obs.dtype == torch.float32
-	x = obs.sum().item()
-	assert obs.sum().item() == 106.3578109741211 #92.62188720703125
+	assert obs.sum().item() == 99.71501922607422
 
 	assert tuple(sorted(batch.cached())) == ('observation',)
 
@@ -160,84 +159,100 @@ def test_dataset_batch():
 	assert obs3 is None
 
 
-# def test_iterate_batch():
-# 	dataset = _init_default_dataset()
-#
-# 	batch = dataset.batch(10)
-#
-# 	# TODO: check batch.new()
-#
-# 	loader = batch.iterate(epochs=1, batch_size=5).prepare()
-#
-# 	b1 = loader.get_batch()
-#
-# 	b2, = list(loader)
-#
-# 	assert b1.size == 5
-#
-# 	assert str(b1) == 'Batch[5]<Batch[10]<SwissRollDataset[100]>>({observation}, {target}, {mechanism})'
-#
-# 	# TODO: more testing with b.o.b.
-#
-# 	t1 = b1['target'].sum()
-#
-# 	assert str(batch) == 'Batch[10]<SwissRollDataset[100]>({observation}, target, {mechanism})'
-# 	assert str(b1) == 'Batch[5]<Batch[10]<SwissRollDataset[100]>>({observation}, target, {mechanism})'
-#
-# 	t2 = b2['target'].sum()
-#
-# 	assert batch['target'].sum().isclose(t1 + t2)
-#
-#
-# def test_new_batches():
-# 	dataset = _init_default_dataset()
-#
-# 	batch = dataset.batch(20)
-#
-# 	itr1 = [b for b in batch.iterate(batch_size=5)]
-#
-# 	itr2 = []
-# 	i = 0
-# 	for b in batch.iterate(batch_size=5):
-# 		itr2.append(b)
-# 		itr2.append(b.new())
-# 		i += 1
-# 	assert i == 2
-#
-# 	assert len(itr1) == len(itr2) == 4
-#
-# 	assert itr1[0]['target'][0].sum().isclose(itr2[0]['target'][0].sum())
-# 	assert itr1[1]['target'][0].sum().isclose(itr2[1]['target'][0].sum())
-# 	assert itr1[2]['target'][0].sum().isclose(itr2[2]['target'][0].sum())
-# 	assert itr1[3]['target'][0].sum().isclose(itr2[3]['target'][0].sum())
-#
-#
-#
-# def test_simple_dataset():
-#
-# 	X, Y = torch.randn(100, 3), torch.randn(100, 1)
-# 	dataset = od.SimpleDataset(X, Y)
-#
-# 	assert str(dataset) == 'SimpleDataset[100](0, 1)'
-# 	assert dataset.size == 100
-# 	assert dataset[0].sub(X).sum().item() == 0
-#
-# 	buffers = tuple(sorted(dataset.available_buffers()))
-# 	assert len(buffers) == len(dataset)
-# 	assert buffers == (0, 1)
-#
-# 	ds2 = od.SimpleDataset(X=X, Y=Y)
-#
-# 	assert str(ds2) == 'SimpleDataset[100](X, Y)'
-# 	assert ds2.size == 100
-# 	assert ds2['X'].sub(X).sum().item() == 0
-#
-# 	buffers = tuple(sorted(ds2.available_buffers()))
-# 	assert len(buffers) == len(ds2)
-# 	assert buffers == ('X', 'Y')
+def test_iterate_batch():
+	dataset = _init_default_dataset()
+
+	batch = dataset.batch(10)
+
+	# TODO: check batch.new()
+
+	# loader = batch.iterate(epochs=1, batch_size=5).prepare()
+	loader = BudgetLoader(batch_size=5, epoch_limit=1).set_source(batch).prepare()
+
+	b1 = loader.create_batch()
+
+	b2, = list(loader)
+
+	assert b1.size == 5
+
+	assert str(b1) == 'Batch[5]<Batch[10]<SwissRoll[100]>>({target}, {observation}, {mechanism})'
+
+	# TODO: more testing with b.o.b.
+
+	t1 = b1['target'].sum()
+
+	assert str(batch) == 'Batch[10]<SwissRoll[100]>(target, {observation}, {mechanism})'
+	assert str(b1) == 'Batch[5]<Batch[10]<SwissRoll[100]>>(target, {observation}, {mechanism})'
+
+	t2 = b2['target'].sum()
+
+	assert batch['target'].sum().isclose(t1 + t2)
+
+
+def test_new_batches():
+	dataset = _init_default_dataset()
+
+	batch = dataset.batch(20)
+
+	itr1 = [b for b in BudgetLoader(batch, batch_size=5)]
+
+	itr2 = []
+	i = 0
+	for b in BudgetLoader(batch, batch_size=5):
+		itr2.append(b)
+		itr2.append(b.new())
+		i += 1
+	assert i == 2
+
+	assert len(itr1) == len(itr2) == 4
+
+	assert itr1[0]['target'][0].sum().isclose(itr2[0]['target'][0].sum())
+	assert itr1[1]['target'][0].sum().isclose(itr2[1]['target'][0].sum())
+	assert itr1[2]['target'][0].sum().isclose(itr2[2]['target'][0].sum())
+	assert itr1[3]['target'][0].sum().isclose(itr2[3]['target'][0].sum())
 
 
 
+def test_simple_dataset():
+
+	X, Y = torch.randn(100, 3), torch.randn(100, 1)
+	dataset = od.SimpleDataset(X, Y)
+
+	assert str(dataset) == 'SimpleDataset[100](0, 1)'
+	assert dataset.size == 100
+	assert dataset[0].sub(X).sum().item() == 0
+
+	buffers = tuple(sorted(dataset.available_buffers()))
+	# assert len(buffers) == len(dataset)
+	assert buffers == (0, 1)
+
+	ds2 = od.SimpleDataset(X=X, Y=Y)
+
+	assert str(ds2) == 'SimpleDataset[100](X, Y)'
+	assert ds2.size == 100
+	assert ds2['X'].sub(X).sum().item() == 0
+
+	buffers = tuple(sorted(ds2.available_buffers()))
+	# assert len(buffers) == len(ds2)
+	assert buffers == ('X', 'Y')
+
+
+
+def test_subsets():
+
+	X, Y = torch.randn(100, 3), torch.randn(100, 1)
+	dataset = od.SimpleDataset(X=X, Y=Y)
+
+	inds = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+	subset = dataset.subset(indices=inds)
+
+	# assert str(subset) == 'SimpleDataset[10](X, Y)'
+	assert subset.size == 10
+
+	y = subset['Y']
+
+	assert y.shape == (10, 1)
+	assert y.sum().isclose(Y[inds].sum())
 
 
 

@@ -3,7 +3,7 @@
 from .crafts import MachineCraft, ContextedCraft, SpacedCraft, OptionalCraft, DefaultCraft, LoggingCraft, \
 	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft
 from .kits import MaterialedCrafty, AssessibleCrafty, SignaturedCrafty, RelabeledKit
-from .context import SizedContext, DynamicContext, ScopeBase, Cached
+from .context import SizedContext, DynamicContext, ScopeBase, Cached, SeededContext
 
 
 

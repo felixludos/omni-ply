@@ -69,6 +69,10 @@ class Noisy(StochasticManifold):
 
 
 
+####################################################################################################
+
+
+
 class SwissRoll(DeterministicManifold):
 	Ax = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
 	Ay = hparam(21., space=spaces.HalfBound(min=0.))

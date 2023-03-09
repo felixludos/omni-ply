@@ -5,7 +5,8 @@ import torch
 
 from ..features import Prepared, ProgressBarred
 from ..tools.abstract import AbstractScope, AbstractTool, AbstractResource
-from ..tools.moguls import BatchMogul, IteratorMogul, SelectionMogul, LimitMogul, EpochStatMogul, SimpleMogul
+from ..tools.moguls import BatchMogul, IteratorMogul, SelectionMogul, LimitMogul, \
+	EpochStatMogul, SimpleMogul, SeedingMogul
 
 from .abstract import AbstractProgression, AbstractBatch
 from .errors import BudgetExceeded, EpochEnd, UnknownSize
@@ -13,7 +14,7 @@ from .sources import Shufflable
 
 
 
-class ProgressionBase(SimpleMogul, AbstractProgression):
+class ProgressionBase(SimpleMogul, SeedingMogul, AbstractProgression):
 	def __init__(self, source: Optional[AbstractTool] = None, **kwargs):
 		super().__init__(**kwargs)
 		self._source = None
@@ -180,7 +181,7 @@ class EpochProgression(ProgressionBase, EpochStatMogul):
 
 
 	def _generate_sample_order(self) -> torch.Tensor:
-		return torch.arange(self.epoch_size)
+		return self.source._validate_selection(torch.arange(self.epoch_size))
 
 
 

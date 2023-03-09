@@ -64,6 +64,7 @@ class BudgetLoader(Parameterized, SeedingMogul, SimpleMogul, AbstractProgression
 			source = source.source
 		self._loader = source.iterate(self.batch_size, **kwargs)
 		self._is_ready = False
+		self.prepare()
 		return self
 
 

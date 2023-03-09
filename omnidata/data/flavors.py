@@ -16,18 +16,10 @@ from .top import Dataset, Datastream, Buffer
 
 
 
-class Sampledstream(Seedable, Dataset): # Datastream -> Dataset
+class Sampledstream(Dataset, Seedable): # Datastream -> Dataset
 	stream = submodule(builder='stream')
-
 	n_samples = hparam(required=True, space=spaces.Naturals(), inherit=True)
-
-
-	@hparam
-	def sampler_seed(self):
-		seed = self.seed
-		if seed is None:
-			seed = self._get_rng()
-		return self.seed
+	sampler_seed = hparam(16283393149723337453, hidden=True)
 
 
 	def __init__(self, n_samples: int, **kwargs):
@@ -45,14 +37,19 @@ class Sampledstream(Seedable, Dataset): # Datastream -> Dataset
 		return f'{self.stream.title}[{self.n_samples}]'
 
 
-	def _prepare(self, **kwargs):
-		out = super()._prepare( **kwargs)
-
+	def _sample_stream_content(self, n_samples=None):
 		# replacing stream with fixed samples
-		n_samples = self.n_samples
-		batch = self.stream.batch(n_samples) # fix seed, and optionally sample in smaller batches
+		if n_samples is None:
+			n_samples = self.n_samples
+		batch = self.stream.batch(n_samples, seed=self.sampler_seed) # optionally sample in smaller batches
+		# batch.reset_rng(self.sampler_seed)
 		for gizmo in batch.gizmos():
 			self.get_buffer(gizmo).data = batch[gizmo]
+
+
+	def _prepare(self, **kwargs):
+		out = super()._prepare( **kwargs)
+		self._sample_stream_content()
 		return out
 
 

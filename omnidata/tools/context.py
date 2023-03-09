@@ -161,7 +161,14 @@ class SizedContext(AbstractContext):
 
 
 
-class Cached(ContextBase, UserDict):
+class SeededContext(ContextBase, Seeded):
+	def _get_from(self, ctx, gizmo):
+		with self.default_rng():
+			return super()._get_from(ctx, gizmo)
+
+
+
+class Cached(SeededContext, UserDict):
 	def gizmos(self) -> Iterator[str]:
 		past = set()
 		for gizmo in super().gizmos():
@@ -188,20 +195,19 @@ class Cached(ContextBase, UserDict):
 
 	def _get_from(self, ctx, gizmo):
 		if self.is_cached(gizmo):
-			return self.data[gizmo]
-		val = super()._get_from(ctx, gizmo)
-		self.data[gizmo] = val # cache loaded val
-		return val
+			val = self.data[gizmo]
+		else:
+			val = super()._get_from(self, gizmo)
+			self.data[gizmo] = val # cache loaded val
+		if ctx is self:
+			return val
+		return val[ctx.indices]
 
 
 	def __str__(self):
 		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + gizmo + '}') for gizmo in self.gizmos()]
 		return f'{self.__class__.__name__}({", ".join(gizmos)})'
 
-
-
-class SeededContext(AbstractContext, Seeded):
-	pass
 
 
 

@@ -11,8 +11,10 @@ class SimpleSignature(AbstractSignature):
 	def __init__(self, output, inputs=(), meta=(), **props):
 		if isinstance(inputs, str):
 			inputs = (inputs,)
+		# inputs = tuple(inputs)
 		if isinstance(meta, str):
 			meta = (meta,)
+		# meta = tuple(meta)
 		super().__init__()
 		self.inputs = inputs
 		self.meta = meta

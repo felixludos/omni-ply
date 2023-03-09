@@ -8,11 +8,11 @@ import torch
 
 from ..structure import Generator, Sampler
 from .. import util
-from ..features import Seeded
+from ..features import Seedable
 from ..structure import spaces
 # from ..parameters import Buildable
 from .abstract import AbstractDataRouter, AbstractDataSource, \
-	AbstractSelector, AbstractBatchable, AbstractCountableData
+	AbstractSelector, AbstractBatchable, AbstractCountableData, AbstractCountableSource
 from .views import SizeSelector, IndexSelector
 
 prt = get_printer(__file__)
@@ -23,10 +23,10 @@ prt = get_printer(__file__)
 
 
 
-class Shufflable(Seeded):
+class Shufflable(Seedable):
 	@staticmethod
 	def _is_big_number(N):
-		return N > 10000000
+		return N > 20000000
 
 
 	def _shuffle_indices(self, N):
@@ -93,7 +93,7 @@ class SpacedSource(AbstractDataSource):
 
 
 
-class Subsetable(AbstractDataSource, AbstractCountableData, Shufflable):
+class Subsetable(AbstractCountableSource, Shufflable):
 	@staticmethod
 	def _split_indices(indices, cut):
 		assert cut != 0
@@ -116,7 +116,7 @@ class Subsetable(AbstractDataSource, AbstractCountableData, Shufflable):
 			assert cut is not None, 'Either cut or indices must be specified'
 			indices, _ = self._split_indices(indices=self._shuffle_indices(self.size) \
 				if shuffle else torch.arange(self.size), cut=cut)
-		indices = self.validate_context(indices)
+		indices = self._validate_selection(indices)
 		return self._Subset(source=self, indices=indices)
 	
 

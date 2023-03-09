@@ -1,7 +1,7 @@
 import torch
 
 from omnibelt import agnostic
-from ..features import Seeded
+from ..features import Seedable
 
 
 class Extractor:
@@ -134,7 +134,7 @@ class Quantizer:
 
 
 
-class Sampler(Seeded):
+class Sampler(Seedable):
 	def sample(self, *shape, **kwargs):
 		return self._sample(torch.Size(shape), **kwargs)
 

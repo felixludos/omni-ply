@@ -3,7 +3,7 @@ from typing import Optional, Type
 from omnibelt import unspecified_argument, filter_duplicates
 
 # from ..parameters import hparam, with_hparams, Parameterized
-from ..tools.top import Cached, DynamicContext
+from ..tools.top import Cached, DynamicContext, SeededContext
 
 from .abstract import AbstractBatchable, AbstractCountableData, AbstractBatch
 from .views import ViewBase, SizeSelector, IndexSelector

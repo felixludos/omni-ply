@@ -232,7 +232,7 @@ class SeededCraft(MetaArgCraft):
 
 
 	def _known_meta_args(self, instance):
-		yield super()._known_meta_args(instance)
+		yield from super()._known_meta_args(instance)
 		if self._include_seed:
 			yield self._include_seed
 		if self._include_rng:
@@ -265,7 +265,8 @@ class TransformCraft(MetaArgCraft):
 	def _transform_inputs(self, owner, fn, *, raw: Optional[bool] = None):
 		if raw is None:
 			raw = isinstance(owner, type)
-		for key, default in self._parse_fn_args(fn, raw=raw, skip=set(self._known_meta_args(owner))):
+		skip = set(self._known_meta_args(owner))
+		for key, default in self._parse_fn_args(fn, raw=raw, skip=skip):
 			yield self._validate_label(owner, key), default
 
 
@@ -289,7 +290,7 @@ class TransformCraft(MetaArgCraft):
 
 	def _known_input_args(self, owner) -> Tuple:
 		yield from filter_duplicates(super()._known_input_args(owner),
-		        (key for key, default in self._transform_inputs(owner, self._get_instance_fn(owner), raw=True)
+		        (key for key, default in self._transform_inputs(owner, self._get_instance_fn(owner))
 		            if default is inspect.Parameter.empty))
 
 
@@ -321,7 +322,7 @@ class BatchCraft(SeededCraft):
 
 	def _known_meta_args(self, instance):
 		yield self._context_batch_key
-		yield super()._known_meta_args(instance)
+		yield from super()._known_meta_args(instance)
 
 
 
@@ -334,7 +335,7 @@ class SizeCraft(SeededCraft):
 
 	def _known_meta_args(self, instance):
 		yield self._context_size_key
-		yield super()._known_meta_args(instance)
+		yield from super()._known_meta_args(instance)
 
 
 
@@ -347,7 +348,7 @@ class IndexCraft(SeededCraft):
 
 	def _known_meta_args(self, instance):
 		yield self._context_indices_key
-		yield super()._known_meta_args(instance)
+		yield from super()._known_meta_args(instance)
 
 
 
@@ -377,7 +378,7 @@ class IndexSampleCraft(SeededCraft):
 
 	def _known_meta_args(self, instance):
 		yield self._context_index_key
-		yield super()._known_meta_args(instance)
+		yield from super()._known_meta_args(instance)
 
 
 
