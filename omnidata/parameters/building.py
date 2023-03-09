@@ -5,7 +5,8 @@ from omnibelt import unspecified_argument, Class_Registry, agnostic, Modifiable,
 from omnibelt.tricks import auto_methods, dynamic_capture, extract_function_signature
 import omnifig as fig
 
-from .abstract import AbstractBuilder, AbstractParameterized
+from .abstract import AbstractBuilder, AbstractParameterized, AbstractArgumentBuilder
+from .errors import NoProductFound
 from .hyperparameters import HyperparameterBase
 from .parameterized import ParameterizedBase
 from ..structure import spaces
@@ -21,45 +22,48 @@ class BuilderBase(ParameterizedBase, AbstractBuilder):
 	pass
 
 
-class BuildableBase(BuilderBase):
-	@classmethod
-	def product(cls, *args, **kwargs) -> Type:
-		return cls
 
-	@agnostic
-	def build(self, *args, **kwargs):
-		return self.product(*args, **kwargs)(*args, **kwargs)
+class BuildableBase(BuilderBase, AbstractArgumentBuilder):
+	pass
+# 	@classmethod
+# 	def product(cls, *args, **kwargs) -> Type:
+# 		return cls
+#
+#
+# 	def build(self, *args, **kwargs):
+# 		return self.product(*args, **kwargs)(*args, **kwargs)
+
 
 
 class SelfAware(BuildableBase):
-	# TODO: maybe replace with SpecBuilder (or at least standardize behavior for stateful builders)
+	pass
+# 	# TODO: maybe replace with SpecBuilder (or at least standardize behavior for stateful builders)
+#
+# 	def _populate_existing(self, target, existing=None):
+# 		if existing is None:
+# 			existing = {}
+# 		for name, _ in target.named_hyperparameters(hidden=True):
+# 			if name not in existing:
+# 				try:
+# 					value = getattr(self, name, unspecified_argument)
+# 				except self.Hyperparameter.MissingValueError:
+# 					continue
+# 				if value is not unspecified_argument:
+# 					if isinstance(value, SelfAware):
+# 						value = value.build_replica()
+# 					existing[name] = value
+# 		return existing
+#
+#
+# 	def build_replica(self, *args, **kwargs):
+# 		product = self.product(*args, **kwargs)
+# 		fixed_args, necessary_kwargs, missing = extract_function_signature(product, args=args, kwargs=kwargs,
+# 		                                                               allow_positional=False, include_missing=True,
+# 		                                                               default_fn=self._find_missing_hparam(self))
+# 		assert not len(missing), f'Could not find values for {missing} in {self}'
+# 		fixed_kwargs = self._populate_existing(product, necessary_kwargs)
+# 		return product(*fixed_args, **fixed_kwargs)
 
-	@agnostic
-	def _populate_existing(self, target, existing=None):
-		if existing is None:
-			existing = {}
-		for name, _ in target.named_hyperparameters(hidden=True):
-			if name not in existing:
-				try:
-					value = getattr(self, name, unspecified_argument)
-				except self.Hyperparameter.MissingValueError:
-					continue
-				if value is not unspecified_argument:
-					if isinstance(value, SelfAware):
-						value = value.build_replica()
-					existing[name] = value
-		return existing
-
-
-	@agnostic
-	def build_replica(self, *args, **kwargs):
-		product = self.product(*args, **kwargs)
-		fixed_args, necessary_kwargs, missing = extract_function_signature(product, args=args, kwargs=kwargs,
-		                                                               allow_positional=False, include_missing=True,
-		                                                               default_fn=self._find_missing_hparam(self))
-		assert not len(missing), f'Could not find values for {missing} in {self}'
-		fixed_kwargs = self._populate_existing(product, necessary_kwargs)
-		return product(*fixed_args, **fixed_kwargs)
 
 
 class ConfigBuilder(BuilderBase, fig.Configurable):
@@ -97,6 +101,7 @@ class ConfigBuilder(BuilderBase, fig.Configurable):
 		return cls._config_builder(config, target_name='build', silent=silent).build(*args, **kwargs)
 
 
+
 class ModifiableProduct(BuilderBase):
 	_product_mods = ()
 
@@ -104,33 +109,35 @@ class ModifiableProduct(BuilderBase):
 		super().__init__(*args, **kwargs)
 		self.__dict__['_product_mods'] = self._product_mods # save current product mods to instance.__dict__
 
+
 	@staticmethod
 	def _modify_product(product, *mods, name=None):
 		if issubclass(product, Modifiable):
 			return product.inject_mods(*mods, name=name)
 		return inject_modifiers(product, *mods, name=name)
 
-	@agnostic
+
 	def product_base(self, *args, **kwargs):
 		raise NotImplementedError
 
-	@agnostic
+
 	def modded(self, *mods):
 		self._product_mods = [*self._product_mods, *mods]
 		return self
 
-	@agnostic
+
 	def vanilla(self):
 		self._product_mods = ()
 		return self
 
-	@agnostic
+
 	def mods(self):
 		yield from self._product_mods
 
-	@agnostic
+
 	def product(self, *args, **kwargs) -> Type:
 		return self._modify_product(self.product_base(*args, **kwargs), *self._product_mods)
+
 
 
 # @fig.creator('build')
@@ -204,13 +211,15 @@ class AutoBuilder(BuilderBase, auto_methods, wrap_mro_until=True, # TODO: builda
 		return method(*fixed_args, **fixed_kwargs)
 
 
+
 builder_registry = Class_Registry()
 register_builder = builder_registry.get_decorator()
 get_builder = builder_registry.get_class
 
 
-class MultiBuilderBase(BuilderBase):
-	_IdentParameter = HyperparameterBase
+
+class MultiBuilderBase(BuilderBase, AbstractArgumentBuilder):
+	# _IdentParameter = HyperparameterBase
 
 	# def __init_subclass__(cls, _register_ident=True, default_ident=None, **kwargs):
 	# 	super().__init_subclass__(**kwargs)
@@ -222,28 +231,19 @@ class MultiBuilderBase(BuilderBase):
 		if ident is not unspecified_argument:
 			self.ident = ident
 
-	class NoProductFound(KeyError):
-		pass
 
-	@agnostic
 	def available_products(self):
 		return {}
 
-	@agnostic
+
+	_NoProductFound = NoProductFound
 	def product(self, ident, **kwargs):
 		product = self.available_products().get(ident, None)
 		if product is None:
-			raise self.NoProductFound(ident)
+			raise self._NoProductFound(ident)
 		return product
 
-	@agnostic
-	def build(self, ident, *args, **kwargs):
-		product = self.product(ident)
-		if isinstance(product, AbstractBuilder):
-			return product.build(*args, **kwargs)
-		return product(*args, **kwargs)
 
-	@agnostic
 	def validate(self, product):
 		if isinstance(product, str):
 			return self.build(product)
@@ -252,20 +252,20 @@ class MultiBuilderBase(BuilderBase):
 
 
 class RegistryBuilderBase(MultiBuilderBase):
-	class _IdentParameter(MultiBuilderBase._IdentParameter):
-		IdentSpace = spaces.Selection
-
-		def __init__(self, *, space=None, **kwargs):
-			if space is None:
-				space = self.IdentSpace()
-			super().__init__(space=space, **kwargs)
-
-		def add_value(self, value, is_default=False):
-			if value not in self.space:
-				self.space.append(value)
-			if is_default:
-				self.default = value
-			return self
+	# class _IdentParameter(MultiBuilderBase._IdentParameter):
+	# 	IdentSpace = spaces.Selection
+	#
+	# 	def __init__(self, *, space=None, **kwargs):
+	# 		if space is None:
+	# 			space = self.IdentSpace()
+	# 		super().__init__(space=space, **kwargs)
+	#
+	# 	def add_value(self, value, is_default=False):
+	# 		if value not in self.space:
+	# 			self.space.append(value)
+	# 		if is_default:
+	# 			self.default = value
+	# 		return self
 
 	_product_registry_type = Class_Registry
 	_product_registry = None
@@ -332,7 +332,7 @@ class RegistryBuilderBase(MultiBuilderBase):
 		if entry is None:
 			if default is not unspecified_argument:
 				return default
-			raise cls.NoProductFound(ident)
+			raise cls._NoProductFound(ident)
 		return entry
 
 	@agnostic

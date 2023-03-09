@@ -2,6 +2,8 @@ from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, 
 	Iterator, NamedTuple, ContextManager
 from omnibelt import agnostic, unspecified_argument
 
+from .errors import MissingBuilderError
+
 
 class AbstractHyperparameter:
 	def __get__(self, instance, owner):
@@ -50,7 +52,7 @@ class AbstractParameterized:
 
 class AbstractBuilder(AbstractParameterized):
 	@staticmethod
-	def validate(product, *args, **kwargs):
+	def validate(product):
 		return product
 
 
@@ -65,13 +67,27 @@ class AbstractBuilder(AbstractParameterized):
 
 
 
+class AbstractArgumentBuilder(AbstractBuilder):
+	def build(self, *args, **kwargs):
+		return self.product(*args, **kwargs)(**self._build_kwargs(*args, **kwargs))
+
+
+	def _build_kwargs(self, *args, **kwargs):
+		return {}
+
+
+
 class AbstractSubmodule(AbstractHyperparameter):
 	def get_builder(self) -> Optional[AbstractBuilder]:
 		raise NotImplementedError
 
 
+	_MissingBuilderError = MissingBuilderError
 	def build_with(self, *args, **kwargs):
-		raise NotImplementedError
+		builder = self.get_builder()
+		if builder is None:
+			raise self._MissingBuilderError(f'No builder for {self}')
+		return builder.build(*args, **kwargs)
 
 
 

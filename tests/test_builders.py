@@ -9,7 +9,7 @@ import omnifig as fig
 
 import omnidata as od
 from omnidata import toy
-from omnidata import Builder, Buildable, RegistryBuilder, RegisteredProduct
+# from omnidata import Builder, Buildable, RegistryBuilder, RegisteredProduct
 from omnidata import hparam, inherit_hparams, submodule, spaces
 
 def _cmp_dicts(d1, d2):
@@ -17,24 +17,24 @@ def _cmp_dicts(d1, d2):
 
 
 
-class Activation(RegistryBuilder, default_ident='relu', products={
-							'relu': nn.ReLU,
-							'prelu': nn.PReLU,
-							'lrelu': nn.LeakyReLU,
-							'tanh': nn.Tanh,
-							'softplus': nn.Softplus,
-							'sigmoid': nn.Sigmoid,
-							'elu': nn.ELU,
-							'selu': nn.SELU,
-                         }):
-	inplace = hparam(True, space=spaces.Binary())
-
-	@agnostic
-	def build(self, ident, inplace, **kwargs):
-		product = self.product(ident=ident, inplace=inplace, **kwargs)
-		if product in {nn.ELU, nn.ReLU, nn.SELU}:
-			return product(inplace=inplace)
-		return product()
+# class Activation(RegistryBuilder, default_ident='relu', products={
+# 							'relu': nn.ReLU,
+# 							'prelu': nn.PReLU,
+# 							'lrelu': nn.LeakyReLU,
+# 							'tanh': nn.Tanh,
+# 							'softplus': nn.Softplus,
+# 							'sigmoid': nn.Sigmoid,
+# 							'elu': nn.ELU,
+# 							'selu': nn.SELU,
+#                          }):
+# 	inplace = hparam(True, space=spaces.Binary())
+#
+# 	@agnostic
+# 	def build(self, ident, inplace, **kwargs):
+# 		product = self.product(ident=ident, inplace=inplace, **kwargs)
+# 		if product in {nn.ELU, nn.ReLU, nn.SELU}:
+# 			return product(inplace=inplace)
+# 		return product()
 
 
 
@@ -104,30 +104,30 @@ def test_mod_product():
 
 
 
-class MyModels(RegistryBuilder, nn.Module, default_ident='b'):
-	p1 = hparam(required=True)
-	p2 = hparam(10)
-	p3 = hparam('hello', inherit=True)
-	p4 = hparam((1,2,3), hidden=True)
-
-
-class ModelA(RegisteredProduct, registry=MyModels, ident='a'):
-	p2 = hparam(20)
-
-
-class ModelB(RegisteredProduct, registry=MyModels, ident='b'):
-	p1 = hparam(required=True)
-	p2 = hparam(10)
-
-
-class ModelC(RegisteredProduct, registry=MyModels, ident='c'):
-	p1 = hparam(required=True)
-	p2 = hparam(10)
-
-
-class ModelD(RegisteredProduct, registry=MyModels, ident='d'):
-	p1 = hparam(required=True)
-	p2 = hparam(10)
+# class MyModels(RegistryBuilder, nn.Module, default_ident='b'):
+# 	p1 = hparam(required=True)
+# 	p2 = hparam(10)
+# 	p3 = hparam('hello', inherit=True)
+# 	p4 = hparam((1,2,3), hidden=True)
+#
+#
+# class ModelA(RegisteredProduct, registry=MyModels, ident='a'):
+# 	p2 = hparam(20)
+#
+#
+# class ModelB(RegisteredProduct, registry=MyModels, ident='b'):
+# 	p1 = hparam(required=True)
+# 	p2 = hparam(10)
+#
+#
+# class ModelC(RegisteredProduct, registry=MyModels, ident='c'):
+# 	p1 = hparam(required=True)
+# 	p2 = hparam(10)
+#
+#
+# class ModelD(RegisteredProduct, registry=MyModels, ident='d'):
+# 	p1 = hparam(required=True)
+# 	p2 = hparam(10)
 
 
 def test_param_product():

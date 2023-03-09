@@ -6,4 +6,13 @@ class MissingValueError(AttributeError):
 
 
 
+class MissingBuilderError(TypeError):
+	pass
+
+
+
+class NoProductFound(KeyError):
+	pass
+
+
 
