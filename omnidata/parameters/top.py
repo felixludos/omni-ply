@@ -3,9 +3,10 @@ from omnibelt import agnostic, unspecified_argument
 
 from ..features import Prepared
 
+from .abstract import AbstractArgumentBuilder
 from .hyperparameters import InheritableHyperparameter
 from .parameterized import ModifiableParameterized, FingerprintedParameterized, InheritHparamsDecorator, HparamWrapper
-from .building import ConfigBuilder, AutoBuilder, BuildableBase, SelfAware, ModifiableProduct, \
+from .building import ConfigBuilder, BuildableBase, SelfAware, ModifiableProduct, \
 	MultiBuilderBase, RegistryBuilderBase, HierarchyBuilderBase, RegisteredProductBase
 from .submodules import SubmoduleBase
 from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
@@ -58,44 +59,68 @@ class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameter
 
 
 
-# class BasicBuilder(ConfigBuilder, AutoBuilder, BuilderSpecced, Parameterized):
-# 	pass
-#
-#
-#
-# class Builder(ModifiableProduct, BasicBuilder, inheritable_auto_methods=['product_base']):
-# 	pass
+class BasicBuilder(ConfigBuilder, BuilderSpecced, Parameterized): # AutoBuilder
+	pass
 
 
 
-# class Buildable(SelfAware, Builder):
-# 	pass
-#
-#
-#
-# class MultiBuilder(Builder, MultiBuilderBase, BasicBuilder, wrap_existing=True):
-# 	@agnostic
-# 	def product_base(self, *args, **kwargs):
-# 		return super(ModifiableProduct, self).product(*args, **kwargs)
+class Builder(ModifiableProduct, BasicBuilder):#, inheritable_auto_methods=['product_base']):
+	pass
 
 
 
-# class RegistryBuilder(MultiBuilder, RegistryBuilderBase, create_registry=False):
-# 	pass
-#
-#
-#
-# class HierarchyBuilder(RegistryBuilder, HierarchyBuilderBase, create_registry=False):
-# 	pass
-#
-#
-#
-# class RegisteredProduct(Buildable, RegisteredProductBase):
-# 	pass
+class Buildable(SelfAware, Builder):
+	pass
 
 
 
+class MultiBuilder(Builder, MultiBuilderBase, BasicBuilder):#, wrap_existing=True):
+	@agnostic
+	def product_base(self, *args, **kwargs):
+		return super(ModifiableProduct, self).product(*args, **kwargs)
 
+
+
+class RegistryBuilder(MultiBuilder, RegistryBuilderBase, create_registry=False):
+	pass
+
+
+
+class HierarchyBuilder(RegistryBuilder, HierarchyBuilderBase, create_registry=False):
+	pass
+
+
+
+class RegisteredProduct(Buildable, RegisteredProductBase):
+	pass
+
+
+
+class MatchingBuilder(Parameterized, AbstractArgumentBuilder):
+	'''Automatically fills in common hyperparameters between the builder and the product'''
+	fillin_hparams = hparam(True, inherit=True, hidden=True)
+	fillin_hidden_hparams = hparam(False, inherit=True, hidden=True)
+
+
+	def _matching_hparams(self, product):
+		known = set(key for key, _ in self.named_hyperparameters())
+		for key, _ in product.named_hyperparameters(hidden=self.fillin_hidden_hparams):
+			if key in known:
+				yield key
+
+
+	def _build_kwargs(self, product, *args, **kwargs):
+		kwargs = super()._build_kwargs(product, *args, **kwargs)
+		if self.fillin_hparams:
+			for key in self._matching_hparams(product):
+				if key not in kwargs:
+					try:
+						val = getattr(self, key)
+					except AttributeError:
+						continue
+					else:
+						kwargs[key] = val
+		return kwargs
 
 
 

@@ -39,7 +39,7 @@ class DefaultProperty:
 		return fget, default  # fget was specified as keyword argument
 
 
-	def __set_name__(self, owner, name):
+	def setup(self, owner: Type, name: str) -> 'method_decorator':
 		if self.attrname is None:
 			self.attrname = name
 		elif name != self.attrname:
@@ -47,6 +47,11 @@ class DefaultProperty:
 				"Cannot assign the same cached_property to two different names "
 				f"({self.attrname!r} and {name!r})."
 			)
+		return self
+
+
+	def __set_name__(self, owner, name):
+		self.setup(owner, name)
 
 
 	_MissingValueError = MissingValueError

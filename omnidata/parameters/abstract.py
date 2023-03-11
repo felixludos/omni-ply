@@ -69,11 +69,12 @@ class AbstractBuilder(AbstractParameterized):
 
 class AbstractArgumentBuilder(AbstractBuilder):
 	def build(self, *args, **kwargs):
-		return self.product(*args, **kwargs)(**self._build_kwargs(*args, **kwargs))
+		product = self.product(*args, **kwargs)
+		return product(**self._build_kwargs(product, *args, **kwargs))
 
 
-	def _build_kwargs(self, *args, **kwargs):
-		return {}
+	def _build_kwargs(self, product, *args, **kwargs):
+		return kwargs.copy()
 
 
 

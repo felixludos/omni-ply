@@ -9,53 +9,57 @@ import omnifig as fig
 
 import omnidata as od
 from omnidata import toy
-# from omnidata import Builder, Buildable, RegistryBuilder, RegisteredProduct
+from omnidata import Builder, Buildable, RegistryBuilder, RegisteredProduct, MatchingBuilder
 from omnidata import hparam, inherit_hparams, submodule, spaces
+
+
 
 def _cmp_dicts(d1, d2):
 	return yaml.dump(d1, sort_keys=True) == yaml.dump(d2, sort_keys=True)
 
 
 
-# class Activation(RegistryBuilder, default_ident='relu', products={
-# 							'relu': nn.ReLU,
-# 							'prelu': nn.PReLU,
-# 							'lrelu': nn.LeakyReLU,
-# 							'tanh': nn.Tanh,
-# 							'softplus': nn.Softplus,
-# 							'sigmoid': nn.Sigmoid,
-# 							'elu': nn.ELU,
-# 							'selu': nn.SELU,
-#                          }):
-# 	inplace = hparam(True, space=spaces.Binary())
-#
-# 	@agnostic
-# 	def build(self, ident, inplace, **kwargs):
-# 		product = self.product(ident=ident, inplace=inplace, **kwargs)
-# 		if product in {nn.ELU, nn.ReLU, nn.SELU}:
-# 			return product(inplace=inplace)
-# 		return product()
+class Activation(RegistryBuilder, default_ident='relu', products={
+							'relu': nn.ReLU,
+							'prelu': nn.PReLU,
+							'lrelu': nn.LeakyReLU,
+							'tanh': nn.Tanh,
+							'softplus': nn.Softplus,
+							'sigmoid': nn.Sigmoid,
+							'elu': nn.ELU,
+							'selu': nn.SELU,
+                         }):
+	inplace = hparam(True, space=spaces.Binary(), hidden=True)
+
+
+	def _build_kwargs(self, product, ident, **kwargs):
+		kwargs = super()._build_kwargs(product, ident, **kwargs)
+		if issubclass(product, (nn.ELU, nn.ReLU, nn.SELU)) and 'inplace' not in kwargs:
+			kwargs['inplace'] = self.inplace
+		return kwargs
 
 
 
 def test_reg_builder():
-	nonlin = Activation.build('relu')
+	builder = Activation()
+	nonlin = builder.build('relu')
 	assert isinstance(nonlin, nn.ReLU)
 	assert nonlin.inplace is True
 
-	nonlin = Activation.build('relu', inplace=False)
+	nonlin = Activation().build('relu', inplace=False)
 	assert nonlin.inplace is False
 
-	nonlin = Activation.build('sigmoid')
+	nonlin = Activation().build('sigmoid')
 	assert isinstance(nonlin, nn.Sigmoid)
 
-	nonlin = Activation.validate('elu')
+	nonlin = Activation().validate('elu')
 	assert isinstance(nonlin, nn.ELU)
 
-	nonlin = Activation.product('tanh')
+	nonlin = Activation().product('tanh')
 	assert nonlin is nn.Tanh
 
-	assert len(Activation.available_products()) == 8
+	assert len(Activation().available_products()) == 8
+
 
 
 class Negative(nn.Module):
@@ -63,7 +67,6 @@ class Negative(nn.Module):
 		return -super().forward(x)
 
 
-import inspect
 
 def test_mod_product():
 
@@ -81,14 +84,14 @@ def test_mod_product():
 	assert b2.product('tanh') is nn.Tanh
 
 	assert len(list(b1.mods())) == 0
-	assert len(list(Activation.mods())) == 0
+	assert len(list(Activation().mods())) == 0
 	b1.modded(Negative)
 	assert len(list(b1.mods())) == 1
-	assert len(list(Activation.mods())) == 0
+	assert len(list(Activation().mods())) == 0
 
 	b1.vanilla()
 	assert len(list(b1.mods())) == 0
-	assert len(list(Activation.mods())) == 0
+	assert len(list(Activation().mods())) == 0
 
 	nonlin = b1.build('relu')
 	assert nonlin(torch.as_tensor(10)) == 10
@@ -104,73 +107,74 @@ def test_mod_product():
 
 
 
-# class MyModels(RegistryBuilder, nn.Module, default_ident='b'):
-# 	p1 = hparam(required=True)
-# 	p2 = hparam(10)
-# 	p3 = hparam('hello', inherit=True)
-# 	p4 = hparam((1,2,3), hidden=True)
-#
-#
-# class ModelA(RegisteredProduct, registry=MyModels, ident='a'):
-# 	p2 = hparam(20)
-#
-#
-# class ModelB(RegisteredProduct, registry=MyModels, ident='b'):
-# 	p1 = hparam(required=True)
-# 	p2 = hparam(10)
-#
-#
-# class ModelC(RegisteredProduct, registry=MyModels, ident='c'):
-# 	p1 = hparam(required=True)
-# 	p2 = hparam(10)
-#
-#
-# class ModelD(RegisteredProduct, registry=MyModels, ident='d'):
-# 	p1 = hparam(required=True)
-# 	p2 = hparam(10)
+class MyModels(MatchingBuilder, RegistryBuilder, nn.Module, default_ident='b'):
+	p1 = hparam(required=True)
+	p2 = hparam(10)
+	p3 = hparam('hello', inherit=True)
+	p4 = hparam((1,2,3), hidden=True)
+
+
+class ModelA(RegisteredProduct, registry=MyModels, ident='a'):
+	p2 = hparam(20)
+
+
+class ModelB(RegisteredProduct, registry=MyModels, ident='b'):
+	p1 = hparam(required=True)
+	p2 = hparam(10)
+
+
+class ModelC(RegisteredProduct, registry=MyModels, ident='c'):
+	p1 = hparam(required=True)
+	p2 = hparam(10)
+
+
+class ModelD(RegisteredProduct, registry=MyModels, ident='d'):
+	p1 = hparam(required=True)
+	p2 = hparam(10)
+
 
 
 def test_param_product():
 
-	assert len(MyModels.available_products()) == 4
+	assert len(MyModels().available_products()) == 4
 
-	hparams = dict(MyModels.named_hyperparameters())
+	hparams = dict(MyModels().named_hyperparameters())
 	assert len(hparams) == 4
 	assert tuple(sorted(hparams.keys())) == ('ident', 'p1', 'p2', 'p3') # p4 is hidden
-	assert len(list(MyModels.named_hyperparameters(hidden=True))) == 5
+	assert len(list(MyModels().named_hyperparameters(hidden=True))) == 5
 
-	assert hparams['p1'] is MyModels.get_hparam('p1')
+	assert hparams['p1'] is MyModels().get_hparam('p1')
 
-	assert MyModels.p2 == 10
-	assert ModelA.p2 == 20
-	assert MyModels.product('a').p2 == 20
+	assert MyModels().p2 == 10
+	assert ModelA().p2 == 20
+	assert MyModels().product('a')().p2 == 20
 	builder = MyModels()
 	assert builder.p2 == 10
 	assert ModelA().p2 == 20
-	assert builder.build('a').p2 == 20
-	assert ModelA.build().p2 == 20
+	assert builder.build('a').p2 == 10
+	assert ModelA().build().p2 == 20
 
 	a = ModelA(p2=50)
 	assert a.build().p2 == 20
 	assert a.build(p2=50).p2 == 50
-	assert a.build_replica().p2 == 50
+	# assert a.build_replica().p2 == 50
 
 	assert isinstance(ModelA(), ModelA)
-	assert isinstance(ModelA.build(), ModelA)
+	assert isinstance(ModelA().build(), ModelA)
 	assert isinstance(builder.build('a'), ModelA)
 
 	assert builder.build('b').p2 == 10
 	assert builder.build('d').p2 == 10
 
-	a = MyModels.build('a', p2=100)
+	a = MyModels().build('a', p2=100)
 
-	assert MyModels.p2 == 10
-	assert ModelA.p2 == 20
+	assert MyModels().p2 == 10
+	assert ModelA().p2 == 20
 	assert a.p2 == 100
 
 	builder = MyModels(p2=50) # TODO
 
-	assert MyModels.p2 == 10
+	assert MyModels().p2 == 10
 	assert builder.p2 == 50
 	b = builder.build()
 	assert b.p2 == 50
