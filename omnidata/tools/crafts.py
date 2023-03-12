@@ -418,6 +418,22 @@ class SpaceCraft(CachedPropertyCraft): # TransformCraft
 
 
 
+class SpecSpaceCraft(SpaceCraft):
+	class Skill(SpaceCraft.Skill):
+		_base : 'SpecSpaceCraft'
+		def is_missing(self, gizmo: str = None):
+			if gizmo is None:
+				gizmo = self.label
+			return self._base._is_missing(self._instance, gizmo)
+
+
+	def _is_missing(self, instance: AbstractCrafty, gizmo: str = None):
+		try:
+			return self._space_of(instance, gizmo) is None
+		except AttributeError:
+			return True
+
+
 class ContextualSpaceCraft(SpaceCraft):
 	pass
 
