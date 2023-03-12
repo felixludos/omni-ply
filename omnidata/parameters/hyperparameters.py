@@ -18,12 +18,15 @@ prt.addHandler(ch)
 class DefaultProperty:
 	_unknown = object()
 
-	def __init__(self, default=unspecified_argument, *, fget=None, fset=None, fdel=None, cache=True, **kwargs):
+	def __init__(self, default=unspecified_argument, *, fget=None, fset=None, fdel=None, cache=True,
+	             attrname=None, **kwargs):
 		if default is unspecified_argument:
 			default = self._unknown
 		fget, default = self._check_fget(fget, default)
 		super().__init__(**kwargs)
-		self.attrname = None
+		self.attrname = attrname
+		if not cache:
+			raise NotImplementedError('cache=False not implemented') # TODO: implement
 		self.cache = cache
 		self.default = default
 		self.fget = fget
@@ -34,7 +37,7 @@ class DefaultProperty:
 	def _check_fget(self, fget=None, default=unspecified_argument):
 		if fget is None:
 			if callable(default) and not isinstance(default, type) and default.__qualname__ != default.__name__:
-				return default, unspecified_argument  # decorator has no other args
+				return default, self._unknown  # decorator has no other args
 			return None, default  # no fget provided (optionally can be added with __call__)
 		return fget, default  # fget was specified as keyword argument
 
@@ -60,6 +63,14 @@ class DefaultProperty:
 	def __get__(self, instance, owner=None):
 		if instance is None:
 			return self
+		return self.get_value(instance, owner=owner)
+
+
+	def get_value(self, instance=None, owner=None):
+		if instance is None:
+			if self.default is self._unknown:
+				raise self._MissingValueError(f'No default value for {self.attrname!r} (must include instance)')
+			return self.default
 		if self.attrname is None:
 			raise TypeError(
 				"Cannot use cached_property instance without calling __set_name__ on it.")
@@ -91,6 +102,10 @@ class DefaultProperty:
 
 
 	def __set__(self, instance, value):
+		self.update_value(instance, value)
+
+
+	def update_value(self, instance, value):
 		if self.fset is None:
 			return instance.__dict__.setdefault(self.attrname, value)
 
@@ -103,6 +118,10 @@ class DefaultProperty:
 
 
 	def __delete__(self, instance):
+		self.remove_value(instance)
+
+
+	def remove_value(self, instance):
 		if self.fdel is None:
 			return delattr(instance, self.attrname)
 
@@ -118,19 +137,27 @@ class DefaultProperty:
 		return self.getter(fn)
 
 
+	def copy(self, **kwargs):
+		return self.__class__(default=self.default, fget=self.fget, fset=self.fset, fdel=self.fdel,
+		                      cache=self.cache, attrname=self.attrname, **kwargs)
+
+
 	def getter(self, fget):
-		self.fget = fget
-		return self
+		new = self.copy()
+		new.fget = fget
+		return new
 
 
 	def setter(self, fset):
-		self.fset = fset
-		return self
+		new = self.copy()
+		new.fset = fset
+		return new
 
 
 	def deleter(self, fdel):
-		self.fdel = fdel
-		return self
+		new = self.copy()
+		new.fdel = fdel
+		return new
 
 
 

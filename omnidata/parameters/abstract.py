@@ -2,12 +2,16 @@ from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, 
 	Iterator, NamedTuple, ContextManager
 from omnibelt import agnostic, unspecified_argument
 
-from .errors import MissingBuilderError
+from .errors import MissingBuilderError, NoProductFound
 
 
 class AbstractHyperparameter:
 	def __get__(self, instance, owner):
 		raise NotImplementedError
+
+
+	def validate(self, value: Any):
+		return value
 
 
 
@@ -29,12 +33,13 @@ class AbstractParameterized:
 
 
 	@classmethod
-	def hyperparameters(cls):
-		raise NotImplementedError
+	def hyperparameters(cls, *, hidden=False):
+		for key, val in cls.named_hyperparameters(hidden=hidden):
+			yield val
 
 
 	@classmethod
-	def named_hyperparameters(cls):
+	def named_hyperparameters(cls, *, hidden=False):
 		raise NotImplementedError
 
 
@@ -78,6 +83,67 @@ class AbstractArgumentBuilder(AbstractBuilder):
 
 
 
+class AbstractMultiBuilder(AbstractArgumentBuilder, AbstractParameterized):
+	ident = None
+	_NoProductFound = NoProductFound
+
+
+	@classmethod
+	def product_names(cls):
+		for name, product in cls.named_products():
+			yield name
+
+
+	@classmethod
+	def products(cls):
+		for name, product in cls.named_products():
+			yield product
+
+
+	@classmethod
+	def named_products(cls):
+		raise NotImplementedError
+
+
+	def build(self, ident: Optional[str] = unspecified_argument, **kwargs):
+		if ident is unspecified_argument:
+			ident = self.ident
+		return super().build(ident=ident, **kwargs)
+
+
+	def _build_kwargs(self, product, ident: Optional[str] = unspecified_argument, **kwargs):
+		return super()._build_kwargs(product, **kwargs)
+
+
+	def validate(self, product):
+		if isinstance(product, str):
+			return self.build(product)
+		return product
+
+
+
+class AbstractRegistryBuilder(AbstractMultiBuilder):
+	@classmethod
+	def register_product(cls, name, product, *, is_default=False, **kwargs):
+		raise NotImplementedError
+
+
+
+class AbstractModular(AbstractParameterized):
+	@classmethod
+	def named_submodules(cls, *, hidden=False) -> Iterator[Tuple[str, 'AbstractSubmodule']]:
+		for name, param in cls.named_hyperparameters(hidden=hidden):
+			if isinstance(param, AbstractSubmodule):
+				yield name, param
+
+
+	@classmethod
+	def submodules(cls, *, hidden=False) -> Iterator['AbstractSubmodule']:
+		for name, param in cls.named_submodules(hidden=hidden):
+			yield param
+
+
+
 class AbstractSubmodule(AbstractHyperparameter):
 	def get_builder(self) -> Optional[AbstractBuilder]:
 		raise NotImplementedError
@@ -91,26 +157,43 @@ class AbstractSubmodule(AbstractHyperparameter):
 		return builder.build(*args, **kwargs)
 
 
+	def validate(self, product):
+		builder = self.get_builder()
+		if builder is None:
+			return super().validate(product)
+		return builder.validate(product)
 
-class AbstractSpec(Iterable):
-	def get(self, name, default=unspecified_argument) -> 'AbstractSpec':
-		raise NotImplementedError
 
-	@property
-	def base(self):
-		raise NotImplementedError
+	# def build_with_spec(self, owner, spec=None): # TODO: --> architect
+	# 	if spec is None:
+	# 		spec = owner.as_spec()
+	#
+	# 	builder = self.get_builder()
+	# 	if builder is None:
+	# 		raise self._MissingBuilderError(f'No builder for {self}')
+	# 	return builder.build(*args, **kwargs)
 
-	@property
-	def name(self):
-		raise NotImplementedError
 
-	@property
-	def info(self):
-		raise NotImplementedError
 
-	@property
-	def is_default(self):
-		raise NotImplementedError
+# class AbstractSpec(Iterable):
+# 	def get(self, name, default=unspecified_argument) -> 'AbstractSpec':
+# 		raise NotImplementedError
+#
+# 	@property
+# 	def base(self):
+# 		raise NotImplementedError
+#
+# 	@property
+# 	def name(self):
+# 		raise NotImplementedError
+#
+# 	@property
+# 	def info(self):
+# 		raise NotImplementedError
+#
+# 	@property
+# 	def is_default(self):
+# 		raise NotImplementedError
 
 
 

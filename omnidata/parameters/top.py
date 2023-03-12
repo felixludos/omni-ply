@@ -1,15 +1,11 @@
-
-from omnibelt import agnostic, unspecified_argument
-
-from ..features import Prepared
-
 from .abstract import AbstractArgumentBuilder
 from .hyperparameters import InheritableHyperparameter
 from .parameterized import ModifiableParameterized, FingerprintedParameterized, InheritHparamsDecorator, HparamWrapper
-from .building import ConfigBuilder, BuildableBase, SelfAware, ModifiableProduct, \
-	MultiBuilderBase, RegistryBuilderBase, HierarchyBuilderBase, RegisteredProductBase
+from .building import ConfigBuilder, BuilderBase, BuildableBase, MultiBuilderBase, RegistryBuilderBase, \
+	HierarchyBuilderBase, RegisteredProductBase
 from .submodules import SubmoduleBase
-from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
+from .spec import SpeccedBuilder
+# from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
 
 
 
@@ -40,18 +36,15 @@ class with_hparam(HparamWrapper):
 # 	pass
 
 
-class Spec(StatusSpec, BuildableSpec):
-	# TODO: spec -> config (and config -> spec (?))
+# class Spec(StatusSpec, BuildableSpec):
+# 	# TODO: spec -> config (and config -> spec (?))
+# 	pass
+
+
+
+# class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameterized, PreparedParameterized):
+class Parameterized(ModifiableParameterized, FingerprintedParameterized):
 	pass
-
-
-
-class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameterized, PreparedParameterized):
-	# Hyperparameter = Hyperparameter
-	# Submodule = Submodule
-	_Spec = Spec
-
-
 
 
 
@@ -59,29 +52,28 @@ class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameter
 
 
 
-class BasicBuilder(ConfigBuilder, BuilderSpecced, Parameterized): # AutoBuilder
+# class BasicBuilder(ConfigBuilder, BuilderSpecced, Parameterized): # AutoBuilder
+# 	pass
+
+
+
+class Builder(Parameterized, SpeccedBuilder, AbstractArgumentBuilder):#(ConfigBuilder, Parameterized):
+	#, inheritable_auto_methods=['product_base']):
 	pass
 
 
 
-class Builder(ModifiableProduct, BasicBuilder):#, inheritable_auto_methods=['product_base']):
+class Buildable(Builder, BuildableBase):
 	pass
 
 
 
-class Buildable(SelfAware, Builder):
+class MultiBuilder(Builder, MultiBuilderBase):#, wrap_existing=True):
 	pass
 
 
 
-class MultiBuilder(Builder, MultiBuilderBase, BasicBuilder):#, wrap_existing=True):
-	@agnostic
-	def product_base(self, *args, **kwargs):
-		return super(ModifiableProduct, self).product(*args, **kwargs)
-
-
-
-class RegistryBuilder(MultiBuilder, RegistryBuilderBase, create_registry=False):
+class RegistryBuilder(Builder, RegistryBuilderBase, create_registry=False):
 	pass
 
 

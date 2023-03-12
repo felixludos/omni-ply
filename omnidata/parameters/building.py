@@ -5,7 +5,8 @@ from omnibelt import unspecified_argument, Class_Registry, agnostic, Modifiable,
 from omnibelt.tricks import auto_methods, dynamic_capture, extract_function_signature
 import omnifig as fig
 
-from .abstract import AbstractBuilder, AbstractParameterized, AbstractArgumentBuilder
+from .abstract import AbstractBuilder, AbstractParameterized, AbstractArgumentBuilder, \
+	AbstractMultiBuilder, AbstractRegistryBuilder
 from .errors import NoProductFound
 from .hyperparameters import HyperparameterBase
 from .parameterized import ParameterizedBase
@@ -23,49 +24,43 @@ class BuilderBase(ParameterizedBase, AbstractBuilder):
 
 
 
-class BuildableBase(BuilderBase, AbstractArgumentBuilder):
-	@classmethod
-	def product(cls, *args, **kwargs) -> Type:
-		return cls
+# class SelfAware(BuildableBase):
+# 	pass
+# # 	# TODO: maybe replace with SpecBuilder (or at least standardize behavior for stateful builders)
+# #
+# # 	def _populate_existing(self, target, existing=None):
+# # 		if existing is None:
+# # 			existing = {}
+# # 		for name, _ in target.named_hyperparameters(hidden=True):
+# # 			if name not in existing:
+# # 				try:
+# # 					value = getattr(self, name, unspecified_argument)
+# # 				except self.Hyperparameter.MissingValueError:
+# # 					continue
+# # 				if value is not unspecified_argument:
+# # 					if isinstance(value, SelfAware):
+# # 						value = value.build_replica()
+# # 					existing[name] = value
+# # 		return existing
+# #
+# #
+# # 	def build_replica(self, *args, **kwargs):
+# # 		product = self.product(*args, **kwargs)
+# # 		fixed_args, necessary_kwargs, missing = extract_function_signature(product, args=args, kwargs=kwargs,
+# # 		                                                               allow_positional=False, include_missing=True,
+# # 		                                                               default_fn=self._find_missing_hparam(self))
+# # 		assert not len(missing), f'Could not find values for {missing} in {self}'
+# # 		fixed_kwargs = self._populate_existing(product, necessary_kwargs)
+# # 		return product(*fixed_args, **fixed_kwargs)
 
 
 
-class SelfAware(BuildableBase):
-	pass
-# 	# TODO: maybe replace with SpecBuilder (or at least standardize behavior for stateful builders)
-#
-# 	def _populate_existing(self, target, existing=None):
-# 		if existing is None:
-# 			existing = {}
-# 		for name, _ in target.named_hyperparameters(hidden=True):
-# 			if name not in existing:
-# 				try:
-# 					value = getattr(self, name, unspecified_argument)
-# 				except self.Hyperparameter.MissingValueError:
-# 					continue
-# 				if value is not unspecified_argument:
-# 					if isinstance(value, SelfAware):
-# 						value = value.build_replica()
-# 					existing[name] = value
-# 		return existing
-#
-#
-# 	def build_replica(self, *args, **kwargs):
-# 		product = self.product(*args, **kwargs)
-# 		fixed_args, necessary_kwargs, missing = extract_function_signature(product, args=args, kwargs=kwargs,
-# 		                                                               allow_positional=False, include_missing=True,
-# 		                                                               default_fn=self._find_missing_hparam(self))
-# 		assert not len(missing), f'Could not find values for {missing} in {self}'
-# 		fixed_kwargs = self._populate_existing(product, necessary_kwargs)
-# 		return product(*fixed_args, **fixed_kwargs)
-
-
-
-class ConfigBuilder(BuilderBase, fig.Configurable):
+class ConfigBuilder(BuilderBase, AbstractArgumentBuilder, fig.Configurable):
 	class _config_builder_type(fig.Configurable._config_builder_type):
 		def __init__(self, product, config, *, target_name='__init__', silent=None):
 			super().__init__(product, config, silent=silent)
 			self.target_name = target_name
+
 
 		def build(self, *args, **kwargs):
 			init_capture = dynamic_capture(self.configurable_parents(self.product),
@@ -82,9 +77,11 @@ class ConfigBuilder(BuilderBase, fig.Configurable):
 			init_capture.deactivate()
 			return obj
 
+
 	@classmethod
 	def _config_builder(cls, config, silent=None, target_name='__init__'):
-		return cls._config_builder_type(cls, config, target_name=target_name, silent=silent)
+		return cls._config_builder_type(cls(), config, target_name=target_name, silent=silent)
+
 
 	@classmethod
 	def build_from_config(cls, config, args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None, *,
@@ -94,6 +91,15 @@ class ConfigBuilder(BuilderBase, fig.Configurable):
 		if kwargs is None:
 			kwargs = {}
 		return cls._config_builder(config, target_name='build', silent=silent).build(*args, **kwargs)
+
+
+	def build(self, *args, **kwargs):
+		product = self.product(*args, **kwargs)
+		kwargs = self._build_kwargs(product, *args, **kwargs)
+		config = self.my_config
+		if config is not None and issubclass(product, fig.Configurable):
+			return product.init_from_config(config, kwargs=kwargs)
+		return product(**kwargs)
 
 
 
@@ -174,6 +180,11 @@ class BuildCreator(fig.Node.DefaultCreator): # creates using build() instead of 
 
 
 
+class BuildableBase(ModifiableProduct, BuilderBase, AbstractArgumentBuilder):
+	@classmethod
+	def product_base(cls, *args, **kwargs) -> Type:
+		return cls
+
 
 
 # class AutoBuilder(BuilderBase, auto_methods, wrap_mro_until=True, # TODO: buildable should include __init__
@@ -215,14 +226,14 @@ get_builder = builder_registry.get_class
 
 
 
-class MultiBuilderBase(BuilderBase, AbstractArgumentBuilder):
+class IdentBuilder(AbstractMultiBuilder):
 	_IdentParameter = HyperparameterBase
 
 	def __init_subclass__(cls, _register_ident=True, default_ident=None, **kwargs):
 		super().__init_subclass__(**kwargs)
 		if _register_ident:
 			cls.ident = cls._IdentParameter(required=True).setup(cls, 'ident')
-			# cls._register_hparam('ident', cls._IdentParameter(name='ident', required=True), prepend=True)
+		# cls._register_hparam('ident', cls._IdentParameter(name='ident', required=True), prepend=True)
 
 
 	def __init__(self, ident=unspecified_argument, **kwargs):
@@ -231,22 +242,25 @@ class MultiBuilderBase(BuilderBase, AbstractArgumentBuilder):
 			self.ident = ident
 
 
-	def available_products(self):
-		return {}
-
-
 	def build(self, ident: Optional[str] = unspecified_argument, **kwargs):
 		if ident is unspecified_argument:
 			ident = self.ident
 		return super().build(ident=ident, **kwargs)
 
 
-	def _build_kwargs(self, product, ident: Optional[str] = unspecified_argument, **kwargs):
-		return super()._build_kwargs(product, **kwargs)
+
+class MultiBuilderBase(ModifiableProduct, IdentBuilder):
+	@classmethod
+	def available_products(cls):
+		return {}
 
 
-	_NoProductFound = NoProductFound
-	def product(self, ident: Optional[str] = unspecified_argument, **kwargs):
+	@classmethod
+	def named_products(cls):
+		yield from cls.available_products().items()
+
+
+	def product_base(self, ident: Optional[str] = unspecified_argument, **kwargs):
 		if ident is None:
 			ident = self.ident
 		product = self.available_products().get(ident, None)
@@ -255,15 +269,9 @@ class MultiBuilderBase(BuilderBase, AbstractArgumentBuilder):
 		return product
 
 
-	def validate(self, product):
-		if isinstance(product, str):
-			return self.build(product)
-		return product
 
-
-
-class RegistryBuilderBase(MultiBuilderBase):
-	class _IdentParameter(MultiBuilderBase._IdentParameter):
+class RegistryBuilderBase(ModifiableProduct, IdentBuilder):
+	class _IdentParameter(IdentBuilder._IdentParameter):
 		_IdentSpace = spaces.Selection
 		def __init__(self, *, space=None, **kwargs):
 			if space is None:
@@ -279,7 +287,8 @@ class RegistryBuilderBase(MultiBuilderBase):
 			return self
 
 
-	_product_registry_type = Class_Registry
+	class _product_registry_type(Class_Registry, components=['owner']): pass
+	_product_registry_owner = None
 	_product_registry = None
 
 	_default_products = None # these are inherited when set (unless overridden in __init_subclass__)
@@ -300,6 +309,7 @@ class RegistryBuilderBase(MultiBuilderBase):
 		super().__init_subclass__(_register_ident=create_registry, **kwargs)
 		if create_registry:
 			cls._product_registry = cls._product_registry_type()
+			cls._product_registry_owner = cls
 			for name, prod in products.items():
 				cls.register_product(name, prod)
 
@@ -324,7 +334,13 @@ class RegistryBuilderBase(MultiBuilderBase):
 			registry_name = cls.__name__ if isinstance(cls, type) else cls.__class__.__name__
 			raise NotImplementedError(f'{registry_name} doesnt have a product registry')
 		cls._register_ident(name, is_default=is_default)
-		return registry.new(name, product, **kwargs)
+		return registry.new(name, product, owner=cls, **kwargs)
+
+
+	@classmethod
+	def named_products(cls):
+		for key, entry in cls._product_registry.items():
+			yield key, entry.cls
 
 
 	class _product_registration_decorator:
@@ -354,11 +370,7 @@ class RegistryBuilderBase(MultiBuilderBase):
 		return entry
 
 
-	def available_products(self):
-		return {ident: entry.cls for ident, entry in self._product_registry.items()}
-
-
-	def product(self, ident: Optional[str] = unspecified_argument, **kwargs):
+	def product_base(self, ident: Optional[str] = unspecified_argument, **kwargs):
 		if ident is unspecified_argument:
 			ident = self.ident
 		entry = self.find_product_entry(ident)
@@ -367,18 +379,58 @@ class RegistryBuilderBase(MultiBuilderBase):
 
 
 class HierarchyBuilderBase(RegistryBuilderBase, create_registry=False):
-	def __init_subclass__(cls, branch=None, create_registry=None, **kwargs):
-		if branch is not None:
-			create_registry = create_registry is None or create_registry
-			cls._update_hierarchy_address(branch)
-		super().__init_subclass__(create_registry=create_registry, **kwargs)
+	_branch_registries = None
+	_branch_address = None
+	_branch_address_delimiter = '/'
 
-	_hierarchy_address = None
-	_hierarchy_address_delimiter = '/'
+	def __init_subclass__(cls, branch=None, create_registry=None, owners=None, **kwargs):
+		if branch is not None:
+			if owners is None:
+				owners = cls._product_registry_owner
+			create_registry = create_registry is None or create_registry
+			cls._branch_address = branch
+		super().__init_subclass__(create_registry=create_registry, **kwargs)
+		cls._branch_registries = []
+		cls._owner_registries = []
+		if owners is not None:
+			if isinstance(owners, type):
+				owners = [owners]
+			for owner in owners:
+				if issubclass(owner, HierarchyBuilderBase):
+					owner._branch_registries.append(cls)
+					# cls._owner_registries.append(owner)
+
+
 	@classmethod
-	def _update_hierarchy_address(cls, address):
-		cls._hierarchy_address = address if cls._hierarchy_address is None \
-			else f'{cls._hierarchy_address}{cls._hierarchy_address_delimiter}{address}'
+	def branch_registries(cls):
+		yield from cls._branch_registries
+
+
+	@classmethod
+	def registry_hierarchy(cls):
+		yield cls
+		for branch in cls._branch_registries:
+			yield from branch.registry_hierarchy()
+
+
+	@classmethod
+	def product_hierarchy(cls):
+		yield from cls.named_products()
+		for branch in cls._branch_registries:
+			for name, product in branch.product_hierarchy():
+				yield f'{branch._branch_address}{cls._branch_address_delimiter}{name}', product
+
+
+	@classmethod
+	def find_product_entry(cls, ident, default=unspecified_argument):
+		try:
+			return super().find_product_entry(ident, default=default)
+		except cls._NoProductFound:
+			for branch in cls._branch_registries:
+				prefix = f'{branch._branch_address}{cls._branch_address_delimiter}'
+				if ident.startswith(prefix):
+					return branch.find_product_entry(ident[len(prefix):], default=default)
+			raise
 
 
 

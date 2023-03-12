@@ -50,7 +50,7 @@ class DistributionalManifold(ManifoldStream):
 
 
 
-class StochasticManifold(DistributionalManifold, DeterministicManifold):
+class NoisyManifold(DistributionalManifold, DeterministicManifold):
 	def _decode_distrib_from_mean(self, mean):
 		raise NotImplementedError
 
@@ -60,8 +60,8 @@ class StochasticManifold(DistributionalManifold, DeterministicManifold):
 
 
 
-class Noisy(StochasticManifold):
-	noise_std = hparam(0., space=spaces.HalfBound(min=0.))#, alias='noise-std')
+class Noisy(NoisyManifold):
+	noise_std = hparam(0.1, space=spaces.HalfBound(min=0.))#, alias='noise-std')
 
 
 	def _decode_distrib_from_mean(self, mean):

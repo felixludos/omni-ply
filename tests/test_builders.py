@@ -58,7 +58,7 @@ def test_reg_builder():
 	nonlin = Activation().product('tanh')
 	assert nonlin is nn.Tanh
 
-	assert len(Activation().available_products()) == 8
+	assert len(list(Activation().products())) == 8
 
 
 
@@ -136,7 +136,7 @@ class ModelD(RegisteredProduct, registry=MyModels, ident='d'):
 
 def test_param_product():
 
-	assert len(MyModels().available_products()) == 4
+	assert len(list(MyModels().products())) == 4
 
 	hparams = dict(MyModels().named_hyperparameters())
 	assert len(hparams) == 4
@@ -186,13 +186,13 @@ def test_param_product():
 
 
 
-def test_spec():
-
-	a = ModelA(p2=50)
-
-	spec = a.spec().prepare()
-
-	assert len(spec) == len(list(a.named_hyperparameters()))
+# def test_spec():
+#
+# 	a = ModelA(p2=50)
+#
+# 	spec = a.spec().prepare()
+#
+# 	assert len(spec) == len(list(a.named_hyperparameters()))
 
 
 

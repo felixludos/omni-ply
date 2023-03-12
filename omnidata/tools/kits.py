@@ -24,7 +24,27 @@ class SpacedTool(AbstractSpaced, AbstractTool):
 
 
 
-class CraftyKit(IndividualCrafty, SpacedTool, AbstractKit):
+class SpaceKit(IndividualCrafty, AbstractSpaced):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._spaces = {}
+
+
+	def _process_skill(self, src: Type[AbstractCrafty], key: str, craft: AbstractCraft, skill: LabelCraft.Skill):
+		super()._process_skill(src, key, craft, skill)
+		if isinstance(skill, SpaceCraft.Skill):
+			self._spaces.setdefault(skill.label, []).append(skill)
+
+
+	def space_of(self, gizmo: str):
+		if gizmo in self._spaces:
+			return self._spaces[gizmo][0].space_of(gizmo)
+		# return self._tools[gizmo].space_of(gizmo)
+		return super().space_of(gizmo)
+
+
+
+class CraftyKit(SpaceKit, SpacedTool, AbstractKit):
 	class _SkillTool(AbstractTool): # collects all skills (of the whole mro) of one gizmo
 		def __init__(self, label: str, **kwargs):
 			super().__init__(**kwargs)
@@ -60,7 +80,6 @@ class CraftyKit(IndividualCrafty, SpacedTool, AbstractKit):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._tools = {}
-		self._spaces = {}
 
 
 	def _process_skill(self, src: Type[AbstractCrafty], key: str, craft: AbstractCraft, skill: LabelCraft.Skill):
@@ -69,19 +88,10 @@ class CraftyKit(IndividualCrafty, SpacedTool, AbstractKit):
 			if skill.label not in self._tools:
 				self._tools[skill.label] = self._SkillTool(skill.label)
 			self._tools[skill.label].add(skill)
-		if isinstance(skill, SpaceCraft.Skill):
-			self._spaces.setdefault(skill.label, []).append(skill)
 
 
 	def has_gizmo(self, gizmo: str) -> bool:
 		return gizmo in self._tools
-
-
-	def space_of(self, gizmo: str):
-		if gizmo in self._spaces:
-			return self._spaces[gizmo][0].space_of(gizmo)
-		# return self._tools[gizmo].space_of(gizmo)
-		return super().space_of(gizmo)
 
 
 	def vendors(self, gizmo: str):
