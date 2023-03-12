@@ -78,17 +78,37 @@ class LinearBuilder(Builder):
 		return nn.Linear
 
 
-	def _build_kwargs(self, product, in_features=None, out_features=None, bias=None, **kwargs):
+	def _build_kwargs(self, product, *, in_features=None, out_features=None, bias=None, **kwargs):
 		kwargs = super()._build_kwargs(product, **kwargs)
 
 		if in_features is None:
 			in_features = self.din.width
+		kwargs['in_features'] = in_features
+		
 		if out_features is None:
 			out_features = self.dout.width
-
-		kwargs['in_features'] = in_features
 		kwargs['out_features'] = out_features
+		
 		return kwargs
+
+
+
+def test_spec():
+
+	dataset = Data().build('toy/swiss-roll', n_samples=100)
+
+	spec = Spec().include(dataset)
+	print(spec)
+
+	builder = LinearBuilder(blueprint=spec, application={'input': 'observation', 'output': 'target'})
+
+	model = builder.build()
+
+	print(model)
+
+
+	pass
+
 
 
 
@@ -111,31 +131,6 @@ class LinearBuilder(Builder):
 # 	@machine('output')
 # 	def forward(self, input):
 # 		return self.linear(input)
-
-
-
-
-
-def test_spec():
-
-	dataset = Data().build('toy/swiss-roll', n_samples=100)
-
-	spec = Spec().include(dataset)
-
-	print(spec)
-
-
-	builder = LinearBuilder()
-	builder.my_blueprint = spec
-
-	model = builder.build()
-
-
-
-
-	pass
-
-
 
 
 # class Autoencoder:

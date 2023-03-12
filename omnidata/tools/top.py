@@ -2,7 +2,7 @@
 
 from .crafts import MachineCraft, ContextedCraft, SpacedCraft, OptionalCraft, DefaultCraft, LoggingCraft, \
 	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft
-from .kits import MaterialedCrafty, AssessibleCrafty, SignaturedCrafty, RelabeledKit
+from .kits import MaterialedCrafty, AssessibleCrafty, SignaturedCrafty, RelabeledKit, ElasticCrafty
 from .context import SizedContext, DynamicContext, ScopeBase, Cached, SeededContext
 
 
@@ -52,9 +52,17 @@ class Guru(Context):
 
 
 
-class Industrial(MaterialedCrafty, SignaturedCrafty, RelabeledKit, AssessibleCrafty):
+class Industrial(ElasticCrafty, MaterialedCrafty, SignaturedCrafty, RelabeledKit, AssessibleCrafty):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._process_crafts()
+
+
+
+# class Elastic(ElasticCrafty):
+
+
+
+
 
 

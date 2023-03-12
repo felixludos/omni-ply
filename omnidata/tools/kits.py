@@ -1,12 +1,13 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable, Type, Set
 
-from omnibelt import method_decorator, agnostic, unspecified_argument
+from omnibelt import method_decorator, agnostic, unspecified_argument, filter_duplicates
 from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, SkilledCraft, IndividualCrafty
 
 from ..features import Prepared
 from ..structure import spaces
 
-from .abstract import AbstractSpaced, Loggable, AbstractAssessible, AbstractKit, SingleVendor, AbstractTool
+from .abstract import AbstractSpaced, Loggable, AbstractAssessible, AbstractKit, SingleVendor, AbstractTool, \
+	AbstractChangableSpace
 from .errors import ToolFailedError, MissingGizmoError
 from .crafts import ToolCraft, OptionalCraft, DefaultCraft, LabelCraft, SpaceCraft, InitCraft, ReplaceableCraft
 from .assessments import AbstractSignature, Signatured
@@ -24,7 +25,7 @@ class SpacedTool(AbstractSpaced, AbstractTool):
 
 
 
-class SpaceKit(IndividualCrafty, AbstractSpaced):
+class SpaceKit(IndividualCrafty, AbstractChangableSpace):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._spaces = {}
@@ -41,6 +42,17 @@ class SpaceKit(IndividualCrafty, AbstractSpaced):
 			return self._spaces[gizmo][0].space_of(gizmo)
 		# return self._tools[gizmo].space_of(gizmo)
 		return super().space_of(gizmo)
+
+
+	def change_space_of(self, gizmo: str, space: spaces.Dim):
+		if gizmo in self._spaces:
+			self._spaces[gizmo][0].change_space_of(gizmo, space)
+		else:
+			super().change_space_of(gizmo, space)
+
+	
+	def gizmos(self) -> Iterator[str]:
+		yield from filter_duplicates(super().gizmos(), self._spaces.keys())
 
 
 
@@ -108,13 +120,13 @@ class CraftyKit(SpaceKit, SpacedTool, AbstractKit):
 
 
 class ValidatedKit(CraftyKit):
-	@classmethod
-	def validate_label(cls, label):
+	@staticmethod
+	def validate_label(label):
 		return label
 
 
 
-class RelabeledKit(CraftyKit):
+class RelabeledKit(ValidatedKit):
 	_inherited_tool_relabels = None
 	def __init_subclass__(cls, replace=None, **kwargs): # {old_label: new_label}
 		if replace is None:
@@ -194,6 +206,20 @@ class AssessibleCrafty(CraftyKit, AbstractAssessible):
 
 
 
+class ElasticCrafty(ValidatedKit):
+	_application = None
+	def __init__(self, *args, application=None, **kwargs):
+		if application is None:
+			application = {}
+		super().__init__(*args, **kwargs)
+		self._application = application
+	
+	
+	@agnostic
+	def validate_label(self, label):
+		if self._application is None:
+			return label
+		return self._application.get(label, label)
 
 
 
