@@ -6,10 +6,13 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 from ..structure import spaces
 from ..tools.abstract import AbstractTool, AbstractContext, AbstractSpaced, AbstractChangableSpace, Gizmoed
 from ..tools.errors import ToolFailedError
+from ..tools.kits import SpaceKit
+from ..tools.context import DynamicContext
 from ..tools.kits import CraftyKit
 
 from .abstract import AbstractModular, AbstractSubmodule
 from .parameterized import ParameterizedBase
+from .building import BuilderBase
 
 
 class AbstractSpecced(AbstractSpaced):
@@ -29,9 +32,20 @@ class AbstractSpecced(AbstractSpaced):
 
 
 
-class AbstractSpec(Gizmoed, AbstractChangableSpace, AbstractContext):
+class AbstractSpec(AbstractChangableSpace, AbstractContext):
 	def sub(self, submodule) -> 'AbstractSpec':
 		raise NotImplementedError
+
+
+
+class Spec(DynamicContext, AbstractSpec):
+	def __init__(self, *, spaces=None, **kwargs):
+		super().__init__(**kwargs)
+		# self._owner = owner
+		self._spaces = {}
+		if spaces is not None:
+			self._spaces.update(spaces)
+
 
 	@property
 	def size(self):
@@ -39,16 +53,6 @@ class AbstractSpec(Gizmoed, AbstractChangableSpace, AbstractContext):
 	@property
 	def indices(self):
 		return [0]
-
-
-
-class Spec(AbstractSpec):
-	def __init__(self, *, spaces=None, **kwargs):
-		super().__init__(**kwargs)
-		# self._owner = owner
-		self._spaces = {}
-		if spaces is not None:
-			self._spaces.update(spaces)
 
 
 	def sub(self, submodule) -> 'AbstractSpec':
@@ -72,7 +76,9 @@ class Spec(AbstractSpec):
 
 
 	def space_of(self, gizmo: str) -> spaces.Dim:
-		return self._spaces[gizmo]
+		if gizmo in self._spaces:
+			return self._spaces[gizmo]
+		return super().space_of(gizmo)
 
 
 	def update_with(self, other: 'AbstractSpecced'):
@@ -87,15 +93,13 @@ class Spec(AbstractSpec):
 
 
 
-class Specced(ParameterizedBase, AbstractModular, AbstractSpecced, AbstractTool):
+class AutoSpec(AbstractSpecced):
 	_Spec = Spec
 	_my_blueprint = None
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs) # extracts hparams
 		self.my_blueprint = self._update_spec(self.my_blueprint)
-		self._fix_missing_spaces(self.my_blueprint)
-		self._create_missing_submodules(self.my_blueprint)
 
 
 	@property
@@ -109,10 +113,29 @@ class Specced(ParameterizedBase, AbstractModular, AbstractSpecced, AbstractTool)
 	def _update_spec(self, spec=None):
 		if spec is None:
 			spec = self._Spec()
-		return spec.update_with(self)
+		if '_my_blueprint' not in self.__dict__:
+			return spec.update_with(self)
+		return spec
+
+
+
+class Specced(AutoSpec, ParameterizedBase, SpaceKit, AbstractModular, AbstractTool):
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs) # extracts hparams
+		self._fix_missing_spaces(self.my_blueprint)
+		self._create_missing_submodules(self.my_blueprint)
 
 
 	def _fix_missing_spaces(self, spec):
+		for gizmo in self.gizmos():
+			try:
+				space = spec.space_of(gizmo)
+			except ToolFailedError:
+				continue
+			else:
+				setattr(self, gizmo, space)
+
 		pass
 
 
@@ -142,6 +165,8 @@ class Specced(ParameterizedBase, AbstractModular, AbstractSpecced, AbstractTool)
 
 
 
+class SpeccedBuilder(Specced, BuilderBase):
+	pass
 
 
 

@@ -1,8 +1,10 @@
 from .abstract import AbstractArgumentBuilder
 from .hyperparameters import InheritableHyperparameter
 from .parameterized import ModifiableParameterized, FingerprintedParameterized, InheritHparamsDecorator, HparamWrapper
-from .building import ConfigBuilder, BuildableBase, MultiBuilderBase, RegistryBuilderBase, HierarchyBuilderBase, RegisteredProductBase
+from .building import ConfigBuilder, BuilderBase, BuildableBase, MultiBuilderBase, RegistryBuilderBase, \
+	HierarchyBuilderBase, RegisteredProductBase
 from .submodules import SubmoduleBase
+from .spec import SpeccedBuilder
 # from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
 
 
@@ -55,7 +57,7 @@ class Parameterized(ModifiableParameterized, FingerprintedParameterized):
 
 
 
-class Builder(Parameterized):#(ConfigBuilder, Parameterized):
+class Builder(Parameterized, SpeccedBuilder, AbstractArgumentBuilder):#(ConfigBuilder, Parameterized):
 	#, inheritable_auto_methods=['product_base']):
 	pass
 
