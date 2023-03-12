@@ -1,7 +1,7 @@
 from typing import Optional, Any, Iterator, Hashable, Type
 from omnibelt import unspecified_argument
 
-from omnidata import spaces
+from ..structure import spaces
 
 from .errors import ToolFailedError, MissingGizmoError
 

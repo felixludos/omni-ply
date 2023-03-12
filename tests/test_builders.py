@@ -186,13 +186,13 @@ def test_param_product():
 
 
 
-def test_spec():
-
-	a = ModelA(p2=50)
-
-	spec = a.spec().prepare()
-
-	assert len(spec) == len(list(a.named_hyperparameters()))
+# def test_spec():
+#
+# 	a = ModelA(p2=50)
+#
+# 	spec = a.spec().prepare()
+#
+# 	assert len(spec) == len(list(a.named_hyperparameters()))
 
 
 

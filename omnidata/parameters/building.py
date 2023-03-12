@@ -242,6 +242,12 @@ class IdentBuilder(AbstractMultiBuilder):
 			self.ident = ident
 
 
+	def build(self, ident: Optional[str] = unspecified_argument, **kwargs):
+		if ident is unspecified_argument:
+			ident = self.ident
+		return super().build(ident=ident, **kwargs)
+
+
 
 class MultiBuilderBase(ModifiableProduct, IdentBuilder):
 	@classmethod

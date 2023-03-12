@@ -55,7 +55,7 @@ class Parameterized(ModifiableParameterized, FingerprintedParameterized):
 
 
 
-class Builder(ConfigBuilder, Parameterized):
+class Builder(Parameterized):#(ConfigBuilder, Parameterized):
 	#, inheritable_auto_methods=['product_base']):
 	pass
 
@@ -66,17 +66,17 @@ class Buildable(Builder, BuildableBase):
 
 
 
-class MultiBuilder(MultiBuilderBase, Builder):#, wrap_existing=True):
+class MultiBuilder(Builder, MultiBuilderBase):#, wrap_existing=True):
 	pass
 
 
 
-class RegistryBuilder(RegistryBuilderBase, Builder, create_registry=False):
+class RegistryBuilder(Builder, RegistryBuilderBase, create_registry=False):
 	pass
 
 
 
-class HierarchyBuilder(HierarchyBuilderBase, RegistryBuilder, create_registry=False):
+class HierarchyBuilder(RegistryBuilder, HierarchyBuilderBase, create_registry=False):
 	pass
 
 
