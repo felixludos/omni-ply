@@ -97,9 +97,11 @@ class AutoSpec(AbstractSpecced):
 	_Spec = Spec
 	_my_blueprint = None
 
-	def __init__(self, *args, **kwargs):
+	def __init__(self, *args, blueprint=None, **kwargs):
+		if blueprint is None:
+			blueprint = self.my_blueprint
 		super().__init__(*args, **kwargs) # extracts hparams
-		self.my_blueprint = self._update_spec(self.my_blueprint)
+		self.my_blueprint = self._update_spec(blueprint)
 
 
 	@property
@@ -120,7 +122,6 @@ class AutoSpec(AbstractSpecced):
 
 
 class Specced(AutoSpec, ParameterizedBase, SpaceKit, AbstractModular, AbstractTool):
-
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs) # extracts hparams
 		self._fix_missing_spaces(self.my_blueprint)
@@ -128,15 +129,13 @@ class Specced(AutoSpec, ParameterizedBase, SpaceKit, AbstractModular, AbstractTo
 
 
 	def _fix_missing_spaces(self, spec):
-		for gizmo in self.gizmos():
+		for gizmo, craft in self._spaces.items():
 			try:
 				space = spec.space_of(gizmo)
 			except ToolFailedError:
 				continue
 			else:
-				setattr(self, gizmo, space)
-
-		pass
+				craft.update_value(self, space)
 
 
 	def _create_missing_submodules(self, spec):

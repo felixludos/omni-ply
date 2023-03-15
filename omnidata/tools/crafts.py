@@ -58,7 +58,13 @@ class CopyCraft(LabelCraft):
 
 
 
-class ReplaceableCraft(CopyCraft):
+class ValidatedCraft(CopyCraft):
+	def _validate_label(self, owner, label):  # TODO: may be unnecessary (-> split into a subclass)
+		return owner.validate_label(label)
+
+
+
+class ReplaceableCraft(ValidatedCraft):
 	def __init__(self, label: str, *, replacements=None, **kwargs):
 		if replacements is None:
 			replacements = {}
@@ -71,13 +77,7 @@ class ReplaceableCraft(CopyCraft):
 
 
 	def _validate_label(self, owner, label):
-		return self._replacements.get(label, label)
-
-
-
-class ValidatedCraft(ReplaceableCraft):
-	def _validate_label(self, owner, label):  # TODO: may be unnecessary (-> split into a subclass)
-		return owner.validate_label(label)
+		return super()._validate_label(owner, self._replacements.get(label, label))
 
 
 
@@ -401,6 +401,16 @@ class CachedPropertyCraft(ReplaceableCraft, cached_property):
 
 	def _get_instance_val(self, instance: AbstractCrafty):
 		return getattr(instance, self.attrname)
+
+
+	def update_value(self, instance: AbstractCrafty, value):
+		setattr(instance, self.attrname, value)
+
+	
+	def __set__(self, instance, value):
+		if instance is None:
+			return
+		self.update_value(instance, value)
 
 
 

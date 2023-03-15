@@ -65,7 +65,7 @@ def test_building():
 
 
 
-from omnidata import Spec, Builder
+from omnidata import Spec, Builder, Buildable
 
 
 
@@ -78,63 +78,60 @@ class LinearBuilder(Builder):
 		return nn.Linear
 
 
-	def _build_kwargs(self, product, in_features=None, out_features=None, bias=None, **kwargs):
+	def _build_kwargs(self, product, *, in_features=None, out_features=None, bias=None, **kwargs):
 		kwargs = super()._build_kwargs(product, **kwargs)
 
 		if in_features is None:
 			in_features = self.din.width
+		kwargs['in_features'] = in_features
+		
 		if out_features is None:
 			out_features = self.dout.width
-
-		kwargs['in_features'] = in_features
 		kwargs['out_features'] = out_features
+		
 		return kwargs
 
 
 
-# class Linear(nn.Linear):
-# 	din = space('input')
-# 	dout = space('output')
-#
-#
-# 	def comply(self, schema):
-# 		# check that set spaces are compatible with schema
-# 		# update missing (local) spaces
-# 		self.din = schema.space_of('input')
-# 		self.dout = schema.space_of('output')
-#
-#
-# 	def _prepare(self):
-# 		self.linear = nn.Linear(self.din.width, self.dout.width)
-#
-#
-# 	@machine('output')
-# 	def forward(self, input):
-# 		return self.linear(input)
-
-
-
-
-
 def test_spec():
-
 	dataset = Data().build('toy/swiss-roll', n_samples=100)
 
 	spec = Spec().include(dataset)
-
 	print(spec)
 
-
-	builder = LinearBuilder()
-	builder.my_blueprint = spec
+	builder = LinearBuilder(blueprint=spec, relabeling={'input': 'observation', 'output': 'target'})
 
 	model = builder.build()
 
+	assert isinstance(model, nn.Linear)
+	assert model.din.width == 3
+	assert model.dout.width == 1
 
 
 
-	pass
+# class PytorchModel:
+# 	pass
 
+
+
+class Linear(Buildable, nn.Linear):
+	din = space('input')
+	dout = space('output')
+	
+	
+	class _Builder(SimpleBuilder):
+		def _build_kwargs(self, product, *, in_features=None, out_features=None, bias=None, **kwargs):
+			kwargs = super()._build_kwargs(product, **kwargs)
+			
+			if in_features is None:
+				in_features = self.din.width
+			kwargs['in_features'] = in_features
+			
+			if out_features is None:
+				out_features = self.dout.width
+			kwargs['out_features'] = out_features
+			
+			return kwargs
 
 
 

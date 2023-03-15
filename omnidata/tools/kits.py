@@ -1,6 +1,6 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable, Type, Set
 
-from omnibelt import method_decorator, agnostic, unspecified_argument
+from omnibelt import method_decorator, agnostic, unspecified_argument, filter_duplicates
 from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, SkilledCraft, IndividualCrafty
 
 from ..features import Prepared
@@ -41,6 +41,10 @@ class SpaceKit(IndividualCrafty, AbstractSpaced):
 			return self._spaces[gizmo][0].space_of(gizmo)
 		# return self._tools[gizmo].space_of(gizmo)
 		return super().space_of(gizmo)
+
+	
+	def gizmos(self) -> Iterator[str]:
+		yield from filter_duplicates(super().gizmos(), self._spaces.keys())
 
 
 
@@ -108,13 +112,13 @@ class CraftyKit(SpaceKit, SpacedTool, AbstractKit):
 
 
 class ValidatedKit(CraftyKit):
-	@classmethod
-	def validate_label(cls, label):
+	@staticmethod
+	def validate_label(label):
 		return label
 
 
 
-class RelabeledKit(CraftyKit):
+class RelabeledKit(ValidatedKit):
 	_inherited_tool_relabels = None
 	def __init_subclass__(cls, replace=None, **kwargs): # {old_label: new_label}
 		if replace is None:
@@ -194,6 +198,20 @@ class AssessibleCrafty(CraftyKit, AbstractAssessible):
 
 
 
+class ElasticCrafty(ValidatedKit):
+	_relabeling = None
+	def __init__(self, *args, relabeling=None, **kwargs):
+		if relabeling is None:
+			relabeling = {}
+		super().__init__(*args, **kwargs)
+		self._relabeling = relabeling
+	
+	
+	@agnostic
+	def validate_label(self, label):
+		if self._relabeling is None:
+			return label
+		return self._relabeling.get(label, label)
 
 
 
