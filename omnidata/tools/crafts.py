@@ -404,7 +404,7 @@ class CachedPropertyCraft(ReplaceableCraft, cached_property):
 
 
 	def update_value(self, instance: AbstractCrafty, value):
-		setattr(instance, self.attrname, value)
+		instance.__dict__[self.attrname] = value
 
 	
 	def __set__(self, instance, value):
@@ -419,29 +419,31 @@ class SpaceCraft(CachedPropertyCraft): # TransformCraft
 		_base: 'SpaceCraft'
 
 
+		def change_space_of(self, gizmo: str, space: str):
+			return self._base._change_space_of(self._instance, gizmo, space)
+
+
 		def space_of(self, gizmo: str):
 			return self._base._space_of(self._instance, gizmo)
+
+
+		def is_missing(self, gizmo: str = None):
+			if gizmo is None:
+				gizmo = self.label
+			return self._base._is_missing(self._instance, gizmo)
+	
+	
+	def _change_space_of(self, instance: AbstractCrafty, gizmo, space):
+		self.update_value(instance, space)
 
 
 	def _space_of(self, instance: AbstractCrafty, gizmo: str = None):
 		return self._get_instance_val(instance)
 
 
-
-class SpecSpaceCraft(SpaceCraft):
-	class Skill(SpaceCraft.Skill):
-		_base : 'SpecSpaceCraft'
-		def is_missing(self, gizmo: str = None):
-			if gizmo is None:
-				gizmo = self.label
-			return self._base._is_missing(self._instance, gizmo)
-
-
 	def _is_missing(self, instance: AbstractCrafty, gizmo: str = None):
-		try:
-			return self._space_of(instance, gizmo) is None
-		except AttributeError:
-			return True
+		return self.func is None and self.attrname not in instance.__dict__
+
 
 
 class ContextualSpaceCraft(SpaceCraft):

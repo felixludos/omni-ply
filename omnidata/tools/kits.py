@@ -6,7 +6,8 @@ from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, Skille
 from ..features import Prepared
 from ..structure import spaces
 
-from .abstract import AbstractSpaced, Loggable, AbstractAssessible, AbstractKit, SingleVendor, AbstractTool
+from .abstract import AbstractSpaced, Loggable, AbstractAssessible, AbstractKit, SingleVendor, AbstractTool, \
+	AbstractChangableSpace
 from .errors import ToolFailedError, MissingGizmoError
 from .crafts import ToolCraft, OptionalCraft, DefaultCraft, LabelCraft, SpaceCraft, InitCraft, ReplaceableCraft
 from .assessments import AbstractSignature, Signatured
@@ -24,7 +25,7 @@ class SpacedTool(AbstractSpaced, AbstractTool):
 
 
 
-class SpaceKit(IndividualCrafty, AbstractSpaced):
+class SpaceKit(IndividualCrafty, AbstractChangableSpace):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._spaces = {}
@@ -41,6 +42,17 @@ class SpaceKit(IndividualCrafty, AbstractSpaced):
 			return self._spaces[gizmo][0].space_of(gizmo)
 		# return self._tools[gizmo].space_of(gizmo)
 		return super().space_of(gizmo)
+
+	
+	def gizmos(self) -> Iterator[str]:
+		yield from filter_duplicates(super().gizmos(), self._spaces.keys())
+
+
+	def change_space_of(self, gizmo: str, space: spaces.Dim):
+		if gizmo in self._spaces:
+			self._spaces[gizmo][0].change_space_of(gizmo, space)
+		else:
+			super().change_space_of(gizmo, space)
 
 	
 	def gizmos(self) -> Iterator[str]:
@@ -199,19 +211,19 @@ class AssessibleCrafty(CraftyKit, AbstractAssessible):
 
 
 class ElasticCrafty(ValidatedKit):
-	_relabeling = None
-	def __init__(self, *args, relabeling=None, **kwargs):
-		if relabeling is None:
-			relabeling = {}
+	_application = None
+	def __init__(self, *args, application=None, **kwargs):
+		if application is None:
+			application = {}
 		super().__init__(*args, **kwargs)
-		self._relabeling = relabeling
+		self._application = application
 	
 	
 	@agnostic
 	def validate_label(self, label):
-		if self._relabeling is None:
+		if self._application is None:
 			return label
-		return self._relabeling.get(label, label)
+		return self._application.get(label, label)
 
 
 

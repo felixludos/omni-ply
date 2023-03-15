@@ -134,7 +134,6 @@ class Linear(Buildable, nn.Linear):
 			return kwargs
 
 
-
 # class Autoencoder:
 # 	encoder = submodule(builder='encoder')
 # 	decoder = submodule(builder='decoder')

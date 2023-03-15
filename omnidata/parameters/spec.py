@@ -126,16 +126,26 @@ class Specced(AutoSpec, ParameterizedBase, SpaceKit, AbstractModular, AbstractTo
 		super().__init__(*args, **kwargs) # extracts hparams
 		self._fix_missing_spaces(self.my_blueprint)
 		self._create_missing_submodules(self.my_blueprint)
-
-
+	
+	
+	def _missing_spaces(self) -> Iterator[str]:
+		for gizmo, skills in self._spaces.items():
+			if len(skills) == 0:
+				yield gizmo
+			else:
+				skill = skills[0]
+				if skill.is_missing():
+					yield gizmo
+	
+	
 	def _fix_missing_spaces(self, spec):
-		for gizmo, craft in self._spaces.items():
+		for gizmo in self._missing_spaces():
 			try:
 				space = spec.space_of(gizmo)
 			except ToolFailedError:
 				continue
 			else:
-				craft.update_value(self, space)
+				self.change_space_of(gizmo, space)
 
 
 	def _create_missing_submodules(self, spec):

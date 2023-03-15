@@ -238,6 +238,7 @@ class AbstractChangableSpace(AbstractSpaced): # TODO: build into `space` crafts
 		raise NotImplementedError
 
 
+
 class AbstractSchema(AbstractSpaced):
 	pass
 
