@@ -165,7 +165,7 @@ class Specced(AutoSpec, ParameterizedBase, SpaceKit, AbstractModular, AbstractTo
 
 
 
-class SpeccedBuilder(Specced, BuilderBase):
+class SpeccedBuilder(Specced, BuilderBase): # ---> architect
 	pass
 
 
