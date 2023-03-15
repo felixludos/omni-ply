@@ -58,7 +58,13 @@ class CopyCraft(LabelCraft):
 
 
 
-class ReplaceableCraft(CopyCraft):
+class ValidatedCraft(CopyCraft):
+	def _validate_label(self, owner, label):  # TODO: may be unnecessary (-> split into a subclass)
+		return owner.validate_label(label)
+
+
+
+class ReplaceableCraft(ValidatedCraft):
 	def __init__(self, label: str, *, replacements=None, **kwargs):
 		if replacements is None:
 			replacements = {}
@@ -71,13 +77,7 @@ class ReplaceableCraft(CopyCraft):
 
 
 	def _validate_label(self, owner, label):
-		return self._replacements.get(label, label)
-
-
-
-class ValidatedCraft(ReplaceableCraft):
-	def _validate_label(self, owner, label):  # TODO: may be unnecessary (-> split into a subclass)
-		return owner.validate_label(label)
+		return super()._validate_label(owner, self._replacements.get(label, label))
 
 
 
@@ -403,35 +403,47 @@ class CachedPropertyCraft(ReplaceableCraft, cached_property):
 		return getattr(instance, self.attrname)
 
 
+	def update_value(self, instance: AbstractCrafty, value):
+		instance.__dict__[self.attrname] = value
+
+	
+	def __set__(self, instance, value):
+		if instance is None:
+			return
+		self.update_value(instance, value)
+
+
 
 class SpaceCraft(CachedPropertyCraft): # TransformCraft
 	class Skill(CachedPropertyCraft.Skill):
 		_base: 'SpaceCraft'
 
 
+		def change_space_of(self, gizmo: str, space: str):
+			return self._base._change_space_of(self._instance, gizmo, space)
+
+
 		def space_of(self, gizmo: str):
 			return self._base._space_of(self._instance, gizmo)
+
+
+		def is_missing(self, gizmo: str = None):
+			if gizmo is None:
+				gizmo = self.label
+			return self._base._is_missing(self._instance, gizmo)
+	
+	
+	def _change_space_of(self, instance: AbstractCrafty, gizmo, space):
+		self.update_value(instance, space)
 
 
 	def _space_of(self, instance: AbstractCrafty, gizmo: str = None):
 		return self._get_instance_val(instance)
 
 
-
-class SpecSpaceCraft(SpaceCraft):
-	class Skill(SpaceCraft.Skill):
-		_base : 'SpecSpaceCraft'
-		def is_missing(self, gizmo: str = None):
-			if gizmo is None:
-				gizmo = self.label
-			return self._base._is_missing(self._instance, gizmo)
-
-
 	def _is_missing(self, instance: AbstractCrafty, gizmo: str = None):
-		try:
-			return self._space_of(instance, gizmo) is None
-		except AttributeError:
-			return True
+		return self.func is None and self.attrname not in instance.__dict__
+
 
 
 class ContextualSpaceCraft(SpaceCraft):

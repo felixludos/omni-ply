@@ -1,5 +1,5 @@
 from typing import Optional, Any, Iterator, Hashable, Type
-from omnibelt import unspecified_argument
+from omnibelt import unspecified_argument, filter_duplicates
 
 from ..structure import spaces
 
@@ -77,12 +77,7 @@ class AbstractKit(AbstractTool): # branch/router
 
 
 	def gizmos(self) -> Iterator[str]:
-		past = set()
-		for tool in self.tools():
-			for gizmo in tool.gizmos():
-				if gizmo not in past:
-					past.add(gizmo)
-					yield gizmo
+		yield from filter_duplicates(*[tool.gizmos() for tool in self.tools()])
 
 
 	def has_gizmo(self, gizmo: str) -> bool:
@@ -241,6 +236,7 @@ class AbstractSpaced:
 class AbstractChangableSpace(AbstractSpaced): # TODO: build into `space` crafts
 	def change_space_of(self, gizmo: str, space: spaces.Dim):
 		raise NotImplementedError
+
 
 
 class AbstractSchema(AbstractSpaced):
