@@ -163,6 +163,8 @@ class Autoencoder:
 	encoder = submodule(builder='encoder')
 	decoder = submodule(builder='decoder')
 
+	criterion = submodule(builder='similarity')
+
 	@machine('latent')
 	def encode(self, observation):
 		return self.encoder(observation)
@@ -469,103 +471,8 @@ class Depot(Container):
 
 
 
-
-
-
-
-
-
-
-
-
 # RE:RE:Materialed
 
-
-
-
-class ManifoldStream(Synthetic, Datastream, Seeded, Decoder, Generator):
-	class Batch(Synthetic, Datastream.Batch):
-		pass
-
-	@material.get_from_size(('mechanism', 'target'))
-	def generate_mechanism(self, N):
-		with self.force_rng(rng=self.rng):
-			return self.mechanism_space.sample(N)
-
-	# @material.get_from_size('observation')
-	def generate(self, N): # generates observations
-		return self.decode(self.generate_mechanism(N))
-
-	@machine('observation')
-	def decode(self, mechanism):
-		raise NotImplementedError
-
-
-
-class Stochastic(ManifoldStream):
-	@machine('observation')
-	def generate_observation_from_mechanism(self, mechanism):
-		with self.force_rng(rng=self.rng):
-			return self.decode_distrib(mechanism).sample()
-
-	def decode_distrib(self, mechanism):
-		return self._decode_distrib_from_mean(self.decode(mechanism))
-
-	def _decode_distrib_from_mean(self, mean):
-		raise NotImplementedError
-
-
-
-class Noisy(Stochastic):
-	noise_std = hparam(0., space=spaces.HalfBound(min=0.))#, alias='noise-std')
-
-	def _decode_distrib_from_mean(self, mean):
-		return NormalDistribution(mean, self.noise_std * torch.ones_like(mean))
-
-
-
-class SwissRoll(ManifoldStream):
-	Ax = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
-	Ay = hparam(21., space=spaces.HalfBound(min=0.))
-	Az = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
-
-	freq = hparam(0.5, space=spaces.HalfBound(min=0.))
-	tmin = hparam(3., space=spaces.HalfBound(min=0.))
-	tmax = hparam(9., space=spaces.HalfBound(min=0.))
-
-	@material.space('mechanism')
-	def mechanism_space(self):
-		return spaces.Joint(
-			spaces.Bound(min=self.tmin, max=self.tmax),
-			spaces.Bound(min=0., max=1.),
-		)
-
-	@machine('target')
-	def get_target_from_mechanism(self, mechanism):
-		return mechanism.narrow(-1,0,1)
-
-	@machine.space('target')
-	def target_space(self):
-		return self.mechanism_space[0]
-
-	@material.space('observation')
-	def observation_space(self):
-		return spaces.Joint(
-			spaces.Bound(min=-self.Ax * self.tmax, max=self.Ax * self.tmax),
-			spaces.Bound(min=0., max=self.Ay),
-			spaces.Bound(min=-self.Az * self.tmax, max=self.Az * self.tmax),
-		)
-
-	def decode(self, mechanism):
-		theta = mechanism.narrow(-1,0,1)
-		height = mechanism.narrow(-1,1,1)
-
-		pts = torch.cat([
-			self.Ax * theta * theta.mul(self.freq*np.pi).cos(),
-			self.Ay * height,
-			self.Az * theta * theta.mul(self.freq*np.pi).sin(),
-		], -1)
-		return pts
 
 
 build = classmethod
@@ -624,14 +531,14 @@ class ToyDataset(Dataset):
 	# def get_observation(self, indices):
 	# 	return self.observation.data[indices]
 
-	class ImageBuffer(Dataset.Buffer):
+	class _ImageBuffer(Dataset._Buffer):
 		def get_from(self, source, key):
 			imgs = super().get_from(source, key)
 			return imgs if self.space.as_bytes else imgs.float() / 255.
 
 	@material
 	def observation(self):
-		return self.ImageBuffer()
+		return self._ImageBuffer()
 	@observation.space
 	def observation_space(self):
 		size = (32, 32) if self.resize else (28, 28)
@@ -1039,6 +946,7 @@ class VAE(AE):
 
 	num_modes = hparam(1)
 
+
 	@space('posterior')
 	def posterior_space(self, latent):
 		return spaces.Unbound(2 * latent.width * self.num_modes)
@@ -1320,6 +1228,45 @@ def train_loop5(config):
 
 	trainer.fit(traindata)
 	return trainer.evaluate(valdata)
+
+
+
+class ContrastiveModel:
+	extractor = submodule(builder='extractor')
+	augmentation = submodule(builder='augmentation')
+
+	margin = hparam(1.0, space=spaces.Real(0, 10))
+	@submodule
+	def criterion(self):
+		return nn.TripletMarginLoss(margin=self.margin)
+
+
+	@machine('anchor')
+	def get_anchor(self, observation):
+		return self.extractor(observation)
+
+
+	@machine('positive')
+	def get_positive(self, observation):
+		return self.extractor(self.augmentation(observation))
+
+
+	@material.from_size('derangement')
+	def sample_derangement(self, N):
+		while True:
+			p = torch.randperm(N)
+			if (p != torch.arange(N)).all():
+				return p
+
+
+	@machine('negative')
+	def get_negative(self, observation, derangement):
+		return self.extractor(self.augmentation(observation[derangement]))
+
+
+	@machine('loss')
+	def compute_loss(self, anchor, positive, negative):
+		return self.criterion(anchor, positive, negative)
 
 
 

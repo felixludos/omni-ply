@@ -161,6 +161,8 @@ class DefaultProperty:
 
 
 
+# TODO: add 'help' option to include custom info about the hyperparameter
+
 class HyperparameterBase(DefaultProperty, AbstractHyperparameter): # TODO: add 'cached' option
 	def __init__(self, default=unspecified_argument, *, space=None, hidden=None, required=None, **kwargs):
 		super().__init__(default=default, **kwargs)

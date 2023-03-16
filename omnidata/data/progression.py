@@ -111,6 +111,7 @@ class EpochProgression(ProgressionBase, EpochStatMogul):
 
 	def _setup_epoch(self, remaining: Optional[torch.Tensor] = None):
 		self._indices = self._generate_sample_order()
+		# TODO: add option to not overlap epochs (e.g. for contrastive learning, to make sure samples in batch are unique)
 		if remaining is not None:
 			self._indices = torch.cat([remaining, self._indices])
 		self._order_index = 0

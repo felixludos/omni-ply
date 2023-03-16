@@ -78,6 +78,10 @@ class AbstractKit(AbstractTool): # branch/router
 
 	def gizmos(self) -> Iterator[str]:
 		yield from filter_duplicates(*[tool.gizmos() for tool in self.tools()])
+		return
+		tools = list(self.tools())
+		gizmos = [list(tool.gizmos()) for tool in tools]
+		yield from filter_duplicates(*gizmos)
 
 
 	def has_gizmo(self, gizmo: str) -> bool:

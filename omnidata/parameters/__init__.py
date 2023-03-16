@@ -4,5 +4,5 @@ from .building import register_builder, get_builder, BuildCreator
 from .spec import Spec
 
 from .top import Builder, Buildable, MultiBuilder, RegistryBuilder, RegisteredProduct, \
-	Parameterized, HierarchyBuilder
-from .top import hparam, submodule, with_hparam, inherit_hparams, Parameterized, MatchingBuilder
+	Parameterized, HierarchyBuilder, SimpleParameterized
+from .top import hparam, submodule, submachine, with_hparam, inherit_hparams, Parameterized, MatchingBuilder

@@ -44,8 +44,8 @@ class SpaceKit(IndividualCrafty, AbstractChangableSpace):
 		return super().space_of(gizmo)
 
 	
-	def gizmos(self) -> Iterator[str]:
-		yield from filter_duplicates(super().gizmos(), self._spaces.keys())
+	# def gizmos(self) -> Iterator[str]:
+	# 	yield from filter_duplicates(super().gizmos(), self._spaces.keys())
 
 
 	def change_space_of(self, gizmo: str, space: spaces.Dim):
@@ -55,8 +55,8 @@ class SpaceKit(IndividualCrafty, AbstractChangableSpace):
 			super().change_space_of(gizmo, space)
 
 	
-	def gizmos(self) -> Iterator[str]:
-		yield from filter_duplicates(super().gizmos(), self._spaces.keys())
+	# def gizmos(self) -> Iterator[str]:
+	# 	yield from filter_duplicates(super().gizmos(), self._spaces.keys())
 
 
 
@@ -136,11 +136,11 @@ class RelabeledKit(ValidatedKit):
 		if replace is None:
 			replace = {}
 		super().__init_subclass__(**kwargs)
-		past = {}
-		for parent in cls.__bases__:
-			if issubclass(parent, RelabeledKit) and parent._inherited_tool_relabels is not None:
-				past.update(parent._inherited_tool_relabels)
-		replace.update(past)
+		# past = {}
+		# for parent in cls.__bases__:
+		# 	if issubclass(parent, RelabeledKit) and parent._inherited_tool_relabels is not None:
+		# 		past.update(parent._inherited_tool_relabels)
+		# replace.update(past)
 		cls._inherited_tool_relabels = replace
 
 
@@ -155,6 +155,8 @@ class RelabeledKit(ValidatedKit):
 			if loc is start:
 				yield loc, key, craft
 			elif len(start._inherited_tool_relabels) and isinstance(craft, ReplaceableCraft):
+				if issubclass(loc, RelabeledKit):
+					craft = craft.replace(loc._inherited_tool_relabels)
 				fix = craft.replace(start._inherited_tool_relabels)
 				yield loc, key, fix
 			else:

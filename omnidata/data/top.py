@@ -2,8 +2,9 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 import math
 # from ..persistent import Fingerprinted
 from ..tools import Industrial
-from ..parameters import Parameterized, hparam
+from ..parameters import SimpleParameterized, Parameterized, hparam
 
+from .abstract import AbstractDataSource
 from .routers import DataCollection, AutoCollection, AliasedCollection, CountableDataRouter
 from .views import IndexSelector
 from .sources import Splitable, TensorSource, SpacedSource#, BuildableData
@@ -26,15 +27,29 @@ SetProgression._Context = Batch
 
 
 
-class Buffer(Batchable, TensorSource, SpacedSource, Parameterized):#, BuildableData): # TODO: should be epochable
+class Buffer(SimpleParameterized, Batchable, TensorSource, SpacedSource):#, BuildableData): # TODO: should be epochable
 	_Progression = SetProgression
 	pass
 
 
 
-class _FeaturedDataRouter(Batchable, AutoCollection, AliasedCollection, Industrial, DataCollection, Parameterized):
+# print()
+# print('\n'.join(map(str, Parameterized.mro())))
+# print()
+# print('\n'.join(map(str, Batchable.mro())))
+# print()
+# print('\n'.join(map(str, AutoCollection.mro())))
+# print()
+# print('\n'.join(map(str, AliasedCollection.mro())))
+# print()
+# print('\n'.join(map(str, DataCollection.mro())))
+class _FeaturedDataRouter(Parameterized, Batchable, AutoCollection, AliasedCollection, DataCollection):
 	#, BuildableData):
-	pass
+	def register_buffer(self, gizmo: str, buffer=None, **kwargs):
+		buffer = super().register_buffer(gizmo, buffer, **kwargs)
+		if gizmo in self._spaces:
+			self._spaces.remove(gizmo)
+		return buffer
 
 
 

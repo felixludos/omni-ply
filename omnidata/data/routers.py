@@ -15,7 +15,7 @@ prt = get_printer(__file__)
 
 
 
-class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
+class DataCollection(AbstractBatchable, AbstractDataRouter):
 	_BufferTable = OrderedDict
 
 	def __init__(self, *, buffer_table=None, **kwargs):
@@ -69,7 +69,7 @@ class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
 
 
 	def gizmos(self) -> Iterator[str]:
-		yield from filter_duplicates(self._buffers, super().gizmos())
+		yield from filter_duplicates(self._buffers.keys(), super().gizmos())
 
 
 	def vendors(self, gizmo: str):
@@ -87,8 +87,8 @@ class DataCollection(CraftyKit, AbstractBatchable, AbstractDataRouter):
 		if not isinstance(buffer, AbstractDataSource):
 			prt.warning(f'Expected buffer for {gizmo} in {self}, got: {buffer!r}')
 		self._buffers[gizmo] = buffer
-		if gizmo in self._spaces:
-			self._spaces.remove(gizmo)
+		# if gizmo in self._spaces:
+		# 	self._spaces.remove(gizmo)
 		return buffer
 
 
@@ -131,12 +131,12 @@ class BranchedDataRouter(DataCollection):
 class AutoCollection(DataCollection):
 	_Buffer = None
 	
-	def register_buffer(self, name, buffer=None, *, space=None, **kwargs):
+	def register_buffer(self, gizmo, buffer=None, *, space=None, **kwargs):
 		if buffer is None:
 			buffer = self._Buffer(space=space, **kwargs)
 		elif not isinstance(buffer, AbstractDataSource):
 			buffer = self._Buffer(buffer, space=space, **kwargs)
-		return super().register_buffer(name, buffer)
+		return super().register_buffer(gizmo, buffer)
 
 
 

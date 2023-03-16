@@ -4,8 +4,8 @@ from .hyperparameters import InheritableHyperparameter
 from .parameterized import ModifiableParameterized, FingerprintedParameterized, InheritHparamsDecorator, HparamWrapper
 from .building import ConfigBuilder, BuilderBase, BuildableBase, MultiBuilderBase, RegistryBuilderBase, \
 	HierarchyBuilderBase, RegisteredProductBase, ModifiableProduct
-from .submodules import SubmoduleBase
-from .spec import SpeccedBuilder
+from .submodules import SubmoduleBase, SubmachineBase
+from .spec import ArchitectBase
 # from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
 
 
@@ -16,6 +16,11 @@ class hparam(InheritableHyperparameter):
 
 
 class submodule(SubmoduleBase):
+	pass
+
+
+
+class submachine(SubmachineBase):
 	pass
 
 
@@ -43,8 +48,13 @@ class with_hparam(HparamWrapper):
 
 
 
+class SimpleParameterized(ModifiableParameterized, FingerprintedParameterized):
+	pass
+
+
+
 # class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameterized, PreparedParameterized):
-class Parameterized(ModifiableParameterized, FingerprintedParameterized):
+class Parameterized(SimpleParameterized, Industrial):
 	pass
 
 
@@ -57,8 +67,7 @@ class Parameterized(ModifiableParameterized, FingerprintedParameterized):
 # 	pass
 
 
-
-class Builder(ModifiableProduct, SpeccedBuilder, Parameterized, AbstractArgumentBuilder, Industrial):#(ConfigBuilder, Parameterized):
+class Builder(ModifiableProduct, Parameterized, ArchitectBase, AbstractArgumentBuilder):#(ConfigBuilder, Parameterized):
 	#, inheritable_auto_methods=['product_base']):
 	pass
 

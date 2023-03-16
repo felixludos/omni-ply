@@ -211,6 +211,10 @@ class TensorSource(AbstractCountableData, AbstractDataSource): # TODO: make batc
 		self._data = data
 
 
+	def gizmos(self) -> Iterator[str]:
+		yield from ()
+
+
 	def get_from(self, source, gizmo=None):
 		if source is None or not isinstance(source, IndexSelector):
 			return self._data[:source.size] if isinstance(source, SizeSelector) else self._data

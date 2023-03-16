@@ -121,7 +121,7 @@ class AutoSpec(AbstractSpecced):
 
 
 
-class Specced(AutoSpec, ParameterizedBase, SpaceKit, AbstractModular, AbstractTool):
+class Specced(AutoSpec, ParameterizedBase, AbstractModular, SpaceKit):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs) # extracts hparams
 		self._fix_missing_spaces(self.my_blueprint)
@@ -174,7 +174,7 @@ class Specced(AutoSpec, ParameterizedBase, SpaceKit, AbstractModular, AbstractTo
 
 
 
-class SpeccedBuilder(Specced, BuilderBase): # ---> architect
+class ArchitectBase(Specced, BuilderBase):
 	pass
 
 

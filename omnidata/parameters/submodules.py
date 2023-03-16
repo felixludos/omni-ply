@@ -1,5 +1,6 @@
 from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, Callable, Type, Iterable, Iterator
 from omnibelt import unspecified_argument, get_printer
+from omnibelt.crafts import AbstractCraft
 
 from .abstract import AbstractSubmodule
 from .hyperparameters import HyperparameterBase
@@ -15,17 +16,21 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 		self.typ = typ
 		self.builder = builder
 
-	# def validate_value(self, value):
-	# 	value = super().validate_value(value)
-	# 	if self.typ is not None and not isinstance(value, self.typ):
-	# 		prt.warning(f'Value {value} is not of type {self.typ}')
-	# 	builder = self.get_builder()
-	# 	if builder is not None:
-	# 		return builder.validate(value)
-		
-	def get_builder(self) -> Optional[BuilderBase]:
+
+	def validate(self, product):
+		value = super().validate(product)
+		if self.typ is not None and not isinstance(value, self.typ):
+			prt.warning(f'Value {value} is not of type {self.typ}')
+		builder = self.get_builder()
+		if builder is not None:
+			return builder.validate(value)
+
+
+	def get_builder(self, *args, **kwargs) -> Optional[BuilderBase]:
 		if self.builder is not None:
-			return get_builder(self.builder) if isinstance(self.builder, str) else self.builder
+			builder = get_builder(self.builder) if isinstance(self.builder, str) else self.builder
+			return builder(*args, **kwargs)
+
 
 	def build_with(self, *args, **kwargs):
 		builder = self.get_builder()
@@ -66,6 +71,17 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 
 # class submodule(hparam):
 # 	_registration_fn_name = 'register_submodule'
+
+
+
+class SubmachineBase(SubmoduleBase, AbstractCraft):
+	def __init__(self, default=unspecified_argument, *, application=None, **kwargs):
+		super().__init__(default=default, **kwargs)
+		self.application = application
+
+
+	def get_builder(self) -> Optional[BuilderBase]:
+		return super().get_builder(application=self.application)
 
 
 

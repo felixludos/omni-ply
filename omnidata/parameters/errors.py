@@ -16,3 +16,7 @@ class NoProductFound(KeyError):
 
 
 
+class InheritedHparamError(AttributeError):
+	pass
+
+

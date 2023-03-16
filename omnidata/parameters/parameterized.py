@@ -7,6 +7,7 @@ from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSe
 
 from ..persistent import AbstractFingerprinted, Fingerprinted
 
+from .errors import InheritedHparamError
 from .abstract import AbstractParameterized, AbstractHyperparameter
 
 
@@ -63,12 +64,14 @@ class ParameterizedBase(AbstractParameterized):
 				yield key, val
 
 
+	_InheritedHparamError = InheritedHparamError
+
 	@classmethod
 	def inherit_hparams(cls, *names):
 		for name in reversed(names):
 			val = getattr(cls, name, None)
 			if val is None:
-				raise AttributeError(f'{cls.__name__} has no attribute {name}')
+				raise cls._InheritedHparamError(f'{cls.__name__} cannot inherit the hparam: {name!r}')
 			setattr(cls, name, val)
 		return cls
 

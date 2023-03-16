@@ -15,6 +15,8 @@ from omnidata import hparam, inherit_hparams, submodule, spaces
 from omnidata import Guru, Context, Industrial, material, space, indicator, machine
 from omnidata.data import toy
 
+from omnidata import Spec, Builder, Buildable
+
 
 
 class Data(HierarchyBuilder):
@@ -65,8 +67,6 @@ def test_building():
 
 
 
-from omnidata import Spec, Builder, Buildable
-
 
 
 class LinearBuilder(Builder):
@@ -99,13 +99,17 @@ def test_spec():
 	spec = Spec().include(dataset)
 	print(spec)
 
-	builder = LinearBuilder(blueprint=spec, relabeling={'input': 'observation', 'output': 'target'})
+	builder = LinearBuilder(blueprint=spec,
+	                        application={'input': 'observation', 'output': 'target'})
 
 	model = builder.build()
 
 	assert isinstance(model, nn.Linear)
-	assert model.din.width == 3
-	assert model.dout.width == 1
+	assert model.in_features == 3
+	assert model.out_features == 1
+
+	# assert model.din.width == 3
+	# assert model.dout.width == 1
 
 
 
@@ -114,24 +118,24 @@ def test_spec():
 
 
 
-class Linear(Buildable, nn.Linear):
-	din = space('input')
-	dout = space('output')
-	
-	
-	class _Builder(SimpleBuilder):
-		def _build_kwargs(self, product, *, in_features=None, out_features=None, bias=None, **kwargs):
-			kwargs = super()._build_kwargs(product, **kwargs)
-			
-			if in_features is None:
-				in_features = self.din.width
-			kwargs['in_features'] = in_features
-			
-			if out_features is None:
-				out_features = self.dout.width
-			kwargs['out_features'] = out_features
-			
-			return kwargs
+# class Linear(Buildable, nn.Linear):
+# 	din = space('input')
+# 	dout = space('output')
+#
+#
+# 	class _Builder(SimpleBuilder):
+# 		def _build_kwargs(self, product, *, in_features=None, out_features=None, bias=None, **kwargs):
+# 			kwargs = super()._build_kwargs(product, **kwargs)
+#
+# 			if in_features is None:
+# 				in_features = self.din.width
+# 			kwargs['in_features'] = in_features
+#
+# 			if out_features is None:
+# 				out_features = self.dout.width
+# 			kwargs['out_features'] = out_features
+#
+# 			return kwargs
 
 
 # class Autoencoder:
@@ -159,7 +163,7 @@ class Linear(Buildable, nn.Linear):
 
 
 
-
+# Structural Computation Graphs
 
 
 
