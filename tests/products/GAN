@@ -1,0 +1,9 @@
+digraph unknown {
+	samples -> gen_loss
+	real -> disc_loss
+	fake -> disc_loss
+	size -> fake [style=dashed]
+	size [shape=box]
+	size -> samples [style=dashed]
+	size [shape=box]
+}

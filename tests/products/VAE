@@ -1,0 +1,10 @@
+digraph unknown {
+	latent -> reconstruction
+	reconstruction -> rec_loss
+	observation -> rec_loss
+	rec_loss -> loss
+	reg_loss -> loss
+	posterior -> reg_loss
+	posterior -> latent
+	observation -> posterior
+}

@@ -6,13 +6,15 @@ from collections import OrderedDict
 
 import torch
 
-from omnibelt import method_decorator, agnostic, filter_duplicates
+from omnibelt import method_decorator, agnostic, filter_duplicates, get_printer
 from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, SkilledCraft, IndividualCrafty
 
 
 from .abstract import Loggable, AbstractAssessible, AbstractTool
 from .errors import MachineError
 from .assessments import Signatured
+
+prt = get_printer(__name__)
 
 
 
@@ -48,6 +50,9 @@ class LabelCraft(SkilledCraft):
 
 class CopyCraft(LabelCraft):
 	def copy(self, label: str = None, *args, **kwargs):
+		# new = self.__class__(label, *args, **kwargs)
+		# new.__dict__.update(self.__dict__)
+		# return new
 		if label is None:
 			label = self.label
 		return self.__class__(label, *args, **kwargs)
@@ -69,15 +74,33 @@ class ReplaceableCraft(ValidatedCraft):
 		if replacements is None:
 			replacements = {}
 		super().__init__(label, **kwargs)
-		self._replacements = replacements
+		self.replacements = replacements
+
+	@staticmethod
+	def _update_application(old: Dict[str,str], new: Dict[str,str]): # TODO: test for infinite loops!
+		existing = {}
+		for key, value in old.items():
+			existing.setdefault(value, []).append(key)
+
+		composition = {}
+		for k,v in new.items():
+			if k in existing: # continue mapping
+				for key in existing[k]:
+					composition[key] = v
+			else:
+				composition[k] = v
+		for k,v in old.items():
+			if k not in composition:
+				composition[k] = v
+		return composition
 
 
 	def replace(self, replacements: Dict[str, str], **kwargs):
-		return self.copy(replacements={**self._replacements, **replacements}, **kwargs)
+		return self.copy(replacements=self._update_application(self.replacements, replacements), **kwargs)
 
 
 	def _validate_label(self, owner, label):
-		return super()._validate_label(owner, self._replacements.get(label, label))
+		return super()._validate_label(owner, self.replacements.get(label, label))
 
 
 
@@ -149,7 +172,7 @@ class SimpleLoggingCraft(LoggingCraft):
 
 
 
-class FunctionCraft(method_decorator, CopyCraft):
+class FunctionCraft(method_decorator, NestableCraft, CopyCraft):
 	def __init__(self, label: str, *, fn=None, **kwargs):
 		super().__init__(label=label, fn=fn, **kwargs)
 
@@ -168,14 +191,28 @@ class FunctionCraft(method_decorator, CopyCraft):
 
 	_name = None
 	def _setup_decorator(self, owner: Type, name: str) -> method_decorator:
+		if self.label is not None and not self.label.isidentifier():
+			prt.warning(f'Label {self.label} is not a valid identifier (for {owner.__name__}.{name})')
 		self._name = name
+
+		if self.wrapped is not None and isinstance(self.wrapped, method_decorator):
+			self.wrapped._setup_decorator(owner, name)
+
 		return super()._setup_decorator(owner, name)
 
 
 	def _get_instance_fn(self, instance: AbstractCrafty, name: Optional[str] = None):
 		if name is None:
 			name = self._name
-		return getattr(instance, name)
+		# if isinstance(instance, type):
+		# 	content = self.content
+		# 	return content
+		fn = getattr(instance, name)
+		if not hasattr(fn, '__name__'):
+			if isinstance(fn, NestableCraft):
+				return fn.content
+			return self.content
+		return fn
 
 
 
@@ -213,7 +250,7 @@ class MetaArgCraft(CustomArgumentCraft):
 		assert owner is not None
 		label = self._validate_label(owner, self.label)
 		yield self._Signature(label, inputs=tuple(self._known_input_args(owner)),
-		                      meta=tuple(self._known_meta_args(owner)))
+		                      meta=tuple(self._known_meta_args(owner)), fn=self._get_instance_fn(owner))
 
 
 

@@ -243,7 +243,7 @@ class AbstractChangableSpace(AbstractSpaced): # TODO: build into `space` crafts
 
 
 
-class AbstractSchema(AbstractSpaced):
+class AbstractSchema(AbstractSpaced): # context for building
 	pass
 
 

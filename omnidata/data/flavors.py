@@ -61,6 +61,34 @@ class Sampledstream(Dataset, Seedable): # Datastream -> Dataset
 
 
 
+class SimpleSampledStream(Sampledstream):
+	_source_cls = None
+	_source_hyperparameters = None
+	def __init_subclass__(cls, source_cls=None, **kwargs):
+		super().__init_subclass__(**kwargs)
+		if source_cls is not None:
+			cls._source_cls = source_cls
+			hparams = []
+			for name, value in source_cls.named_hyperparameters():
+				setattr(cls, name, value.copy())
+				hparams.append(name)
+			cls._source_hyperparameters = tuple(hparams)
+
+
+	@submodule(hidden=True)
+	def stream(self):
+		return self._source_cls(**{name: getattr(self, name) for name in self._source_hyperparameters})
+
+
+	@agnostic
+	def signatures(self, owner = None):
+		if isinstance(self, type):
+			yield from self._source_cls.signatures(owner)
+		else:
+			yield from super().signatures(owner)
+
+
+
 class ObservationDataset(Observation, Dataset):
 	pass
 	# class Batch(Observation, Dataset.Batch):

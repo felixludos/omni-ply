@@ -148,15 +148,16 @@ class RelabeledKit(ValidatedKit):
 	def _emit_all_craft_items(cls, *, remaining: Iterator[Type['InheritableCrafty']] = None,
 	                          start : Type['InheritableCrafty'] = None,
 	                          **kwargs) -> Iterator[Tuple[Type[AbstractCrafty], str, AbstractCraft]]: # N-O
+		live = start is None # make sure replacements only happen once
 		if start is None:
 			start = cls
 
 		for loc, key, craft in super()._emit_all_craft_items(remaining=remaining, start=start, **kwargs):
 			if loc is start:
 				yield loc, key, craft
-			elif len(start._inherited_tool_relabels) and isinstance(craft, ReplaceableCraft):
-				if issubclass(loc, RelabeledKit):
-					craft = craft.replace(loc._inherited_tool_relabels)
+			elif live and len(start._inherited_tool_relabels) and isinstance(craft, ReplaceableCraft):
+				# if issubclass(loc, RelabeledKit):
+				# 	craft = craft.replace(loc._inherited_tool_relabels)
 				fix = craft.replace(start._inherited_tool_relabels)
 				yield loc, key, fix
 			else:
@@ -181,11 +182,15 @@ class MaterialedCrafty(CraftyKit, Prepared): # allows materials to be initialize
 class SignaturedCrafty(CraftyKit, Signatured):
 	@agnostic
 	def signatures(self, owner = None) -> Iterator['AbstractSignature']:
+		outputs = set()
 		if isinstance(self, type):
 			self: Type['SignaturedCrafty']
 			for loc, key, craft in self._emit_all_craft_items():
 				if isinstance(craft, Signatured):
-					yield from craft.signatures(self)
+					for signature in craft.signatures(self):
+						if signature.output not in outputs:
+							outputs.add(signature.output)
+							yield signature
 		else:
 			for tool in self.tools():
 				if isinstance(tool, Signatured):

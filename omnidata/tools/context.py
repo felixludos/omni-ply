@@ -1,5 +1,6 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Hashable, Iterator, Iterable, Type, Set
 from collections import UserDict
+from omnibelt import unspecified_argument
 
 from ..structure import spaces
 from ..features import Seeded
@@ -60,6 +61,30 @@ class ContextBase(AbstractSpaced, AbstractContext, AbstractSourcedKit, AbstractA
 
 
 
+class ScopedContext(ContextBase):
+	def __init__(self, *, scope_table=None, **kwargs):
+		super().__init__(**kwargs)
+		self._scope_table = scope_table or {}
+
+
+	def clear_scopes(self):
+		self._scope_table.clear()
+
+
+	def scope_for(self, code, default=unspecified_argument):
+		try:
+			return self._scope_table[code]
+		except KeyError:
+			if default is unspecified_argument:
+				raise
+			return default
+
+
+	def register_scope(self, code, scope):
+		self._scope_table[code] = scope
+
+
+
 class NestedContext(ContextBase):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -86,7 +111,7 @@ class NestedContext(ContextBase):
 			self._add_trace(ctx)
 
 		try:
-			val = self._get_from(self, gizmo)
+			val = self._get_from(ctx, gizmo)
 		except MissingGizmoError:
 			val = self._fallback_get_from(gizmo)
 
@@ -102,27 +127,38 @@ class ScopeBase(NestedContext, AbstractScope):
 	interface between the internal labels (defined by dev) for a single module,
 	and the external labels (defined by the user) for the entire system
 	'''
-	def __init__(self, base: AbstractTool, **kwargs):
-		super().__init__(**kwargs)
-		self._base = base
-
-
-	def gizmoto(self) -> Iterator[str]: # no mapping
-		yield from self._base.gizmos()
+	# def gizmoto(self) -> Iterator[str]: # no mapping
+	# 	for gizmo in self._base.gizmos():
+	# 		yield self.gizmo_to()
+	# 	yield from self.gizmos()
 
 
 	def _fallback_get_from(self, gizmo: str):
 		return super()._fallback_get_from(self.gizmo_from(gizmo))
 
 
-	def _get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
-		return self._base.get_from(self, gizmo)
-
-
 	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
 		if ctx is not self:
 			gizmo = self.gizmo_to(gizmo)
 		return super().get_from(ctx, gizmo)
+
+
+
+class ApplicationScope(AbstractScope):
+	def __init__(self, application: Dict[str,str] = None,  **kwargs):
+		if application is None:
+			application = {}
+		super().__init__(**kwargs)
+		self._application = application
+		self._reverse_application = {v:k for k,v in application.items()}
+
+
+	def gizmo_from(self, gizmo: str) -> str:
+		return self._reverse_application.get(gizmo, gizmo)
+
+
+	def gizmo_to(self, external: str) -> str:
+		return self._application.get(external, external)
 
 
 
@@ -208,6 +244,12 @@ class Cached(SeededContext, UserDict):
 		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + gizmo + '}') for gizmo in self.gizmos()]
 		return f'{self.__class__.__name__}({", ".join(gizmos)})'
 
+
+
+class SimpleScope(ApplicationScope, Cached, DynamicContext):
+	def __init__(self, source, **kwargs):
+		super().__init__(**kwargs)
+		self.include(source)
 
 
 

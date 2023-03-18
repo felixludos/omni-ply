@@ -1,0 +1,6 @@
+digraph unknown {
+	reconstruction -> loss
+	observation -> loss
+	latent -> reconstruction
+	observation -> latent
+}

@@ -5,6 +5,8 @@ from omnibelt import unspecified_argument, Class_Registry, agnostic, Modifiable,
 from omnibelt.tricks import auto_methods, dynamic_capture, extract_function_signature
 import omnifig as fig
 
+from ..tools.assessments import Signatured, AbstractSignature, SimpleSignature
+
 from .abstract import AbstractBuilder, AbstractParameterized, AbstractArgumentBuilder, \
 	AbstractMultiBuilder, AbstractRegistryBuilder
 from .errors import NoProductFound
@@ -22,6 +24,14 @@ prt.addHandler(ch)
 
 class BuilderBase(ParameterizedBase, AbstractBuilder):
 	pass
+
+
+
+class AnalysisBuilder(AbstractBuilder):
+	_Signature = SimpleSignature
+	def product_signatures(self, *args, **kwargs):
+		product = self.product(*args, **kwargs)
+		yield from product.signatures()
 
 
 

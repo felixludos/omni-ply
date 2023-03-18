@@ -3,7 +3,7 @@ from .abstract import AbstractArgumentBuilder
 from .hyperparameters import InheritableHyperparameter
 from .parameterized import ModifiableParameterized, FingerprintedParameterized, InheritHparamsDecorator, HparamWrapper
 from .building import ConfigBuilder, BuilderBase, BuildableBase, MultiBuilderBase, RegistryBuilderBase, \
-	HierarchyBuilderBase, RegisteredProductBase, ModifiableProduct
+	HierarchyBuilderBase, RegisteredProductBase, ModifiableProduct, AnalysisBuilder
 from .submodules import SubmoduleBase, SubmachineBase
 from .spec import ArchitectBase
 # from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
@@ -55,6 +55,15 @@ class SimpleParameterized(ModifiableParameterized, FingerprintedParameterized):
 
 # class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameterized, PreparedParameterized):
 class Parameterized(SimpleParameterized, Industrial):
+	@classmethod
+	def inherit_hparams(cls, *names):
+		out = super().inherit_hparams(*names)
+		for name in names:
+			val = getattr(cls, name, None)
+			if isinstance(val, submachine) and len(cls._inherited_tool_relabels):
+				setattr(cls, name, val.replace(cls._inherited_tool_relabels))
+		return out
+
 	pass
 
 
@@ -67,7 +76,7 @@ class Parameterized(SimpleParameterized, Industrial):
 # 	pass
 
 
-class Builder(ModifiableProduct, Parameterized, ArchitectBase, AbstractArgumentBuilder):#(ConfigBuilder, Parameterized):
+class Builder(ModifiableProduct, Parameterized, ArchitectBase, AnalysisBuilder, AbstractArgumentBuilder):#(ConfigBuilder, Parameterized):
 	#, inheritable_auto_methods=['product_base']):
 	pass
 

@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from omnibelt import unspecified_argument, agnostic
 # from sklearn.datasets import make_swiss_roll
 
 # from ..materials import Materialed, material
@@ -8,7 +9,7 @@ from ...features import Seeded
 from ...parameters import submodule, hparam, inherit_hparams
 from ...tools import material, machine, space
 
-from ..flavors import Synthetic, Sampledstream
+from ..flavors import Synthetic, Sampledstream, SimpleSampledStream
 from ..top import Datastream
 
 
@@ -176,40 +177,13 @@ class Helix(DeterministicManifold):
 
 
 @inherit_hparams('n_samples')
-class SwissRollDataset(Sampledstream):
-	Ax = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
-	Ay = hparam(21., space=spaces.HalfBound(min=0.))
-	Az = hparam(np.pi / 2, space=spaces.HalfBound(min=0.))
-
-	freq = hparam(0.5, space=spaces.HalfBound(min=0.))
-	tmin = hparam(3., space=spaces.HalfBound(min=0.))
-	tmax = hparam(9., space=spaces.HalfBound(min=0.))
-
-
-	@submodule(hidden=True)
-	def stream(self):
-		return SwissRoll(Ax=self.Ax, Ay=self.Ay, Az=self.Az, freq=self.freq,
-		                 tmin=self.tmin, tmax=self.tmax)
+class SwissRollDataset(SimpleSampledStream, source_cls=SwissRoll):
+	pass
 
 
 
 @inherit_hparams('n_samples')
-class HelixDataset(Sampledstream):
-	n_helix = hparam(2, space=spaces.Naturals())
-
-	periodic_strand = hparam(False, space=spaces.Binary())
-
-	Rx = hparam(1., space=spaces.HalfBound(min=0.))
-	Ry = hparam(1., space=spaces.HalfBound(min=0.))
-	Rz = hparam(1., space=spaces.HalfBound(min=0.))
-
-	w = hparam(1., space=spaces.HalfBound(min=0.))
-
-
-	@submodule(hidden=True)
-	def stream(self):
-		return Helix(n_helix=self.n_helix, periodic_strand=self.periodic_strand,
-		             Rx=self.Rx, Ry=self.Ry, Rz=self.Rz, w=self.w)
-
+class HelixDataset(SimpleSampledStream, source_cls=Helix):
+	pass
 
 

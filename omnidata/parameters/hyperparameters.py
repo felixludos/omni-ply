@@ -171,10 +171,11 @@ class HyperparameterBase(DefaultProperty, AbstractHyperparameter): # TODO: add '
 		self.required = required
 
 
-	def __set_name__(self, owner, name):
-		super().__set_name__(owner, name)
+	def setup(self, owner, name):
+		out = super().setup(owner, name)
 		if self.hidden is None and self.attrname.startswith('_'):
 			self.hidden = True
+		return out
 
 
 

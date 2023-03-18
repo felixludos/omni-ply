@@ -1,5 +1,6 @@
 
 import sys, os
+from pathlib import Path
 import yaml
 
 import torch
@@ -13,12 +14,14 @@ from functools import lru_cache
 
 import omnidata as od
 from omnidata import toy
-from omnidata import Builder, Buildable, HierarchyBuilder, RegisteredProduct, MatchingBuilder
+from omnidata import Builder, Buildable, HierarchyBuilder, RegisteredProduct, MatchingBuilder, RegistryBuilder, \
+	register_builder
 from omnidata import hparam, inherit_hparams, submodule, submachine, spaces
 from omnidata import Guru, Context, material, space, indicator, machine, Parameterized
 from omnidata.data import toy
 
 from omnidata import Spec, Builder, Buildable
+from omnidata import toy
 
 
 class Basic_Autoencoder(Parameterized):
@@ -56,11 +59,57 @@ def test_signature():
 	print('\n'.join(map(str, VAE.signatures())))
 
 	print()
+	print('\n'.join(map(str, GAN.signatures())))
+
+	print()
 	print('\n'.join(map(str, BetaVAE.signatures())))
 
-	# print()
-	# print('\n'.join(map(str, SimCLR.signatures())))
+	print()
+	print('\n'.join(map(str, SimCLR.signatures())))
 
+
+
+@register_builder('criterion')
+class CriterionBuilder(RegistryBuilder):
+	target_space = space('target')
+
+
+	@space('input')
+	def input_space(self):
+		return self.target_space
+
+
+	def product_signatures(self, *args, **kwargs):
+		yield self._Signature('output', inputs=('input', 'target'))
+
+
+
+class FunctionBuilder(Builder):
+	def product_signatures(self, *args, **kwargs):
+		yield self._Signature('output', inputs=('input',))
+
+
+
+@register_builder('encoder')
+class EncoderBuilder(FunctionBuilder):
+	pass
+
+
+
+@register_builder('decoder')
+class DecoderBuilder(FunctionBuilder):
+	pass
+
+
+
+class Classifier(Parameterized):
+	net = submachine(builder='net', application=dict(input='observation', output='logits'))
+	criterion = submachine(builder='criterion', application=dict(input='logits', target='target', output='loss'))
+
+
+	@machine('prediction')
+	def predict_from_logits(self, logits):
+		return logits.argmax(dim=1)
 
 
 
@@ -68,7 +117,7 @@ class AE(Parameterized):
 	encoder = submachine(builder='encoder', application=dict(input='observation', output='latent'))
 	decoder = submachine(builder='decoder', application=dict(input='latent', output='reconstruction'))
 
-	criterion = submachine(builder='criterion', application=dict(input1='reconstruction', input2='observation',
+	criterion = submachine(builder='criterion', application=dict(input='reconstruction', target='observation',
 	                                                             output='loss'))
 
 	# latent_dim = hparam(required=True)
@@ -83,10 +132,6 @@ class AE(Parameterized):
 @inherit_hparams('decoder', 'criterion')
 class VAE(AE, replace={'loss': 'rec_loss'}):
 	encoder = submachine(builder='encoder', application=dict(input='observation', output='posterior'))
-
-	@space('posterior')
-	def posterior_space(self):
-		return spaces.Unbound(2 * self.latent_space.width)
 
 
 	@machine('latent')
@@ -178,7 +223,7 @@ class SimCLR(Parameterized):
 
 
 
-class GAN(Parameterized, replace={'real': 'observation'}):
+class GAN(Parameterized):
 	generator = submodule(builder='generator')
 	discriminator = submodule(builder='discriminator')
 
@@ -268,8 +313,76 @@ class Extracted(Parameterized, replace={'observation': 'original'}):
 
 
 
+_PRODUCTS_PATH = Path(__file__).parent / 'products'
 
 
+
+from omnidata.util.viz import signature_graph
+
+
+# def test_example_graph():
+#
+# 	g = Digraph('G', filename='cluster.gv')
+#
+# 	# NOTE: the subgraph name needs to begin with 'cluster' (all lowercase)
+# 	#       so that Graphviz recognizes it as a special cluster subgraph
+#
+# 	with g.subgraph(name='cluster_0') as c:
+# 		c.attr(style='filled', color='lightgrey')
+# 		c.node_attr.update(style='filled', color='white')
+# 		c.edges([('a0', 'a1'), ('a1', 'a2'), ('a2', 'a3')])
+# 		c.attr(label='process #1')
+#
+# 	with g.subgraph(name='cluster_1') as c:
+# 		c.attr(color='blue')
+# 		c.node_attr['style'] = 'filled'
+# 		c.edges([('b0', 'b1'), ('b1', 'b2'), ('b2', 'b3')])
+# 		c.attr(label='process #2')
+#
+# 	g.edge('start', 'a0')
+# 	g.edge('start', 'b0')
+# 	g.edge('a1', 'b3')
+# 	g.edge('b2', 'a3')
+# 	g.edge('a3', 'a0')
+# 	g.edge('a3', 'end')
+# 	g.edge('b3', 'end')
+#
+# 	g.node('start', shape='Mdiamond')
+# 	g.node('end', shape='Msquare')
+#
+# 	g.render(_PRODUCTS_PATH / "example_graph", format="png")
+
+
+
+
+def test_graph():
+	g = signature_graph(AE)
+	g.render(_PRODUCTS_PATH / "AE", format="png")
+
+	g = signature_graph(GAN)
+	g.render(_PRODUCTS_PATH / "GAN", format="png")
+
+	g = signature_graph(VAE)
+	g.render(_PRODUCTS_PATH / "VAE", format="png")
+
+	g = signature_graph(Basic_Autoencoder)
+	g.render(_PRODUCTS_PATH / "Basic_Autoencoder", format="png")
+
+
+	g = signature_graph(SimCLR)
+	g.render(_PRODUCTS_PATH / "SimCLR", format="png")
+
+
+	g = signature_graph(toy.SwissRoll)
+	g.render(_PRODUCTS_PATH / "SwissRoll", format="png")
+
+
+	g = signature_graph(toy.SwissRollDataset)
+	g.render(_PRODUCTS_PATH / "SwissRollDataset", format="png")
+
+
+	g = signature_graph(toy.Helix)
+	g.render(_PRODUCTS_PATH / "Helix", format="png")
 
 
 

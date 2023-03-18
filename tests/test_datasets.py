@@ -49,13 +49,10 @@ def test_dataset_init():
 def test_dataset_fingerprint():
 	dataset = _init_default_dataset()
 
-	assert dataset.fingerprint.code() == '09a788bdb34a1aa5940846d7318c9c31'
+	assert dataset.fingerprint.code() == '7ecef17fca79acae08a429ec6fb26544'
 
 	assert _cmp_dicts(dataset.fingerprint.data(),
 	                  {'cls': 'SwissRollDataset', 'module': 'omnidata.data.toy.manifolds', 'n_samples': 100,
-	                   'stream': {'cls': 'SwissRoll', 'module': 'omnidata.data.toy.manifolds',
-	                              'tmax': 9.0, 'tmin': 3.0, 'freq': 0.5,
-	                              'Az': 1.5707963267948966, 'Ay': 21.0, 'Ax': 1.5707963267948966},
 	                   'tmax': 9.0, 'tmin': 3.0, 'freq': 0.5,
 	                   'Az': 1.5707963267948966, 'Ay': 21.0, 'Ax': 1.5707963267948966})
 

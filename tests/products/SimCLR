@@ -1,0 +1,11 @@
+digraph unknown {
+	positives -> loss
+	negatives -> loss
+	similarity_matrix -> negatives
+	similarity_matrix -> positives
+	projection1 -> similarity_matrix
+	projection2 -> similarity_matrix
+	latent -> projection1
+	latent -> projection2
+	observation -> latent
+}

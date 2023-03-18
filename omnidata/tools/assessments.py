@@ -8,22 +8,44 @@ class AbstractSignature:
 
 
 class SimpleSignature(AbstractSignature):
-	def __init__(self, output, inputs=(), meta=(), **props):
+	def __init__(self, output, inputs=(), meta=(), *, name=None, fn=None, **props):
 		if isinstance(inputs, str):
 			inputs = (inputs,)
 		# inputs = tuple(inputs)
 		if isinstance(meta, str):
 			meta = (meta,)
 		# meta = tuple(meta)
+		if name is None and fn is not None:
+			name = fn.__name__
 		super().__init__()
 		self.inputs = inputs
 		self.meta = meta
 		self.output = output
 		self.props = props
+		self.name = name
+		self.fn = fn
 
 
-	def replace(self, fixes: Dict[str,str]):
-		raise NotImplementedError
+	def __contains__(self, label: str):
+		return label in self.inputs or label in self.meta or label == self.output
+
+
+	def copy(self, output=None, inputs=None, meta=None, props=None, **kwargs):
+		if output is None:
+			output = self.output
+		if inputs is None:
+			inputs = self.inputs
+		if meta is None:
+			meta = self.meta
+		if props is None:
+			props = self.props
+		return type(self)(output, inputs, meta, **{**props, **kwargs})
+
+
+	def replace(self, fixes: Dict[str,str], **kwargs):
+		new = self.copy(output=fixes.get(self.output, self.output), inputs=tuple(fixes.get(i, i) for i in self.inputs),
+		                meta=tuple(fixes.get(m, m) for m in self.meta), **kwargs)
+		return new
 
 
 	def __str__(self):
@@ -36,7 +58,15 @@ class SimpleSignature(AbstractSignature):
 			ant = ', '.join(f'<{m}>' for m in self.meta)
 		elif self.inputs:
 			ant = inp
-		return f'{self.output} <- {ant}'
+		# msg = f'{self.output} <- {ant}'
+		msg = f'{ant} -> {self.output}'
+		if self.name:
+			msg = f'{self.name}: {msg}'
+		return msg
+
+
+	def __repr__(self):
+		return f'{self.__class__.__name__}({self.inputs} -> {self.output})'
 
 
 
