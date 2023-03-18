@@ -82,12 +82,19 @@ class Spec(DynamicContext, AbstractSpec):
 
 
 	def update_with(self, other: 'AbstractSpecced'):
-		for gizmo in self.gizmos():
+		for gizmo in other.gizmos():
 			try:
-				space = self.space_of(gizmo)
+				space = other.space_of(gizmo)
 			except ToolFailedError:
 				continue
-			self.change_space_of(gizmo, space)
+			else:
+				try:
+					prev = self.space_of(gizmo)
+				except ToolFailedError:
+					self.change_space_of(gizmo, space)
+				else:
+					if prev is None:
+						self.change_space_of(gizmo, space)
 
 		return self
 
@@ -126,8 +133,8 @@ class Specced(AutoSpec, ParameterizedBase, AbstractModular, SpaceKit):
 		super().__init__(*args, **kwargs) # extracts hparams
 		self._fix_missing_spaces(self.my_blueprint)
 		self._create_missing_submodules(self.my_blueprint)
-	
-	
+
+
 	def _missing_spaces(self) -> Iterator[str]:
 		for gizmo, skills in self._spaces.items():
 			if len(skills) == 0:

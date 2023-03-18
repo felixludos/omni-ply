@@ -1,4 +1,4 @@
-from .simple import Named, Prepared, ProgressBarred
+from .simple import Named, Prepared, ProgressBarred, InitWall
 from .containers import SourceContainer, ScoreContainer, Container
 from .hardware import Device, DeviceContainer
 from .random import RNGManager, Seeded, Seedable, force_rng, \

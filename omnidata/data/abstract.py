@@ -135,20 +135,20 @@ class AbstractRouterView(AbstractView, AbstractDataRouter):
 		yield from self.source.buffers()
 
 
-	def gizmos(self) -> Iterator[str]:
-		yield from self.source.gizmos()
-
-
-	def tools(self) -> Iterator['AbstractTool']:
-		yield from self.source.tools()
-
-
-	def vendors(self, gizmo: str) -> Iterator['AbstractTool']:
-		yield from self.source.vendors(gizmo)
-
-
-	def has_gizmo(self, gizmo):
-		return self.source.has_gizmo(gizmo)
+	# def gizmos(self) -> Iterator[str]:
+	# 	yield from self.source.gizmos()
+	#
+	#
+	# def tools(self) -> Iterator['AbstractTool']:
+	# 	yield from self.source.tools()
+	#
+	#
+	# def vendors(self, gizmo: str) -> Iterator['AbstractTool']:
+	# 	yield from self.source.vendors(gizmo)
+	#
+	#
+	# def has_gizmo(self, gizmo):
+	# 	return self.source.has_gizmo(gizmo)
 
 
 	def get_buffer(self, gizmo: str, default: Optional[Any] = unspecified_argument):

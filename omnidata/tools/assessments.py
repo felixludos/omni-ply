@@ -1,6 +1,6 @@
 from typing import Tuple, Iterator, Dict
 
-from .abstract import AbstractAssessible, AbstractAssessment
+from .abstract import AbstractAssessible, AbstractAssessment, AbstractTool
 
 
 class AbstractSignature:

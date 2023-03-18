@@ -28,6 +28,15 @@ class Named:
 
 
 
+class InitWall:
+	def __init__(self, *args, **kwargs):
+		if len(args) > 0:
+			raise TypeError(f'Unexpected args: {args}')
+		if len(kwargs) > 0:
+			raise TypeError(f'Unexpected kwargs: {", ".join(kwargs.keys())}')
+		super().__init__()
+
+
 
 class Prepared: # TODO: add autoprepare using __certify__
 	_NotReady = NotReady

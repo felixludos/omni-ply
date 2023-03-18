@@ -26,7 +26,7 @@ def test_dataset_init():
 
 	assert dataset.size == 100
 
-	assert str(dataset) == 'SwissRoll[100](target, observation, mechanism)'
+	assert str(dataset) == 'SwissRoll[100](observation, target, mechanism)'
 
 	gizmos = tuple(sorted(dataset.gizmos()))
 	# assert len(buffers) == len(dataset)
@@ -128,8 +128,10 @@ def test_dataset_batch():
 
 	batch = dataset.batch(10)
 
+	print(batch)
+
 	# assert str(batch) == 'Batch[10]<SwissRollDataset[100]>({observation}, {target}, {mechanism})'
-	assert str(batch) == 'Batch[10]<SwissRoll[100]>({target}, {observation}, {mechanism})'
+	assert str(batch) == 'Batch[10]<SwissRoll[100]>({observation}, {target}, {mechanism})'
 
 	buffers = tuple(sorted(batch.gizmos()))
 	# assert len(buffers) == len(batch)
@@ -172,14 +174,14 @@ def test_iterate_batch():
 
 	assert b1.size == 5
 
-	assert str(b1) == 'Batch[5]<Batch[10]<SwissRoll[100]>>({target}, {observation}, {mechanism})'
+	assert str(b1) == 'Batch[5]<Batch[10]<SwissRoll[100]>>({observation}, {target}, {mechanism})'
 
 	# TODO: more testing with b.o.b.
 
 	t1 = b1['target'].sum()
 
-	assert str(batch) == 'Batch[10]<SwissRoll[100]>(target, {observation}, {mechanism})'
-	assert str(b1) == 'Batch[5]<Batch[10]<SwissRoll[100]>>(target, {observation}, {mechanism})'
+	assert str(batch) == 'Batch[10]<SwissRoll[100]>({observation}, target, {mechanism})'
+	assert str(b1) == 'Batch[5]<Batch[10]<SwissRoll[100]>>({observation}, target, {mechanism})'
 
 	t2 = b2['target'].sum()
 

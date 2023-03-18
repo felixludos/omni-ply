@@ -20,20 +20,27 @@ from omnidata import hparam, inherit_hparams, submodule, submachine, spaces
 from omnidata import Guru, Context, material, space, indicator, machine, Parameterized
 from omnidata.data import toy
 
-from omnidata import Spec, Builder, Buildable
+from omnidata import Spec, Builder, Buildable, InitWall
 from omnidata import toy
 
 
-class Basic_Autoencoder(Parameterized):
+class Basic_Autoencoder(Parameterized, InitWall, nn.Module):
 	encoder = submodule(builder='encoder')
 	decoder = submodule(builder='decoder')
 
-	criterion = submodule(builder='criterion')
+	criterion = submodule(builder='comparison')
+
+
+	latent_dim = hparam(required=True)
 
 
 	@machine('latent')
 	def encode(self, observation):
 		return self.encoder(observation)
+	@encode.space
+	def latent_space(self):
+		return spaces.Unbound(self.latent_dim)
+
 
 
 	@machine('reconstruction')
@@ -70,13 +77,8 @@ def test_signature():
 
 
 @register_builder('criterion')
-class CriterionBuilder(RegistryBuilder):
+class CriterionBuilder(HierarchyBuilder):
 	target_space = space('target')
-
-
-	@space('input')
-	def input_space(self):
-		return self.target_space
 
 
 	def product_signatures(self, *args, **kwargs):
@@ -84,9 +86,41 @@ class CriterionBuilder(RegistryBuilder):
 
 
 
+@register_builder('comparison')
+class ComparisonBuilder(CriterionBuilder, branch='comparison', default_ident='mse',
+                        products={'mse': nn.MSELoss}):
+
+	@space('input')
+	def input_space(self):
+		return self.target_space
+
+
+
 class FunctionBuilder(Builder):
 	def product_signatures(self, *args, **kwargs):
 		yield self._Signature('output', inputs=('input',))
+
+
+	din = space('input')
+	dout = space('output')
+
+
+	def product_base(self, *args, **kwargs):
+		return nn.Linear
+
+
+	def _build_kwargs(self, product, *, in_features=None, out_features=None, bias=None, **kwargs):
+		kwargs = super()._build_kwargs(product, **kwargs)
+
+		if in_features is None:
+			in_features = self.din.width
+		kwargs['in_features'] = in_features
+
+		if out_features is None:
+			out_features = self.dout.width
+		kwargs['out_features'] = out_features
+
+		return kwargs
 
 
 
@@ -113,25 +147,30 @@ class Classifier(Parameterized):
 
 
 
-class AE(Parameterized):
+class AE(Parameterized, InitWall, nn.Module):
 	encoder = submachine(builder='encoder', application=dict(input='observation', output='latent'))
 	decoder = submachine(builder='decoder', application=dict(input='latent', output='reconstruction'))
 
-	criterion = submachine(builder='criterion', application=dict(input='reconstruction', target='observation',
+	criterion = submachine(builder='comparison', application=dict(input='reconstruction', target='observation',
 	                                                             output='loss'))
 
-	# latent_dim = hparam(required=True)
-	#
-	#
-	# @space('latent')
-	# def latent_space(self):
-	# 	return spaces.Unbound(self.latent_dim)
+	latent_dim = hparam(required=True)
+
+
+	@space('latent')
+	def latent_space(self):
+		return spaces.Unbound(self.latent_dim)
 
 
 
-@inherit_hparams('decoder', 'criterion')
+@inherit_hparams('criterion', 'decoder', 'latent_dim')
 class VAE(AE, replace={'loss': 'rec_loss'}):
 	encoder = submachine(builder='encoder', application=dict(input='observation', output='posterior'))
+
+
+	@space('posterior')
+	def encoder_output_space(self):
+		return spaces.Unbound(self.latent_space.width * 2)
 
 
 	@machine('latent')
@@ -154,6 +193,7 @@ class VAE(AE, replace={'loss': 'rec_loss'}):
 
 
 
+@inherit_hparams('encoder', 'decoder', 'criterion', 'latent_dim')
 class Conditional_VAE(VAE, replace={'content': 'latent'}):
 	@machine('latent')
 	def get_latent_codes(self, content, style):
@@ -161,7 +201,7 @@ class Conditional_VAE(VAE, replace={'content': 'latent'}):
 
 
 
-@inherit_hparams('encoder', 'decoder', 'criterion')
+@inherit_hparams('encoder', 'decoder', 'criterion', 'latent_dim')
 class BetaVAE(VAE):
 	beta = hparam(1.0)
 
@@ -220,6 +260,19 @@ class SimCLR(Parameterized):
 
 		scores = positive_logits.div(positive_logits.sum() + negative_logits.sum()).log()
 		return -scores.sum().div(2 * len(positives))
+
+
+
+class TargetedSimCLR(SimCLR):
+	@machine('positives')
+	def compute_positive_similarity(self, similarity_matrix, class_id):
+		raise NotImplementedError
+
+
+	@machine('negatives')
+	def compute_negative_similarity(self, similarity_matrix, class_id):
+		raise NotImplementedError
+
 
 
 
@@ -320,40 +373,6 @@ _PRODUCTS_PATH = Path(__file__).parent / 'products'
 from omnidata.util.viz import signature_graph
 
 
-# def test_example_graph():
-#
-# 	g = Digraph('G', filename='cluster.gv')
-#
-# 	# NOTE: the subgraph name needs to begin with 'cluster' (all lowercase)
-# 	#       so that Graphviz recognizes it as a special cluster subgraph
-#
-# 	with g.subgraph(name='cluster_0') as c:
-# 		c.attr(style='filled', color='lightgrey')
-# 		c.node_attr.update(style='filled', color='white')
-# 		c.edges([('a0', 'a1'), ('a1', 'a2'), ('a2', 'a3')])
-# 		c.attr(label='process #1')
-#
-# 	with g.subgraph(name='cluster_1') as c:
-# 		c.attr(color='blue')
-# 		c.node_attr['style'] = 'filled'
-# 		c.edges([('b0', 'b1'), ('b1', 'b2'), ('b2', 'b3')])
-# 		c.attr(label='process #2')
-#
-# 	g.edge('start', 'a0')
-# 	g.edge('start', 'b0')
-# 	g.edge('a1', 'b3')
-# 	g.edge('b2', 'a3')
-# 	g.edge('a3', 'a0')
-# 	g.edge('a3', 'end')
-# 	g.edge('b3', 'end')
-#
-# 	g.node('start', shape='Mdiamond')
-# 	g.node('end', shape='Msquare')
-#
-# 	g.render(_PRODUCTS_PATH / "example_graph", format="png")
-
-
-
 
 def test_graph():
 	g = signature_graph(AE)
@@ -373,6 +392,10 @@ def test_graph():
 	g.render(_PRODUCTS_PATH / "SimCLR", format="png")
 
 
+	g = signature_graph(TargetedSimCLR)
+	g.render(_PRODUCTS_PATH / "TargetSimCLR", format="png")
+
+
 	g = signature_graph(toy.SwissRoll)
 	g.render(_PRODUCTS_PATH / "SwissRoll", format="png")
 
@@ -383,6 +406,41 @@ def test_graph():
 
 	g = signature_graph(toy.Helix)
 	g.render(_PRODUCTS_PATH / "Helix", format="png")
+
+
+
+def test_init():
+	dataset = toy.SwissRoll()
+
+	spec = Spec().include(dataset)
+	print(spec)
+
+	model = VAE(latent_dim=2, blueprint=spec)
+
+	print(model)
+
+	print()
+
+	print('\n'.join(map(str, model.signatures())))
+	print()
+
+	g = signature_graph(model)
+	g.render(_PRODUCTS_PATH / "VAE_instance", format="png")
+
+	batch = dataset.batch(5).include(model)
+
+	print(batch)
+
+	print(batch['loss'])
+
+	print(batch)
+
+
+
+
+
+
+
 
 
 

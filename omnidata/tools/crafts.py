@@ -11,7 +11,7 @@ from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, Skille
 
 
 from .abstract import Loggable, AbstractAssessible, AbstractTool
-from .errors import MachineError
+from .errors import MachineError, ToolFailedError
 from .assessments import Signatured
 
 prt = get_printer(__name__)
@@ -442,6 +442,12 @@ class CachedPropertyCraft(ReplaceableCraft, cached_property):
 
 	def update_value(self, instance: AbstractCrafty, value):
 		instance.__dict__[self.attrname] = value
+
+
+	def __get__(self, instance, owner):
+		if self.func is None and self.attrname not in instance.__dict__:
+			raise ToolFailedError(f'No function or value for {self.label} in {instance}')
+		return super().__get__(instance, owner)
 
 	
 	def __set__(self, instance, value):

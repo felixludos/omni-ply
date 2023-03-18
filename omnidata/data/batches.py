@@ -3,7 +3,7 @@ from typing import Optional, Type
 from omnibelt import unspecified_argument, filter_duplicates
 
 # from ..parameters import hparam, with_hparams, Parameterized
-from ..tools.top import Cached, DynamicContext, SeededContext
+from ..tools.top import Cached, DynamicContext, SeededContext, ScopedContext
 
 from .abstract import AbstractBatchable, AbstractCountableData, AbstractBatch
 from .views import ViewBase, SizeSelector, IndexSelector
@@ -39,7 +39,7 @@ class BatchableView(Batchable, ViewBase):
 
 
 
-class BatchBase(Cached, BatchableView, SizeSelector, DynamicContext, AbstractBatch):
+class BatchBase(Cached, BatchableView, SizeSelector, ScopedContext, DynamicContext, AbstractBatch):
 	def __init__(self, progress: AbstractProgression = None, **kwargs):
 		super().__init__(progress=progress, **kwargs)
 		self._progress = progress
@@ -82,6 +82,10 @@ class BatchBase(Cached, BatchableView, SizeSelector, DynamicContext, AbstractBat
 
 class IndexBatch(IndexSelector, BatchBase):
 	pass
+	# def __init__(self, *args, **kwargs):
+	# 	super().__init__(*args, **kwargs)
+	# 	if self.source is not None:
+	# 		self.include(self.source)
 
 
 

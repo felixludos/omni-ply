@@ -5,7 +5,7 @@ from .parameterized import ModifiableParameterized, FingerprintedParameterized, 
 from .building import ConfigBuilder, BuilderBase, BuildableBase, MultiBuilderBase, RegistryBuilderBase, \
 	HierarchyBuilderBase, RegisteredProductBase, ModifiableProduct, AnalysisBuilder
 from .submodules import SubmoduleBase, SubmachineBase
-from .spec import ArchitectBase
+from .spec import ArchitectBase, Specced
 # from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
 
 
@@ -54,7 +54,7 @@ class SimpleParameterized(ModifiableParameterized, FingerprintedParameterized):
 
 
 # class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameterized, PreparedParameterized):
-class Parameterized(SimpleParameterized, Industrial):
+class Parameterized(SimpleParameterized, Specced, Industrial):
 	@classmethod
 	def inherit_hparams(cls, *names):
 		out = super().inherit_hparams(*names)

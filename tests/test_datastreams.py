@@ -23,7 +23,7 @@ def _init_default_datastream():
 def test_datastream_init():
 	datastream = _init_default_datastream()
 
-	assert str(datastream) == 'Helix(target, observation, mechanism)'
+	assert str(datastream) == 'Helix(observation, target, mechanism)'
 
 	buffers = tuple(sorted(datastream.gizmos()))
 	# assert len(buffers) == len(datastream)

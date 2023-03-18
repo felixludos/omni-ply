@@ -1,6 +1,6 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Hashable, Iterator, Iterable, Type, Set
 from collections import UserDict
-from omnibelt import unspecified_argument
+from omnibelt import unspecified_argument, filter_duplicates
 
 from ..structure import spaces
 from ..features import Seeded
@@ -206,15 +206,7 @@ class SeededContext(ContextBase, Seeded):
 
 class Cached(SeededContext, UserDict):
 	def gizmos(self) -> Iterator[str]:
-		past = set()
-		for gizmo in super().gizmos():
-			if gizmo not in past:
-				yield gizmo
-				past.add(gizmo)
-		for gizmo in self.cached():
-			if gizmo not in past:
-				yield gizmo
-				past.add(gizmo)
+		yield from filter_duplicates(super().gizmos(), self.cached())
 
 
 	def is_cached(self, gizmo: str):

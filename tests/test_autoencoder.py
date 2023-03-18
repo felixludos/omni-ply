@@ -99,8 +99,7 @@ def test_spec():
 	spec = Spec().include(dataset)
 	print(spec)
 
-	builder = LinearBuilder(blueprint=spec,
-	                        application={'input': 'observation', 'output': 'target'})
+	builder = LinearBuilder(blueprint=spec, application={'input': 'observation', 'output': 'target'})
 
 	model = builder.build()
 

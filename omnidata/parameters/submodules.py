@@ -2,7 +2,7 @@ from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, 
 from omnibelt import unspecified_argument, get_printer
 from omnibelt.crafts import AbstractCraft
 
-from ..tools.abstract import AbstractScopeGenerator, AbstractScope
+from ..tools.abstract import AbstractScopeGenerator, AbstractScope, AbstractTool, ToolFailedError
 from ..tools.assessments import Signatured, AbstractSignature, SimpleSignature
 from ..tools.crafts import AbstractCrafty, ToolCraft, ReplaceableCraft
 from ..tools.context import SimpleScope
@@ -57,6 +57,15 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 		return builder.build(*args, **kwargs)
 
 
+	def build_with_spec(self, owner, spec):
+		builder = self.get_builder(blueprint=spec)
+		if builder is None:
+			raise ValueError(f'No builder for {self}')
+		product = builder.build()
+		spec.update_with(builder)
+		return product
+
+
 	# def create_value(self, base, owner=None):  # TODO: maybe make thread-safe by using a lock
 	# 	try:
 	# 		return super().create_value(base, owner)
@@ -93,6 +102,11 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 
 
 class SubmachineTool(ToolCraft, AbstractScopeGenerator):
+	class Skill(ToolCraft.Skill):
+		def space_of(self, gizmo: str):
+			raise self._ToolFailedError(gizmo)
+
+
 	def __init__(self, label: str, *, attrname=None, signature=None, **kwargs): # label is internal name (may be replaced)
 		super().__init__(label, **kwargs)
 		self.attrname = attrname
@@ -118,14 +132,33 @@ class SubmachineTool(ToolCraft, AbstractScopeGenerator):
 	def _get_from(self, instance: AbstractCrafty, ctx, gizmo: str):
 		sub = getattr(instance, self.attrname)
 
-		scope = ctx.scope_for((instance, self.attrname), None)
-		if scope is None:
-			scope = self._create_scope(ctx, instance, self.attrname, sub)
+		if isinstance(sub, AbstractTool):
+			scope = ctx.scope_for((instance, self.attrname), None)
 			if scope is None:
-				raise ValueError(f'No scope for {instance} and {self.attrname}')
-			ctx.register_scope((instance, self.attrname), scope)
+				scope = self._create_scope(ctx, instance, self.attrname, sub)
+				if scope is None:
+					raise ValueError(f'No scope for {instance} and {self.attrname}')
+				ctx.register_scope((instance, self.attrname), scope)
 
-		return scope.get_from(ctx, gizmo)
+			return scope.get_from(ctx, gizmo)
+
+		elif self.signature is not None:
+			return self._automatic_get_from(sub, self.signature.replace(self.replacements), ctx)
+
+		raise ToolFailedError(gizmo)
+
+
+	def _automatic_get_from(self, sub, sig, ctx):
+		if len(sig.inputs):
+			vals = [ctx[inp] for inp in sig.inputs]
+			return sub(*vals)
+		elif 'size' in sig.meta:
+			return sub(ctx.size)
+		elif 'indices' in sig.meta:
+			return sub(ctx.indices)
+		elif 'index' in sig.meta:
+			return sub(ctx.index)
+		raise ToolFailedError(sig.output)
 
 
 	def signatures(self, owner: Type[AbstractCrafty] = None):
@@ -162,6 +195,8 @@ class SubmachineBase(SubmoduleBase, Signatured, ReplaceableCraft):
 		if application is None:
 			application = self.replacements
 		return super().get_builder(*args, application=application, **kwargs)
+
+
 
 
 	def _expected_signatures(self):

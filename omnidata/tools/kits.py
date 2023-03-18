@@ -18,7 +18,8 @@ class SpacedTool(AbstractSpaced, AbstractTool):
 	def space_of(self, gizmo: str) -> spaces.Dim:
 		for tool in self.vendors(gizmo):
 			try:
-				return tool.space_of(gizmo)
+				if isinstance(tool, AbstractSpaced):
+					return tool.space_of(gizmo)
 			except ToolFailedError:
 				pass
 		raise self._ToolFailedError(f'No tool for {gizmo} in {self}')
@@ -29,6 +30,10 @@ class SpaceKit(IndividualCrafty, AbstractChangableSpace):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._spaces = {}
+
+
+	def gizmos(self) -> Iterator[str]:
+		yield from self._spaces.keys()
 
 
 	def _process_skill(self, src: Type[AbstractCrafty], key: str, craft: AbstractCraft, skill: LabelCraft.Skill):
@@ -120,6 +125,10 @@ class CraftyKit(SpaceKit, SpacedTool, AbstractKit):
 	def tools(self) -> Iterator['AbstractTool']:
 		for skill in self._tools.values():
 			yield from skill.tools()
+
+
+	def gizmos(self) -> Iterator[str]:
+		yield from filter_duplicates(self._spaces.keys(), super(SpaceKit, self).gizmos())
 
 
 

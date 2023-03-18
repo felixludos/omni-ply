@@ -104,6 +104,10 @@ class AbstractSourcedKit(AbstractKit):
 		raise NotImplementedError
 
 
+	def gizmos(self) -> Iterator[str]:
+		yield from filter_duplicates(*[source.gizmos() for source in self.sources()])
+
+
 	def tools(self) -> Iterator['AbstractTool']:
 		for source in self.sources():
 			yield from source.tools()

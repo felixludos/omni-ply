@@ -73,6 +73,10 @@ class BudgetLoader(Parameterized, SeedingMogul, SimpleMogul, AbstractProgression
 		return self._loader.source
 
 
+	# def sources(self) -> Iterator['AbstractBatchable']:
+	# 	yield self.source
+
+
 	@property
 	def current_batch(self) -> AbstractBatch:
 		return self._loader.current_batch
