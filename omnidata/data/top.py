@@ -48,7 +48,7 @@ class _FeaturedDataRouter(Structured, Batchable, AutoCollection, AliasedCollecti
 	def register_buffer(self, gizmo: str, buffer=None, **kwargs):
 		buffer = super().register_buffer(gizmo, buffer, **kwargs)
 		if gizmo in self._spaces:
-			self._spaces.remove(gizmo)
+			del self._spaces[gizmo]
 		return buffer
 
 

@@ -10,6 +10,7 @@ from torch.nn import functional as F
 from omnibelt import unspecified_argument, agnostic
 import omnifig as fig
 
+from collections import OrderedDict
 from functools import lru_cache
 
 import omnidata as od
@@ -575,9 +576,6 @@ class ClassifierAnnex(Structured): # (logits, target) -> {loss, correct, accurac
 		return logit.softmax(dim=1).max(dim=1).values
 
 
-from collections import OrderedDict
-
-
 
 class Manifolds(HierarchyBuilder, branch='manifold', default_ident='swiss-roll', products={
 	'swiss-roll': toy.SwissRoll,
@@ -622,8 +620,6 @@ def test_classifier():
 
 
 
-
-
 class Extracted(Structured, replace={'observation': 'original'}):
 	extractor = submachine(builder='encoder', application=dict(input='original', output='observation'))
 
@@ -637,6 +633,7 @@ class Extracted(Structured, replace={'observation': 'original'}):
 	@space('observation')
 	def observation_space(self):
 		return spaces.Unbound(self.obs_dim)
+
 
 
 
