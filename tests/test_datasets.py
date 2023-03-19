@@ -26,24 +26,24 @@ def test_dataset_init():
 
 	assert dataset.size == 100
 
-	assert str(dataset) == 'SwissRoll[100](observation, target, mechanism)'
+	assert str(dataset) == 'SwissRoll[100](observation, target, manifold)'
 
 	gizmos = tuple(sorted(dataset.gizmos()))
 	# assert len(buffers) == len(dataset)
-	assert gizmos == ('mechanism', 'observation', 'target')
+	assert gizmos == ('manifold', 'observation', 'target')
 
 	buffers = tuple(sorted(dataset.available_buffers()))
 	# assert len(buffers) == len(dataset)
-	assert buffers == ('mechanism', 'observation', 'target')
+	assert buffers == ('manifold', 'observation', 'target')
 
 	assert str(dataset.space_of('observation')) \
 	       == 'Joint(Bound(min=-14.1, max=14.1), Bound(min=0, max=21), Bound(min=-14.1, max=14.1))'
 	assert str(dataset.space_of('target')) == 'Bound(min=3, max=9)'
-	assert str(dataset.space_of('mechanism')) == 'Joint(Bound(min=3, max=9), Bound(min=0, max=1))'
+	assert str(dataset.space_of('manifold')) == 'Joint(Bound(min=3, max=9), Bound(min=0, max=1))'
 
 	assert dataset.space_of('observation').shape == (3,)
 	assert dataset.space_of('target').shape == ()
-	assert dataset.space_of('mechanism').shape == (2,)
+	assert dataset.space_of('manifold').shape == (2,)
 
 
 def test_dataset_fingerprint():
@@ -78,7 +78,7 @@ def test_dataset_iteration():
 	assert loader.current_batch is None
 
 	batch = next(loader)
-	# assert str(batch) == 'Batch[5]<SwissRollDataset[12]>({observation}, {target}, {mechanism})'
+	# assert str(batch) == 'Batch[5]<SwissRollDataset[12]>({observation}, {target}, {manifold})'
 
 	assert batch.progress is loader
 
@@ -130,17 +130,17 @@ def test_dataset_batch():
 
 	print(batch)
 
-	# assert str(batch) == 'Batch[10]<SwissRollDataset[100]>({observation}, {target}, {mechanism})'
-	assert str(batch) == 'Batch[10]<SwissRoll[100]>({observation}, {target}, {mechanism})'
+	# assert str(batch) == 'Batch[10]<SwissRollDataset[100]>({observation}, {target}, {manifold})'
+	assert str(batch) == 'Batch[10]<SwissRoll[100]>({observation}, {target}, {manifold})'
 
 	buffers = tuple(sorted(batch.gizmos()))
 	# assert len(buffers) == len(batch)
-	assert buffers == ('mechanism', 'observation', 'target')
+	assert buffers == ('manifold', 'observation', 'target')
 
 	assert str(batch.space_of('observation')) \
 	       == 'Joint(Bound(min=-14.1, max=14.1), Bound(min=0, max=21), Bound(min=-14.1, max=14.1))'
 	assert str(batch.space_of('target')) == 'Bound(min=3, max=9)'
-	assert str(batch.space_of('mechanism')) == 'Joint(Bound(min=3, max=9), Bound(min=0, max=1))'
+	assert str(batch.space_of('manifold')) == 'Joint(Bound(min=3, max=9), Bound(min=0, max=1))'
 
 	assert tuple(batch.cached()) == ()
 
@@ -174,14 +174,14 @@ def test_iterate_batch():
 
 	assert b1.size == 5
 
-	assert str(b1) == 'Batch[5]<Batch[10]<SwissRoll[100]>>({observation}, {target}, {mechanism})'
+	assert str(b1) == 'Batch[5]<Batch[10]<SwissRoll[100]>>({observation}, {target}, {manifold})'
 
 	# TODO: more testing with b.o.b.
 
 	t1 = b1['target'].sum()
 
-	assert str(batch) == 'Batch[10]<SwissRoll[100]>({observation}, target, {mechanism})'
-	assert str(b1) == 'Batch[5]<Batch[10]<SwissRoll[100]>>({observation}, target, {mechanism})'
+	assert str(batch) == 'Batch[10]<SwissRoll[100]>({observation}, target, {manifold})'
+	assert str(b1) == 'Batch[5]<Batch[10]<SwissRoll[100]>>({observation}, target, {manifold})'
 
 	t2 = b2['target'].sum()
 

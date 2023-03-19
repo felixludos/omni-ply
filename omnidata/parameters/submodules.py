@@ -33,13 +33,13 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 
 
 
-	def validate(self, product):
-		value = super().validate(product)
-		if self.typ is not None and not isinstance(value, self.typ):
-			prt.warning(f'Value {value} is not of type {self.typ}')
-		builder = self.get_builder()
-		if builder is not None:
-			return builder.validate(value)
+	# def validate(self, product, *, spec=None):
+	# 	value = super().validate(product)
+	# 	if self.typ is not None and not isinstance(value, self.typ):
+	# 		prt.warning(f'Value {value} is not of type {self.typ}')
+	# 	builder = self.get_builder()
+	# 	if builder is not None:
+	# 		return builder.validate(value)
 
 
 	def get_builder(self, *args, **kwargs) -> Optional[BuilderBase]:

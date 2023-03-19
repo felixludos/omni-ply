@@ -65,6 +65,67 @@ class SpaceKit(IndividualCrafty, AbstractChangableSpace):
 
 
 
+class ValidatedCrafty(IndividualCrafty):
+	@staticmethod
+	def validate_label(label):
+		return label
+
+
+
+class RelabeledCrafty(IndividualCrafty):
+	'''Relabel inherited crafts'''
+	_inherited_tool_relabels = None
+	def __init_subclass__(cls, replace=None, **kwargs): # {old_label: new_label}
+		if replace is None:
+			replace = {}
+		super().__init_subclass__(**kwargs)
+		# past = {}
+		# for parent in cls.__bases__:
+		# 	if issubclass(parent, RelabeledKit) and parent._inherited_tool_relabels is not None:
+		# 		past.update(parent._inherited_tool_relabels)
+		# replace.update(past)
+		cls._inherited_tool_relabels = replace
+
+
+	@classmethod
+	def _emit_all_craft_items(cls, *, remaining: Iterator[Type['InheritableCrafty']] = None,
+	                          start : Type['InheritableCrafty'] = None,
+	                          **kwargs) -> Iterator[Tuple[Type[AbstractCrafty], str, AbstractCraft]]: # N-O
+		live = start is None # make sure replacements only happen once
+		if start is None:
+			start = cls
+
+		for loc, key, craft in super()._emit_all_craft_items(remaining=remaining, start=start, **kwargs):
+			if loc is start:
+				yield loc, key, craft
+			elif live and len(start._inherited_tool_relabels) and isinstance(craft, ReplaceableCraft):
+				# if issubclass(loc, RelabeledKit):
+				# 	craft = craft.replace(loc._inherited_tool_relabels)
+				fix = craft.replace(start._inherited_tool_relabels)
+				yield loc, key, fix
+			else:
+				yield loc, key, craft
+
+
+
+class ElasticCrafty(ValidatedCrafty):
+	'''Relabel instance crafts'''
+	_application = None
+
+	def __init__(self, *args, application=None, **kwargs):
+		if application is None:
+			application = {}
+		super().__init__(*args, **kwargs)
+		self._application = application
+
+	@agnostic
+	def validate_label(self, label):
+		if self._application is None:
+			return label
+		return self._application.get(label, label)
+
+
+
 class CraftyKit(SpaceKit, SpacedTool, AbstractKit):
 	class _SkillTool(AbstractTool): # collects all skills (of the whole mro) of one gizmo
 		def __init__(self, label: str, **kwargs):
@@ -132,48 +193,6 @@ class CraftyKit(SpaceKit, SpacedTool, AbstractKit):
 
 
 
-class ValidatedKit(CraftyKit):
-	@staticmethod
-	def validate_label(label):
-		return label
-
-
-
-class RelabeledKit(ValidatedKit):
-	_inherited_tool_relabels = None
-	def __init_subclass__(cls, replace=None, **kwargs): # {old_label: new_label}
-		if replace is None:
-			replace = {}
-		super().__init_subclass__(**kwargs)
-		# past = {}
-		# for parent in cls.__bases__:
-		# 	if issubclass(parent, RelabeledKit) and parent._inherited_tool_relabels is not None:
-		# 		past.update(parent._inherited_tool_relabels)
-		# replace.update(past)
-		cls._inherited_tool_relabels = replace
-
-
-	@classmethod
-	def _emit_all_craft_items(cls, *, remaining: Iterator[Type['InheritableCrafty']] = None,
-	                          start : Type['InheritableCrafty'] = None,
-	                          **kwargs) -> Iterator[Tuple[Type[AbstractCrafty], str, AbstractCraft]]: # N-O
-		live = start is None # make sure replacements only happen once
-		if start is None:
-			start = cls
-
-		for loc, key, craft in super()._emit_all_craft_items(remaining=remaining, start=start, **kwargs):
-			if loc is start:
-				yield loc, key, craft
-			elif live and len(start._inherited_tool_relabels) and isinstance(craft, ReplaceableCraft):
-				# if issubclass(loc, RelabeledKit):
-				# 	craft = craft.replace(loc._inherited_tool_relabels)
-				fix = craft.replace(start._inherited_tool_relabels)
-				yield loc, key, fix
-			else:
-				yield loc, key, craft
-
-
-
 class MaterialedCrafty(CraftyKit, Prepared): # allows materials to be initialized when prepared
 	def _prepare(self, *args, **kwargs):
 		super()._prepare(*args, **kwargs)
@@ -223,23 +242,6 @@ class AssessibleCrafty(CraftyKit, AbstractAssessible):
 			if isinstance(tool, AbstractAssessible):
 				assessment.add_edge(self, tool)
 				assessment.expand(tool)
-
-
-
-class ElasticCrafty(ValidatedKit):
-	_application = None
-	def __init__(self, *args, application=None, **kwargs):
-		if application is None:
-			application = {}
-		super().__init__(*args, **kwargs)
-		self._application = application
-	
-	
-	@agnostic
-	def validate_label(self, label):
-		if self._application is None:
-			return label
-		return self._application.get(label, label)
 
 
 

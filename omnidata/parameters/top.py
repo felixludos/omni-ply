@@ -1,7 +1,8 @@
 from ..tools import Industrial
 from .abstract import AbstractArgumentBuilder
 from .hyperparameters import InheritableHyperparameter
-from .parameterized import ModifiableParameterized, FingerprintedParameterized, InheritHparamsDecorator, HparamWrapper
+from .parameterized import ModifiableParameterized, FingerprintedParameterized, InheritHparamsDecorator, \
+	InheritableParameterized, HparamWrapper
 from .building import ConfigBuilder, BuilderBase, BuildableBase, MultiBuilderBase, RegistryBuilderBase, \
 	HierarchyBuilderBase, RegisteredProductBase, ModifiableProduct, AnalysisBuilder
 from .submodules import SubmoduleBase, SubmachineBase
@@ -48,13 +49,13 @@ class with_hparam(HparamWrapper):
 
 
 
-class SimpleParameterized(ModifiableParameterized, FingerprintedParameterized):
+class Parameterized(ModifiableParameterized, InheritableParameterized, FingerprintedParameterized):
 	pass
 
 
 
 # class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameterized, PreparedParameterized):
-class Parameterized(SimpleParameterized, Specced, Industrial):
+class Structured(Parameterized, Specced, Industrial):
 	@classmethod
 	def inherit_hparams(cls, *names):
 		out = super().inherit_hparams(*names)
@@ -63,7 +64,6 @@ class Parameterized(SimpleParameterized, Specced, Industrial):
 			if isinstance(val, submachine) and len(cls._inherited_tool_relabels):
 				setattr(cls, name, val.replace(cls._inherited_tool_relabels))
 		return out
-
 	pass
 
 
@@ -76,9 +76,15 @@ class Parameterized(SimpleParameterized, Specced, Industrial):
 # 	pass
 
 
-class Builder(ModifiableProduct, Parameterized, ArchitectBase, AnalysisBuilder, AbstractArgumentBuilder):#(ConfigBuilder, Parameterized):
+class Builder(ModifiableProduct, Structured, ArchitectBase, AnalysisBuilder):#(ConfigBuilder, Parameterized):
 	#, inheritable_auto_methods=['product_base']):
-	pass
+
+	def _build_kwargs(self, product, *args, **kwargs):
+		kwargs = super()._build_kwargs(product, *args, **kwargs)
+		if issubclass(product, Industrial) and 'application' not in kwargs and self._application is not None:
+			kwargs['application'] = self._application
+		return kwargs
+
 
 
 
@@ -107,7 +113,7 @@ class RegisteredProduct(Buildable, RegisteredProductBase):
 
 
 
-class MatchingBuilder(Parameterized, AbstractArgumentBuilder):
+class MatchingBuilder(Structured, AbstractArgumentBuilder):
 	'''Automatically fills in common hyperparameters between the builder and the product'''
 	fillin_hparams = hparam(True, inherit=True, hidden=True)
 	fillin_hidden_hparams = hparam(False, inherit=True, hidden=True)

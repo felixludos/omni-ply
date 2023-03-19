@@ -15,16 +15,16 @@ from functools import lru_cache
 import omnidata as od
 from omnidata import toy
 from omnidata import Builder, Buildable, HierarchyBuilder, RegisteredProduct, MatchingBuilder, RegistryBuilder, \
-	register_builder
+	register_builder, get_builder
+from omnidata import BudgetLoader
 from omnidata import hparam, inherit_hparams, submodule, submachine, spaces
-from omnidata import Guru, Context, material, space, indicator, machine, Parameterized
-from omnidata.data import toy
+from omnidata import Guru, Context, material, space, indicator, machine, Structured
 
 from omnidata import Spec, Builder, Buildable, InitWall
 from omnidata import toy
 
 
-class Basic_Autoencoder(Parameterized, InitWall, nn.Module):
+class Basic_Autoencoder(Structured, InitWall, nn.Module):
 	encoder = submodule(builder='encoder')
 	decoder = submodule(builder='decoder')
 
@@ -76,9 +76,21 @@ def test_signature():
 
 
 
+class CrossEntropyLoss(nn.CrossEntropyLoss):
+	def forward(self, input, target):
+		if target.ndim > 1:
+			target = target.view(-1)
+		return super().forward(input, target)
+
+
+
 @register_builder('criterion')
-class CriterionBuilder(HierarchyBuilder):
+class CriterionBuilder(HierarchyBuilder, products={'cross-entropy': CrossEntropyLoss,
+                                                   'mse': nn.MSELoss}):
 	target_space = space('target')
+	@space('input')
+	def input_space(self):
+		return self.target_space
 
 
 	def product_signatures(self, *args, **kwargs):
@@ -96,6 +108,7 @@ class ComparisonBuilder(CriterionBuilder, branch='comparison', default_ident='ms
 
 
 
+@register_builder('function')
 class FunctionBuilder(Builder):
 	def product_signatures(self, *args, **kwargs):
 		yield self._Signature('output', inputs=('input',))
@@ -104,6 +117,9 @@ class FunctionBuilder(Builder):
 	din = space('input')
 	dout = space('output')
 
+
+
+class LinearBuilder(FunctionBuilder):
 
 	def product_base(self, *args, **kwargs):
 		return nn.Linear
@@ -123,43 +139,93 @@ class FunctionBuilder(Builder):
 		return kwargs
 
 
+@register_builder('nonlin')
+class Nonlin_Builder(HierarchyBuilder, branch='nonlin', default_ident='relu', products={
+	'relu': nn.ReLU,
+	'lrelu': nn.LeakyReLU,
+	'prelu': nn.PReLU,
+	'elu': nn.ELU,
+	'sigmoid': nn.Sigmoid,
+	'tanh': nn.Tanh,
+}):
+	pass
+
+
+@register_builder('mlp')
+class MLP_Builder(LinearBuilder):
+	def product_signatures(self, *args, **kwargs):
+		yield self._Signature('output', inputs=('input',))
+
+	hidden = hparam(None)
+	nonlin = hparam('elu')
+	out_nonlin = hparam(None)
+
+	def product_base(self, *args, hidden=unspecified_argument, **kwargs):
+		if hidden is unspecified_argument:
+			hidden = self.hidden
+		return nn.Linear if hidden is None else nn.Sequential
+
+	def _build_kwargs(self, product, **kwargs):
+		kwargs = super()._build_kwargs(product, **kwargs)
+
+		if issubclass(product, nn.Sequential):
+			hidden = [kwargs.pop('in_features')] + self.hidden + [kwargs.pop('out_features')]
+
+			nonlin_builder = get_builder('nonlin')()
+
+			layers = []
+
+			for i in range(len(hidden) - 1):
+				layers.append(nn.Linear(hidden[i], hidden[i + 1]))
+				if i < len(hidden) - 2:
+					layers.append(nonlin_builder.build(self.nonlin))
+				elif self.out_nonlin is not None:
+					layers.append(nonlin_builder.build(self.out_nonlin))
+
+			kwargs[None] = layers
+
+		return kwargs
+
 
 @register_builder('encoder')
-class EncoderBuilder(FunctionBuilder):
+class EncoderBuilder(MLP_Builder):
 	pass
 
 
 
 @register_builder('decoder')
-class DecoderBuilder(FunctionBuilder):
+class DecoderBuilder(MLP_Builder):
 	pass
 
 
 
-class Classifier(Parameterized):
-	net = submachine(builder='net', application=dict(input='observation', output='logits'))
-	criterion = submachine(builder='criterion', application=dict(input='logits', target='target', output='loss'))
+# class Classifier(Structured):
+# 	net = submachine(builder='net', application=dict(input='observation', output='logits'))
+# 	criterion = submachine(builder='criterion', application=dict(input='logits', target='target', output='loss'))
+#
+#
+# 	@machine('prediction')
+# 	def predict_from_logits(self, logits):
+# 		return logits.argmax(dim=1)
 
 
-	@machine('prediction')
-	def predict_from_logits(self, logits):
-		return logits.argmax(dim=1)
 
-
-
-class AE(Parameterized, InitWall, nn.Module):
-	encoder = submachine(builder='encoder', application=dict(input='observation', output='latent'))
-	decoder = submachine(builder='decoder', application=dict(input='latent', output='reconstruction'))
-
-	criterion = submachine(builder='comparison', application=dict(input='reconstruction', target='observation',
-	                                                             output='loss'))
-
-	latent_dim = hparam(required=True)
+class LVM(Structured, InitWall, nn.Module):
+	latent_dim = hparam(required=True, inherit=True)
 
 
 	@space('latent')
 	def latent_space(self):
 		return spaces.Unbound(self.latent_dim)
+
+
+
+class AE(LVM):
+	encoder = submachine(builder='encoder', application=dict(input='observation', output='latent'))
+	decoder = submachine(builder='decoder', application=dict(input='latent', output='reconstruction'))
+
+	criterion = submachine(builder='comparison', application=dict(input='reconstruction', target='observation',
+	                                                             output='loss'))
 
 
 
@@ -211,9 +277,14 @@ class BetaVAE(VAE):
 
 
 
-class SimCLR(Parameterized):
+class SimCLR(LVM):
 	encoder = submachine(builder='encoder', application=dict(input='observation', output='latent'))
-	augmentation = submodule(builder='augmentation') # augmentation must be stochastic
+	# augmentation = submodule(builder='augmentation') # augmentation must be stochastic
+
+	augmentation_std = hparam(0.1)
+	@submodule
+	def augmentation(self):
+		return lambda x: x.add(torch.randn_like(x) * self.augmentation_std)
 
 	temperature = hparam(1.0)
 
@@ -263,9 +334,11 @@ class SimCLR(Parameterized):
 
 
 
+@inherit_hparams('encoder')
 class TargetedSimCLR(SimCLR):
 	@machine('positives')
 	def compute_positive_similarity(self, similarity_matrix, class_id):
+
 		raise NotImplementedError
 
 
@@ -276,7 +349,7 @@ class TargetedSimCLR(SimCLR):
 
 
 
-class GAN(Parameterized):
+class GAN(Structured):
 	generator = submodule(builder='generator')
 	discriminator = submodule(builder='discriminator')
 
@@ -358,14 +431,6 @@ class GAN(Parameterized):
 
 
 
-
-class Extracted(Parameterized, replace={'observation': 'original'}):
-	extractor = submachine(builder='encoder', application=dict(input='original', output='observation'))
-
-
-
-
-
 _PRODUCTS_PATH = Path(__file__).parent / 'products'
 
 
@@ -435,6 +500,189 @@ def test_init():
 
 	print(batch)
 
+	print()
+
+	print('\n'.join(map(str, batch.signatures())))
+	print()
+
+	g = signature_graph(batch)
+	g.render(_PRODUCTS_PATH / "batch_instance", format="png")
+
+
+
+def test_init2():
+	dataset = toy.Helix(n_helix=4)
+
+	spec = Spec().include(dataset)
+	print(spec)
+
+	model = TargetedSimCLR(latent_dim=2, application=dict(class_id='target'), blueprint=spec)
+
+	print(model)
+
+	print()
+
+	print('\n'.join(map(str, model.signatures())))
+	print()
+
+	g = signature_graph(model)
+	g.render(_PRODUCTS_PATH / "SimCLR_instance", format="png")
+
+	batch = dataset.batch(5).include(model)
+
+	print(batch)
+
+	g = signature_graph(batch)
+	g.render(_PRODUCTS_PATH / "simclr_batch_instance", format="png")
+
+
+	# print(batch['similarity_matrix'])
+	# print(batch)
+
+	print()
+
+	print('\n'.join(map(str, batch.signatures())))
+	print()
+
+
+
+class SimpleFunction(Structured, nn.Module):
+	@machine('output')
+	def compute(self, input):
+		return self(input)
+
+
+
+class ClassifierAnnex(Structured): # (logits, target) -> {loss, correct, accuracy, confidences, confidence}
+	# net = submachine(builder='function', application=dict(input='observation', output='logit'))
+	criterion = submachine('cross-entropy', builder='criterion', application=dict(input='logit', output='loss'))
+
+
+	@machine.optional('prediction')
+	def compute_prediction(self, logit):
+		return logit.argmax(-1)
+
+
+	@machine('correct')
+	# @indicator.mean('accuracy')
+	def compute_correct(self, prediction, target):
+		return prediction == target
+
+
+	@machine('confidences')
+	# @indicator.samples('confidence') # for multiple statistics
+	def compute_confidences(self, logit):
+		return logit.softmax(dim=1).max(dim=1).values
+
+
+from collections import OrderedDict
+
+
+
+class Manifolds(HierarchyBuilder, branch='manifold', default_ident='swiss-roll', products={
+	'swiss-roll': toy.SwissRoll,
+	'helix': toy.Helix,
+	}):
+	pass
+
+
+def test_classifier():
+	spec = Spec()
+
+	dataset = Manifolds().modded(toy.Noisy).build('helix', n_helix=4, blueprint=spec)
+	spec.include(dataset)
+
+	signature_graph(dataset).render(_PRODUCTS_PATH / "cls_data_instance", format="png")
+
+
+	annex = ClassifierAnnex(blueprint=spec)
+	spec.include(annex)
+
+	signature_graph(annex).render(_PRODUCTS_PATH / "cls_annex_instance", format="png")
+
+	builder = MLP_Builder(hidden=[64,64], nonlin='relu',
+	                      application=dict(input='observation', output='logit'), blueprint=spec)
+	model = builder.modded(SimpleFunction).build()
+
+
+	signature_graph(model).render(_PRODUCTS_PATH / "cls_model_instance", format="png")
+
+	loader = dataset.iterate(batch_size=10)
+	loader = loader.include(annex, model)
+
+	batch = next(loader)
+
+	signature_graph(batch).render(_PRODUCTS_PATH / "cls_batch_instance", format="png")
+
+	print(batch)
+
+	print(batch['loss'])
+
+	print(batch)
+
+
+
+
+
+class Extracted(Structured, replace={'observation': 'original'}):
+	extractor = submachine(builder='encoder', application=dict(input='original', output='observation'))
+
+
+
+# @inherit_hparams('extractor')
+# class SimpleExtracted(Extracted):
+	obs_dim = hparam(required=True)
+
+
+	@space('observation')
+	def observation_space(self):
+		return spaces.Unbound(self.obs_dim)
+
+
+
+
+# def test_extracted_classifier():
+# 	spec = Spec()
+#
+# 	dataset = Manifolds().modded(Extracted, toy.Noisy).build('helix', obs_dim=12, n_helix=4, blueprint=spec)
+#
+# 	print(dataset)
+
+	# spec.include(dataset)
+
+	# signature_graph(dataset).render(_PRODUCTS_PATH / "noisy_data_instance", format="png")
+
+
+	# spec = Spec()
+	#
+	# dataset = toy.Helix(n_helix=4, blueprint=spec)
+	# spec.include(dataset)
+	#
+	# signature_graph(dataset).render(_PRODUCTS_PATH / "cls_data_instance", format="png")
+	#
+	# annex = ClassifierAnnex(blueprint=spec)
+	# spec.include(annex)
+	#
+	# signature_graph(annex).render(_PRODUCTS_PATH / "cls_annex_instance", format="png")
+	#
+	# builder = MLP_Builder(hidden=[64, 64], nonlin='relu',
+	#                       application=dict(input='observation', output='logit'), blueprint=spec)
+	# model = builder.modded(SimpleFunction).build()
+	#
+	# signature_graph(model).render(_PRODUCTS_PATH / "cls_model_instance", format="png")
+	#
+	# loader = dataset.iterate(batch_size=10)
+	# loader = loader.include(annex, model)
+	#
+	# batch = next(loader)
+	#
+	# signature_graph(batch).render(_PRODUCTS_PATH / "cls_batch_instance", format="png")
+	#
+	# print(batch)
+	#
+	# print(batch['loss'])
+	#
+	# print(batch)
 
 
 
@@ -442,6 +690,63 @@ def test_init():
 
 
 
+# class DeepFunction(SimpleFunction):
+# 	hidden = hparam()
+#
+# 	@space('features')
+# 	def features_space(self):
+# 		return spaces.Unbound(self.hidden[-1])
+#
+# 	feature_extractor = submachine(builder='mlp', application=dict(input='input', output='features'))
+# 	out_layer = submachine(builder='linear', application=dict(input='features', output='output'))
+#
+#
+#
+# def test_classifier2():
+# 	spec = Spec()
+#
+# 	dataset = toy.Helix(n_helix=4, blueprint=spec)
+# 	spec.include(dataset)
+#
+# 	annex = ClassifierAnnex(blueprint=spec)
+#
+# 	spec.include(annex)
+#
+# 	# model = Classifier(blueprint=spec)
+#
+#
+# 	model = DeepFunction(blueprint=spec)
+#
+# 	builder = MLP_Builder(hidden=[64,64], nonlin='relu',
+# 	                      application=dict(input='observation', output='logit'), blueprint=spec)
+# 	model = builder.modded(SimpleFunction).build()
+#
+#
+# 	loader = dataset.iterate(batch_size=10).include(model)
+#
+# 	batch = next(loader)
+#
+# 	print(batch)
+
+
+
+# def test_classifier():
+# 	spec = Spec()
+#
+# 	dataset = toy.Helix(n_helix=4, blueprint=spec)
+# 	# spec.include(dataset)
+#
+# 	# model = Classifier(blueprint=spec)
+#
+# 	builder = FunctionBuilder(application=dict(input='observation', output='logit'), blueprint=spec)
+#
+# 	builder.modded(ClassifierAnnex)
+#
+# 	model = builder.build()
+#
+# 	print(model)
+#
+# 	pass
 
 
 

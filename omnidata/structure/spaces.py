@@ -675,6 +675,11 @@ class Categorical(Dim):
 		self.values = values
 
 
+	@property
+	def width(self): # for (default) neural representation
+		return self.n
+
+
 	def validate(self, value):
 		if value in self.values:
 			return

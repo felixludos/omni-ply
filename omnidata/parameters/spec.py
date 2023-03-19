@@ -6,11 +6,11 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 from ..structure import spaces
 from ..tools.abstract import AbstractTool, AbstractContext, AbstractSpaced, AbstractChangableSpace, Gizmoed
 from ..tools.errors import ToolFailedError
-from ..tools.kits import SpaceKit
+from ..tools.kits import SpaceKit, ElasticCrafty
 from ..tools.context import DynamicContext
 from ..tools.kits import CraftyKit
 
-from .abstract import AbstractModular, AbstractSubmodule
+from .abstract import AbstractModular, AbstractSubmodule, AbstractArgumentBuilder
 from .parameterized import ParameterizedBase
 from .building import BuilderBase
 
@@ -102,12 +102,10 @@ class Spec(DynamicContext, AbstractSpec):
 
 class AutoSpec(AbstractSpecced):
 	_Spec = Spec
-	_my_blueprint = None
 
 	def __init__(self, *args, blueprint=None, **kwargs):
-		if blueprint is None:
-			blueprint = self.my_blueprint
-		super().__init__(*args, **kwargs) # extracts hparams
+		self._my_blueprint = blueprint
+		super().__init__(*args, **kwargs) # extracts hparams and processes crafts
 		self.my_blueprint = self._update_spec(blueprint)
 
 
@@ -120,11 +118,13 @@ class AutoSpec(AbstractSpecced):
 
 
 	def _update_spec(self, spec=None):
-		if spec is None:
-			spec = self._Spec()
-		if '_my_blueprint' not in self.__dict__:
+		if spec is not None:
 			return spec.update_with(self)
-		return spec
+		# if spec is None:
+		# 	spec = self._Spec()
+		# if '_my_blueprint' not in self.__dict__:
+		# 	return spec.update_with(self)
+		# return spec
 
 
 
@@ -146,24 +146,32 @@ class Specced(AutoSpec, ParameterizedBase, AbstractModular, SpaceKit):
 	
 	
 	def _fix_missing_spaces(self, spec):
-		for gizmo in self._missing_spaces():
-			try:
-				space = spec.space_of(gizmo)
-			except ToolFailedError:
-				continue
-			else:
-				self.change_space_of(gizmo, space)
+		if spec is not None:
+			for gizmo in self._missing_spaces():
+				try:
+					space = spec.space_of(gizmo)
+				except ToolFailedError:
+					continue
+				else:
+					self.change_space_of(gizmo, space)
 
 
 	def _create_missing_submodules(self, spec):
+		# if spec is not None:
 		for name, param in self.named_submodules(hidden=True):
 			try:
 				val = getattr(self, name)
 			except AttributeError:
-				val = param.build_with_spec(self, spec.sub(name))
+				if spec is None:
+					val = param.build_with(self)
+				else:
+					val = param.build_with_spec(self, spec.sub(name))
 			else:
-				val = param.validate(val)
+				val = param.validate(val, spec=spec)
 			setattr(self, name, val)
+
+		if spec is not None:
+			spec.update_with(self)
 
 
 	# def check_spec(self, spec):
@@ -181,8 +189,9 @@ class Specced(AutoSpec, ParameterizedBase, AbstractModular, SpaceKit):
 
 
 
-class ArchitectBase(Specced, BuilderBase):
+class ArchitectBase(Specced, BuilderBase, AbstractArgumentBuilder):
 	pass
+
 
 
 

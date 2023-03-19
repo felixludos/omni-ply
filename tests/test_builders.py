@@ -141,7 +141,7 @@ def test_param_product():
 	hparams = dict(MyModels().named_hyperparameters())
 	assert len(hparams) == 4
 	assert tuple(sorted(hparams.keys())) == ('ident', 'p1', 'p2', 'p3') # p4 is hidden
-	assert len(list(MyModels().named_hyperparameters(hidden=True))) == 5
+	assert len(list(MyModels().named_hyperparameters(hidden=True))) == 7
 
 	assert hparams['p1'] is MyModels().get_hparam('p1')
 

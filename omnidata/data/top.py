@@ -2,7 +2,7 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 import math
 # from ..persistent import Fingerprinted
 from ..tools import Industrial
-from ..parameters import SimpleParameterized, Parameterized, hparam
+from ..parameters import Parameterized, Structured, hparam
 
 from .abstract import AbstractDataSource
 from .routers import DataCollection, AutoCollection, AliasedCollection, CountableDataRouter
@@ -27,7 +27,7 @@ SetProgression._Context = Batch
 
 
 
-class Buffer(SimpleParameterized, Batchable, TensorSource, SpacedSource):#, BuildableData): # TODO: should be epochable
+class Buffer(Parameterized, Batchable, TensorSource, SpacedSource):#, BuildableData): # TODO: should be epochable
 	_Progression = SetProgression
 	pass
 
@@ -43,7 +43,7 @@ class Buffer(SimpleParameterized, Batchable, TensorSource, SpacedSource):#, Buil
 # print('\n'.join(map(str, AliasedCollection.mro())))
 # print()
 # print('\n'.join(map(str, DataCollection.mro())))
-class _FeaturedDataRouter(Parameterized, Batchable, AutoCollection, AliasedCollection, DataCollection):
+class _FeaturedDataRouter(Structured, Batchable, AutoCollection, AliasedCollection, DataCollection):
 	#, BuildableData):
 	def register_buffer(self, gizmo: str, buffer=None, **kwargs):
 		buffer = super().register_buffer(gizmo, buffer, **kwargs)

@@ -20,3 +20,7 @@ class InheritedHparamError(AttributeError):
 	pass
 
 
+
+class InvalidProductError(TypeError):
+	pass
+

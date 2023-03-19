@@ -20,23 +20,25 @@ def _init_default_datastream():
 	return datastream
 
 
+
 def test_datastream_init():
 	datastream = _init_default_datastream()
 
-	assert str(datastream) == 'Helix(observation, target, mechanism)'
+	assert str(datastream) == 'Helix(observation, target, manifold)'
 
 	buffers = tuple(sorted(datastream.gizmos()))
 	# assert len(buffers) == len(datastream)
-	assert buffers == ('mechanism', 'observation', 'target')
+	assert buffers == ('manifold', 'observation', 'target')
 
 	assert str(datastream.observation_space) \
 	       == 'Joint(Bound(min=-1, max=1), Bound(min=-1, max=1), Bound(min=-1, max=1))'
 	assert str(datastream.target_space) == 'Categorical(2)'
-	assert str(datastream.mechanism_space) == 'Joint(Bound(min=-1, max=1), Categorical(2))'
+	assert str(datastream.manifold_space) == 'Joint(Bound(min=-1, max=1), Categorical(2))'
 
 	assert datastream.observation_space.shape == (3,)
 	assert datastream.target_space.shape == ()
-	assert datastream.mechanism_space.shape == (2,)
+	assert datastream.manifold_space.shape == (2,)
+
 
 
 def test_datastream_fingerprint():
@@ -51,6 +53,7 @@ def test_datastream_fingerprint():
 	                   'periodic_strand': False, 'n_helix': 2})
 
 
+
 def test_datastream_prepare():
 	datastream = _init_default_datastream()
 
@@ -59,6 +62,7 @@ def test_datastream_prepare():
 	datastream.prepare()
 
 	assert datastream.is_ready == True
+
 
 
 def test_datastream_iteration():
@@ -71,7 +75,7 @@ def test_datastream_iteration():
 	assert loader.current_batch is None
 
 	batch = next(loader)
-	assert str(batch) == 'Bunch[5]<Helix>({target}, {observation}, {mechanism})'
+	assert str(batch) == 'Bunch[5]<Helix>({observation}, {target}, {manifold})'
 
 	assert batch.progress is loader
 
@@ -105,22 +109,23 @@ def test_datastream_iteration():
 	assert loader.sample_count == 16
 
 
+
 def test_datastream_batch():
 	datastream = _init_default_datastream()
 
 	batch = datastream.batch(10, seed=1001)
 
-	assert str(batch) == 'Bunch[10]<Helix>({target}, {observation}, {mechanism})'
+	assert str(batch) == 'Bunch[10]<Helix>({observation}, {target}, {manifold})'
 
 	buffers = tuple(sorted(batch.gizmos()))
 	# assert len(buffers) == len(batch)
-	assert buffers == ('mechanism', 'observation', 'target')
+	assert buffers == ('manifold', 'observation', 'target')
 
 
 	assert str(batch.space_of('observation')) \
 	       == 'Joint(Bound(min=-1, max=1), Bound(min=-1, max=1), Bound(min=-1, max=1))'
 	assert str(batch.space_of('target')) == 'Categorical(2)'
-	assert str(batch.space_of('mechanism')) == 'Joint(Bound(min=-1, max=1), Categorical(2))'
+	assert str(batch.space_of('manifold')) == 'Joint(Bound(min=-1, max=1), Categorical(2))'
 
 	assert tuple(batch.cached()) == ()
 
@@ -129,7 +134,7 @@ def test_datastream_batch():
 	assert obs.dtype == torch.float32
 	assert obs.sum().item() == 0.9631270170211792
 
-	assert tuple(sorted(batch.cached())) == ('mechanism', 'observation')
+	assert tuple(sorted(batch.cached())) == ('manifold', 'observation')
 
 
 

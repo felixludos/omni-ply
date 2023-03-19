@@ -303,8 +303,9 @@ class TransformCraft(MetaArgCraft):
 		if raw is None:
 			raw = isinstance(owner, type)
 		skip = set(self._known_meta_args(owner))
-		for key, default in self._parse_fn_args(fn, raw=raw, skip=skip):
-			yield self._validate_label(owner, key), default
+		# for key, default in self._parse_fn_args(fn, raw=raw, skip=skip):
+		# 	yield self._validate_label(owner, key), default
+		yield from self._parse_fn_args(fn, raw=raw, skip=skip)
 
 
 	_MachineError = MachineError
@@ -315,8 +316,9 @@ class TransformCraft(MetaArgCraft):
 		if existing is None:
 			existing = {}
 		for key, default in self._transform_inputs(owner, fn, raw=False):
+			name = self._validate_label(owner, key)
 			try:
-				existing[key] = ctx[key]
+				existing[key] = ctx[name]
 			except KeyError:
 				if default is inspect.Parameter.empty:
 					raise self._MachineError(key, self.label, owner)
@@ -327,8 +329,9 @@ class TransformCraft(MetaArgCraft):
 
 	def _known_input_args(self, owner) -> Tuple:
 		yield from filter_duplicates(super()._known_input_args(owner),
-		        (key for key, default in self._transform_inputs(owner, self._get_instance_fn(owner))
-		            if default is inspect.Parameter.empty))
+		        (self._validate_label(owner, key)
+		         for key, default in self._transform_inputs(owner, self._get_instance_fn(owner))
+		         if default is inspect.Parameter.empty))
 
 
 	def _get_fn_args(self, instance, fn, ctx, gizmo):

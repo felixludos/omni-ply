@@ -9,6 +9,7 @@ from ..persistent import AbstractFingerprinted, Fingerprinted
 
 from .errors import InheritedHparamError
 from .abstract import AbstractParameterized, AbstractHyperparameter
+from .hyperparameters import InheritableHyperparameter
 
 
 
@@ -74,6 +75,20 @@ class ParameterizedBase(AbstractParameterized):
 				raise cls._InheritedHparamError(f'{cls.__name__} cannot inherit the hparam: {name!r}')
 			setattr(cls, name, val)
 		return cls
+
+
+
+class InheritableParameterized(AbstractParameterized):
+	def __init_subclass__(cls, **kwargs):
+		super().__init_subclass__(**kwargs)
+		existing = set(cls.hyperparameter_names(hidden=True))
+		todo = []
+		for base in cls.__bases__:
+			if issubclass(base, ParameterizedBase):
+				todo.extend(name for name, param in base.named_hyperparameters(hidden=True)
+				            if name not in existing and isinstance(param, InheritableHyperparameter) and param.inherit)
+		if len(todo):
+			cls.inherit_hparams(*todo)
 
 
 

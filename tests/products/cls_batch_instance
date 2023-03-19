@@ -1,0 +1,13 @@
+digraph unknown {
+	manifold -> target
+	manifold -> observation
+	size -> manifold [style=dashed]
+	size [shape=box]
+	logit -> confidences
+	prediction -> correct
+	target -> correct
+	logit -> prediction
+	logit -> loss
+	target -> loss
+	observation -> logit
+}

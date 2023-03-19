@@ -14,39 +14,44 @@ from ..top import Datastream
 
 
 
-class ManifoldStream(Synthetic, Datastream, Seeded, Generator):
+class ManifoldStream(Datastream, Seeded, Generator):
 	def generate(self, N: int): # generates observations
-		return self.generate_observation_from_mechanism(self.generate_mechanism(N))
+		return self.generate_observation_from_manifold(self.sample_manifold(N))
 
 
-	@material.from_size('mechanism')
-	def generate_mechanism(self, N: int):
-		return self.space_of('mechanism').sample(N)
+	@material.from_size('manifold')
+	def sample_manifold(self, N: int):
+		return self.space_of('manifold').sample(N)
+
+
+	@property
+	def manifold_space(self):
+		return self.space_of('manifold')
 
 
 	@machine('observation')
-	def generate_observation_from_mechanism(self, mechanism):
+	def generate_observation_from_manifold(self, manifold):
 		raise NotImplementedError
 
 
 
 class DeterministicManifold(ManifoldStream, Decoder):
-	def generate_observation_from_mechanism(self, mechanism):
-		return self.decode(mechanism)
+	def generate_observation_from_manifold(self, manifold):
+		return self.decode(manifold)
 
 
-	def decode(self, mechanism): # deterministic mapping from mechanism to observation
+	def decode(self, manifold): # deterministic mapping from manifold to observation
 		raise NotImplementedError
 
 
 
 class DistributionalManifold(ManifoldStream):
-	def generate_observation_from_mechanism(self, mechanism):
+	def generate_observation_from_manifold(self, manifold):
 		with self.force_rng(rng=self.rng): # TODO: change force to push
-			return self.decode_distribution(mechanism).sample()
+			return self.decode_distribution(manifold).sample()
 
 
-	def decode_distribution(self, mechanism):
+	def decode_distribution(self, manifold):
 		raise NotImplementedError
 
 
@@ -56,8 +61,8 @@ class NoisyManifold(DistributionalManifold, DeterministicManifold):
 		raise NotImplementedError
 
 
-	def decode_distribution(self, mechanism):
-		return self._decode_distrib_from_mean(self.decode(mechanism))
+	def decode_distribution(self, manifold):
+		return self._decode_distrib_from_mean(self.decode(manifold))
 
 
 
@@ -84,8 +89,8 @@ class SwissRoll(DeterministicManifold):
 	tmax = hparam(9., space=spaces.HalfBound(min=0.))
 
 
-	@space('mechanism')
-	def mechanism_space(self):
+	@space('manifold')
+	def manifold_space(self):
 		return spaces.Joint(
 			spaces.Bound(min=self.tmin, max=self.tmax),
 			spaces.Bound(min=0., max=1.),
@@ -94,7 +99,7 @@ class SwissRoll(DeterministicManifold):
 
 	@space('target')
 	def target_space(self):
-		return self.mechanism_space[0]
+		return self.manifold_space[0]
 
 
 	@space('observation')
@@ -109,13 +114,13 @@ class SwissRoll(DeterministicManifold):
 
 
 	@machine('target')
-	def get_target(self, mechanism):
-		return mechanism.narrow(-1,0,1) #if self.target_theta else mechanism
+	def get_target(self, manifold):
+		return manifold.narrow(-1,0,1) #if self.target_theta else manifold
 
 
-	def decode(self, mechanism):
-		theta = mechanism.narrow(-1,0,1)
-		height = mechanism.narrow(-1,1,1)
+	def decode(self, manifold):
+		theta = manifold.narrow(-1,0,1)
+		height = manifold.narrow(-1,1,1)
 
 		pts = torch.cat([
 			self.Ax * theta * theta.mul(self.freq*np.pi).cos(),
@@ -138,8 +143,8 @@ class Helix(DeterministicManifold):
 	w = hparam(1., space=spaces.HalfBound(min=0.))
 
 
-	@space('mechanism')
-	def mechanism_space(self):
+	@space('manifold')
+	def manifold_space(self):
 		return spaces.Joint(
 			spaces.Periodic(min=-1., max=1.) if self.periodic_strand else spaces.Bound(min=-1., max=1.),
 			spaces.Categorical(n=self.n_helix),
@@ -148,7 +153,7 @@ class Helix(DeterministicManifold):
 
 	@space('target')
 	def target_space(self):
-		return self.mechanism_space[-1]
+		return self.manifold_space[-1]
 
 
 	@space('observation')
@@ -161,13 +166,13 @@ class Helix(DeterministicManifold):
 
 
 	@machine('target')
-	def get_target(self, mechanism):
-		return mechanism.narrow(-1,1,1).long()
+	def get_target(self, manifold):
+		return manifold.narrow(-1,1,1).long()
 
 
-	def decode(self, mechanism):
-		z = mechanism.narrow(-1, 0, 1)
-		n = mechanism.narrow(-1, 1, 1)
+	def decode(self, manifold):
+		z = manifold.narrow(-1, 0, 1)
+		n = manifold.narrow(-1, 1, 1)
 		theta = z.mul(self.w).add(n.div(self.n_helix) * 2).mul(np.pi)
 
 		amp = torch.as_tensor([self.Rx, self.Ry, self.Rz]).float().to(n.device)

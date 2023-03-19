@@ -126,7 +126,12 @@ class ModifiableProduct(BuilderBase):
 	def _modify_product(product, *mods, name=None):
 		if issubclass(product, Modifiable):
 			return product.inject_mods(*mods, name=name)
-		return inject_modifiers(product, *mods, name=name)
+		new = inject_modifiers(product, *mods, name=name)
+		if new is not product and issubclass(new, ParameterizedBase):
+			for src in reversed(new.__bases__):
+				if issubclass(src, ParameterizedBase):
+					new.inherit_hparams(*src.hyperparameter_names(hidden=True))
+		return new
 
 
 	def product_base(self, *args, **kwargs):

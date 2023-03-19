@@ -1,5 +1,5 @@
 from ..features.containers import SourceContainer, ScoreContainer
-from ..parameters import Parameterized
+from ..parameters import Structured
 
 from .abstract import AbstractResultable, AbstractFitable, AbstractEvaluatable, AbstractModel
 
@@ -44,7 +44,7 @@ class Fitable(Resultable, AbstractFitable, AbstractEvaluatable):
 
 
 
-class SimpleModel(Fitable, Evaluatable, Parameterized, AbstractModel):
+class SimpleModel(Fitable, Evaluatable, Structured, AbstractModel):
 	pass
 
 

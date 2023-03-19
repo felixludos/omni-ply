@@ -2,7 +2,7 @@ from typing import List, Dict, Tuple, Optional, Union, Any, Hashable, Sequence, 
 	Iterator, NamedTuple, ContextManager
 from omnibelt import agnostic, unspecified_argument
 
-from .errors import MissingBuilderError, NoProductFound
+from .errors import MissingBuilderError, NoProductFound, InvalidProductError
 
 
 class AbstractHyperparameter:
@@ -44,6 +44,12 @@ class AbstractParameterized:
 
 
 	@classmethod
+	def hyperparameter_names(cls, *, hidden=False):
+		for key, val in cls.named_hyperparameters(hidden=hidden):
+			yield key
+
+
+	@classmethod
 	def inherit_hparams(cls, *names):
 		raise NotImplementedError
 
@@ -75,7 +81,9 @@ class AbstractBuilder(AbstractParameterized):
 class AbstractArgumentBuilder(AbstractBuilder):
 	def build(self, *args, **kwargs):
 		product = self.product(*args, **kwargs)
-		return product(**self._build_kwargs(product, *args, **kwargs))
+		kwargs = self._build_kwargs(product, *args, **kwargs)
+		args = kwargs.pop(None) if None in kwargs else ()
+		return product(*args, **kwargs)
 
 
 	def _build_kwargs(self, product, *args, **kwargs):
@@ -115,8 +123,10 @@ class AbstractMultiBuilder(AbstractArgumentBuilder, AbstractParameterized):
 		return super()._build_kwargs(product, **kwargs)
 
 
+	_InvalidProductError = InvalidProductError
 	def validate(self, product):
 		if isinstance(product, str):
+			# raise self._InvalidProductError(f'Expected product, got string: {product!r}')
 			return self.build(product)
 		return product
 
@@ -145,7 +155,7 @@ class AbstractModular(AbstractParameterized):
 
 
 class AbstractSubmodule(AbstractHyperparameter):
-	def get_builder(self) -> Optional[AbstractBuilder]:
+	def get_builder(self, *args, **kwargs) -> Optional[AbstractBuilder]:
 		raise NotImplementedError
 
 
@@ -157,11 +167,14 @@ class AbstractSubmodule(AbstractHyperparameter):
 		return builder.build(*args, **kwargs)
 
 
-	def validate(self, product):
-		builder = self.get_builder()
+	def validate(self, product, *, spec=None):
+		builder = self.get_builder() if spec is None else self.get_builder(blueprint=spec)
 		if builder is None:
 			return super().validate(product)
-		return builder.validate(product)
+		try:
+			return builder.validate(product)
+		except InvalidProductError:
+			return self.build_with(product) if spec is None else self.build_with_spec(product, spec=spec)
 
 
 	# def build_with_spec(self, owner, spec=None): # TODO: --> architect

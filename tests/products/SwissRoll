@@ -1,6 +1,6 @@
 digraph unknown {
-	mechanism -> target
-	mechanism -> observation
-	size -> mechanism [style=dashed]
+	manifold -> target
+	manifold -> observation
+	size -> manifold [style=dashed]
 	size [shape=box]
 }
