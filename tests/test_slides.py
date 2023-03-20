@@ -31,23 +31,19 @@ class Basic_Autoencoder(Structured, InitWall, nn.Module):
 
 	criterion = submodule(builder='comparison')
 
-
-	latent_dim = hparam(required=True)
-
-
+	latent_dim = hparam(required=True, space=spaces.Naturals())
+	
+	@space('latent')
+	def latent_space(self):
+		return spaces.Unbound(self.latent_dim)
+	
 	@machine('latent')
 	def encode(self, observation):
 		return self.encoder(observation)
-	@encode.space
-	def latent_space(self):
-		return spaces.Unbound(self.latent_dim)
-
-
-
+	
 	@machine('reconstruction')
 	def decode(self, latent):
 		return self.decoder(latent)
-
 
 	@machine('loss')
 	def compute_loss(self, observation, reconstruction):
