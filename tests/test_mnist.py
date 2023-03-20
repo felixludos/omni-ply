@@ -173,6 +173,114 @@ def test_mnist():
 
 
 
+def dataset(index):
+	input = ...
+	target = ...
+	return input, target
+
+
+def model(input):
+	logits = ...
+	return logits
+
+
+def criterion(logits, target):
+	loss = ...
+	return loss
+
+
+def monitor(logits, target):
+	accuracy = ...
+	return accuracy
+
+def record(accuracy):
+	pass
+
+class Loader(dataset):
+	def __iter__(self):
+		pass
+
+class Optimizer(model):
+	pass
+
+
+def store(model):
+	pass
+
+class Model:
+	def __call__(self, *args, **kwargs):
+		return ...
+
+
+
+
+dataset = Dataset()
+model = Model()
+
+
+loader = Loader(dataset)
+optim = Optimizer(model)
+
+for batch in loader:
+	observation, target = batch
+	
+	logit = model(observation)
+	
+	loss = criterion(logit, target)
+	
+	optim.step(loss)
+	
+	accuracy = monitor(logit, target)
+	record(accuracy)
+
+store(model)
+
+
+
+def model(batch):
+	observation = batch['observation']
+	batch['logit'] = ...
+	return batch
+
+
+def criterion(batch):
+	logit = batch['logit']
+	target = batch['target']
+	batch['loss'] = ...
+	return batch
+
+
+def monitor(batch):
+	logit = batch['logit']
+	target = batch['target']
+	batch['accuracy'] = ...
+	return batch
+
+
+
+dataset = Dataset()
+model = Model()
+
+loader = Loader(dataset)
+optim = Optimizer(model)
+
+for batch in loader:
+	batch = model(batch)
+	
+	batch = criterion(batch)
+	
+	optim.step(batch)
+	
+	batch = monitor(batch)
+	record(batch)
+
+store(model)
+
+
+
+
+
+
 
 
 
