@@ -173,6 +173,19 @@ def test_mnist():
 
 
 
+########################################################################################################################
+
+
+
+
+
+
+
+
+
+from torch.utils import data
+
+
 def dataset(index):
 	input = ...
 	target = ...
@@ -184,9 +197,9 @@ def model(input):
 	return logits
 
 
-def criterion(logits, target):
-	loss = ...
-	return loss
+# def criterion(logits, target):
+# 	loss = ...
+# 	return loss
 
 
 def monitor(logits, target):
@@ -204,36 +217,60 @@ class Optimizer(model):
 	pass
 
 
-def store(model):
+def save(model):
 	pass
 
-class Model:
-	def __call__(self, *args, **kwargs):
-		return ...
+
+
+class Model(nn.Module):
+	def __init__(self, observation_space, target_space, nonlin='relu'):
+		super().__init__()
+		self.hidden_layers = nn.Sequential(...)
+		self.output_layer = nn.Linear(10, 10)
+
+	def forward(self, observation):
+		# compute logits from observation
+		features = self.hidden_layers(observation)
+		logits = self.output_layer(features)
+		return logits
+
+
+class Dataset(data.Dataset):
+	def __init__(self, **config):
+		super().__init__()
+
+	def __getitem__(self, index):
+		# load observation and target from index
+		observation = ...
+		target = ...
+		return observation, target
+
+
+def criterion(logits, target):
+	loss = F.cross_entropy(logits, target)
+	return loss
 
 
 
+dataset = Dataset(mode='train')
+model = Model(nonlin='relu')
 
-dataset = Dataset()
-model = Model()
+loader = Loader(dataset, batch_size=32)
+optim = Optimizer(model, lr=0.01)
 
-
-loader = Loader(dataset)
-optim = Optimizer(model)
-
-for batch in loader:
+for batch in loader: # loads a batch of data
 	observation, target = batch
-	
+
 	logit = model(observation)
-	
+
 	loss = criterion(logit, target)
-	
+
 	optim.step(loss)
-	
+
 	accuracy = monitor(logit, target)
 	record(accuracy)
 
-store(model)
+save(model)
 
 
 
@@ -258,11 +295,43 @@ def monitor(batch):
 
 
 
-dataset = Dataset()
-model = Model()
+config = {}
+dataset_config = {}
+model_config = {}
+loader_config = {}
+optim_config = {}
 
-loader = Loader(dataset)
-optim = Optimizer(model)
+
+class Model(nn.Module):
+	def __init__(self, **config):
+		super().__init__()
+
+	def forward(self, batch):
+		observation = batch['observation']
+		batch['logit'] = ...
+		return batch
+
+
+class Dataset(data.Dataset):
+	def __init__(self, **config):
+		super().__init__()
+
+	def __getitem__(self, index):
+		observation = ...
+		target = ...
+		return observation, target
+
+
+def criterion(logits, target):
+	loss = ...
+	return loss
+
+
+dataset = Dataset(**dataset_config)
+model = Model(**model_config)
+
+loader = Loader(dataset, **loader_config)
+optim = Optimizer(model, **optim_config)
 
 for batch in loader:
 	batch = model(batch)
@@ -274,10 +343,58 @@ for batch in loader:
 	batch = monitor(batch)
 	record(batch)
 
-store(model)
+
+save(model)
 
 
 
+class Model(nn.Module):
+	def __init__(self, observation_space, target_space, nonlin='relu'):
+		super().__init__()
+		self.hidden_layers = nn.Sequential(...)
+		self.output_layer = nn.Linear(10, 10)
+
+	def forward(self, observation):
+		# compute logits from observation
+		features = self.hidden_layers(observation)
+		logits = self.output_layer(features)
+		return logits
+
+
+
+class Model(Structured):
+	def __init__(self, observation_space, target_space, nonlin='relu'):
+		super().__init__()
+		self.hidden_layers = nn.Sequential(...)
+		self.output_layer = nn.Linear(10, 10)
+
+
+	@machine('features')
+	def extract_features(self, observation):
+		features = self.hidden_layers(observation)
+		return features
+
+
+	@machine('logits')
+	def classify_features(self, features):
+		logits = self.output_layer(features)
+		return logits
+
+
+
+def iterative_optimization(model, dataset):
+
+	loader = Loader(dataset, batch_size=32)
+	optim = Optimizer(model, lr=0.01)
+
+	for batch in loader:
+		batch = model(batch)
+
+		batch = criterion(batch)
+
+		optim.step(batch)
+
+	return model
 
 
 
