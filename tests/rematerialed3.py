@@ -29,6 +29,7 @@ class LVM(Structured, InitWall, nn.Module):
 		return spaces.Unbound(self.latent_dim)
 
 
+
 class AE(LVM):
 	encoder = submachine(builder='encoder', application=dict(input='observation', output='latent'))
 	decoder = submachine(builder='decoder', application=dict(input='latent', output='reconstruction'))

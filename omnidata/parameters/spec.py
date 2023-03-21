@@ -3,12 +3,15 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 # from .top import Industrial
 # from omnidata.parameters.abstract import AbstractParameterized
 
+from omnibelt.crafts import ProcessedCrafty
+
 from ..structure import spaces
 from ..tools.abstract import AbstractTool, AbstractContext, AbstractSpaced, AbstractChangableSpace, Gizmoed
 from ..tools.errors import ToolFailedError
 from ..tools.kits import SpaceKit, ElasticCrafty
 from ..tools.context import DynamicContext
 from ..tools.kits import CraftyKit
+from ..tools import Industrial
 
 from .abstract import AbstractModular, AbstractSubmodule, AbstractArgumentBuilder
 from .parameterized import ParameterizedBase
@@ -97,6 +100,75 @@ class Spec(DynamicContext, AbstractSpec):
 						self.change_space_of(gizmo, space)
 
 		return self
+
+
+
+class PlannedBase(AbstractSpecced):
+	_Spec = None
+	def __init__(self, *args, blueprint=None, **kwargs):
+		if blueprint is None:
+			blueprint = self._Spec()
+		super().__init__(*args, **kwargs) # extracts hparams and processes crafts
+		self._my_blueprint = blueprint
+
+
+	@property
+	def my_blueprint(self):
+		return self._my_blueprint
+
+
+	def update_blueprint_base(self, parent):
+		self.my_blueprint.set_parent(parent)
+
+
+
+class ParamPlanned(ParameterizedBase, PlannedBase, AbstractModular):
+	def _extract_hparams(self, kwargs):
+		extra = super()._extract_hparams(kwargs)
+		for name, sub in self.named_submodules(hidden=True):
+			if name in kwargs:
+				sub.update_blueprint_base(self.my_blueprint)
+		return extra
+
+
+
+class PlannedCrafty(ParamPlanned, ProcessedCrafty): # comes before SpaceKit/Industrial
+	def _process_crafts(self):
+		for name, sub in self.named_submodules(hidden=True):
+			if sub.is_missing(self):
+				sub.setup_builder(self, spec=self.my_blueprint)
+		return super()._process_crafts()
+
+
+
+class PlannedSpatial(PlannedCrafty, SpaceKit):
+	def _fix_missing_spaces(self, spec):
+
+		# find all missing spaces (in self + submodules)
+
+		# fill in missing spaces that are in blueprint
+
+		# fill in remaining missing spaces using submodules
+
+		# update blueprint with new spaces (and resolve conflicts)
+
+		pass
+
+
+
+class CreativePlanned(PlannedSpatial):
+	def _create_missing_submodules(self, spec):
+		# convert submodule builders into submodules
+
+		# send configs as needed
+
+		# certify submodules with applications
+
+		pass
+
+
+
+#######################################################################################################################
 
 
 

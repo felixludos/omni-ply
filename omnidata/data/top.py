@@ -44,12 +44,13 @@ class Buffer(Parameterized, Batchable, TensorSource, SpacedSource):#, BuildableD
 # print()
 # print('\n'.join(map(str, DataCollection.mro())))
 class _FeaturedDataRouter(Structured, Batchable, AutoCollection, AliasedCollection, DataCollection):
-	#, BuildableData):
-	def register_buffer(self, gizmo: str, buffer=None, **kwargs):
-		buffer = super().register_buffer(gizmo, buffer, **kwargs)
-		if gizmo in self._spaces:
-			del self._spaces[gizmo]
-		return buffer
+	# #, BuildableData):
+	# def register_buffer(self, gizmo: str, buffer=None, **kwargs):
+	# 	buffer = super().register_buffer(gizmo, buffer, **kwargs)
+	# 	if gizmo in self._spaces:
+	# 		del self._spaces[gizmo]
+	# 	return buffer
+	pass
 
 
 

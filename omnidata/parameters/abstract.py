@@ -153,6 +153,12 @@ class AbstractModular(AbstractParameterized):
 			yield param
 
 
+	@classmethod
+	def submodule_names(cls, *, hidden=False) -> Iterator[str]:
+		for name, param in cls.named_submodules(hidden=hidden):
+			yield name
+
+
 
 class AbstractSubmodule(AbstractHyperparameter):
 	def get_builder(self, *args, **kwargs) -> Optional[AbstractBuilder]:
