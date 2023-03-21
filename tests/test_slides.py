@@ -608,6 +608,8 @@ def test_classifier():
 
 	signature_graph(batch).render(_PRODUCTS_PATH / "cls_batch_instance", format="png")
 
+	print()
+
 	print(batch)
 
 	print(batch['loss'])

@@ -67,7 +67,7 @@ class NoisyManifold(DistributionalManifold, DeterministicManifold):
 
 
 class Noisy(NoisyManifold):
-	noise_std = hparam(0.1, space=spaces.HalfBound(min=0.))#, alias='noise-std')
+	noise_std = hparam(0.1, space=spaces.HalfBound(min=0.))
 
 
 	def _decode_distrib_from_mean(self, mean):
