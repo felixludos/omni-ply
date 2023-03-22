@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 import torch
 
-from omnibelt import method_decorator, agnostic, filter_duplicates, get_printer
+from omnibelt import method_decorator, agnostic, unspecified_argument, filter_duplicates, get_printer
 from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, SkilledCraft, IndividualCrafty
 
 
@@ -439,15 +439,16 @@ class CachedPropertyCraft(ReplaceableCraft, cached_property):
 		return self
 
 
-	def _get_instance_val(self, instance: AbstractCrafty):
-		return getattr(instance, self.attrname)
+	def _get_instance_val(self, instance: AbstractCrafty, default: Optional[Any] = unspecified_argument):
+		return getattr(instance, self.attrname) if default is unspecified_argument \
+			else getattr(instance, self.attrname, default)
 
 
 	def update_value(self, instance: AbstractCrafty, value):
 		instance.__dict__[self.attrname] = value
 
 
-	def __get__(self, instance, owner):
+	def __get__(self, instance, owner=None):
 		if self.func is None and self.attrname not in instance.__dict__:
 			raise ToolFailedError(f'No function or value for {self.label} in {instance}')
 		return super().__get__(instance, owner)
@@ -489,6 +490,26 @@ class SpaceCraft(CachedPropertyCraft): # TransformCraft
 
 	def _is_missing(self, instance: AbstractCrafty, gizmo: str = None):
 		return self.func is None and self.attrname not in instance.__dict__
+
+
+
+# class SpecSpaceCraft(SpaceCraft):
+# 		_missing_space_flag = object()
+# 		def _space_of(self, instance: AbstractCrafty, gizmo: str = None):
+# 			space = self._get_instance_val(instance, self._missing_space_flag)
+# 			if space is self._missing_space_flag:
+# 				return instance._default_space_of(gizmo)
+# 			return space
+
+
+
+# class SchemaSpaceCraft(SpaceCraft):
+# 	_missing_space_flag = object()
+# 	def _space_of(self, instance: AbstractCrafty, gizmo: str = None):
+# 		space = self._get_instance_val(instance, self._missing_space_flag)
+# 		if space is self._missing_space_flag:
+# 			return instance._default_space_of(gizmo)
+# 		return space
 
 
 

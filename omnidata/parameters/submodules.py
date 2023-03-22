@@ -7,7 +7,7 @@ from ..tools.assessments import Signatured, AbstractSignature, SimpleSignature
 from ..tools.crafts import AbstractCrafty, ToolCraft, ReplaceableCraft
 from ..tools.context import SimpleScope
 
-from .abstract import AbstractSubmodule
+from .abstract import AbstractSubmodule, AbstractModular
 from .errors import NoProductFound
 from .hyperparameters import HyperparameterBase
 from .building import get_builder, BuilderBase
@@ -30,7 +30,6 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 		if builder is None:
 			builder = self.builder
 		return super().copy(typ=typ, builder=builder, **kwargs)
-
 
 
 	# def validate(self, product, *, spec=None):
@@ -64,6 +63,24 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 		product = builder.build()
 		spec.update_with(builder)
 		return product
+
+
+	def is_missing(self, owner):
+		return not (self.attrname in owner.__dict__ or self.fget is not None)
+
+
+	def setup_builder(self, owner, spec=None):
+		builder = self.get_builder(blueprint=spec)
+		if builder is None:
+			raise ValueError(f'No builder for {self}')
+		spec.update_with(builder)
+		setattr(owner, self.attrname, builder)
+
+
+	def missing_spaces(self, owner):
+		sub = getattr(owner, self.attrname, None)
+		if sub is not None:
+			yield from sub.missing_spaces()
 
 
 	# def create_value(self, base, owner=None):  # TODO: maybe make thread-safe by using a lock
@@ -197,6 +214,10 @@ class SubmachineBase(SubmoduleBase, Signatured, ReplaceableCraft):
 		return super().get_builder(*args, application=application, **kwargs)
 
 
+	# def missing_spaces(self, owner):
+	# 	for space in super().missing_spaces(owner):
+	# 		if space in self.replacements:
+	# 			yield space
 
 
 	def _expected_signatures(self):

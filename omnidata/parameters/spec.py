@@ -3,7 +3,7 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 # from .top import Industrial
 # from omnidata.parameters.abstract import AbstractParameterized
 
-from omnibelt.crafts import ProcessedCrafty
+from omnibelt.crafts import ProcessedCrafty, IndividualCrafty, AbstractCraft, AbstractSkill, AbstractCrafty
 
 from ..structure import spaces
 from ..tools.abstract import AbstractTool, AbstractContext, AbstractSpaced, AbstractChangableSpace, Gizmoed
@@ -19,9 +19,9 @@ from .building import BuilderBase
 
 
 class AbstractSpecced(AbstractSpaced):
-	@property
-	def my_blueprint(self):
-		raise NotImplementedError
+	# @property
+	# def my_blueprint(self):
+	# 	raise NotImplementedError
 
 
 	# def as_spec(self) -> 'AbstractSpec':
@@ -104,11 +104,13 @@ class Spec(DynamicContext, AbstractSpec):
 
 
 class PlannedBase(AbstractSpecced):
+	# one of the deepest classes in the MRO (before hparam extraction and craft processing)
+
 	_Spec = None
 	def __init__(self, *args, blueprint=None, **kwargs):
 		if blueprint is None:
 			blueprint = self._Spec()
-		super().__init__(*args, **kwargs) # extracts hparams and processes crafts
+		super().__init__(*args, **kwargs)
 		self._my_blueprint = blueprint
 
 
@@ -117,42 +119,109 @@ class PlannedBase(AbstractSpecced):
 		return self._my_blueprint
 
 
-	def update_blueprint_base(self, parent):
-		self.my_blueprint.set_parent(parent)
-
-
 
 class ParamPlanned(ParameterizedBase, PlannedBase, AbstractModular):
+	# CANCELLED: manually specified submodules are usually shared in multiple places,
+	# so their spec should not be altered
+	# for the purposes of planning, they are ignored completely,
+	# and if they are submachines, the submachine tools handles scope/interface
+	# also, the spaces of explicit submodules can be verified -> no set, just get + check
+	#
 	def _extract_hparams(self, kwargs):
 		extra = super()._extract_hparams(kwargs)
-		for name, sub in self.named_submodules(hidden=True):
-			if name in kwargs:
-				sub.update_blueprint_base(self.my_blueprint)
+		for name in self.submodule_names(hidden=True):
+			if name in kwargs and isinstance(kwargs[name], AbstractSpecced):
+				kwargs[name].compatible(self.my_blueprint) # TODO: maybe move downstream after missing spaces are filled in!
+				# kwargs[name].update_blueprint_base(self.my_blueprint)
+
+		# TODO: extract explicit spaces from extra
+
 		return extra
+	pass
 
 
 
-class PlannedCrafty(ParamPlanned, ProcessedCrafty): # comes before SpaceKit/Industrial
-	def _process_crafts(self):
-		for name, sub in self.named_submodules(hidden=True):
-			if sub.is_missing(self):
-				sub.setup_builder(self, spec=self.my_blueprint)
-		return super()._process_crafts()
+class PlannedCrafty(ParamPlanned, IndividualCrafty): # comes before SpaceKit/Industrial
+	# def _process_crafts(self):
+	# 	for name, sub in self.named_submodules(hidden=True):
+	# 		if sub.is_missing(self):
+	# 			sub.setup_builder(self, spec=self.my_blueprint)
+	# 	return super()._process_crafts()
+
+	# def _process_skill(self, src: Type[AbstractCrafty], key: str, craft: AbstractCraft, skill: AbstractSkill):
+	# 	super()._process_skill(src, key, craft, skill)
+	pass
+
+
+# class PlannedBuilder(PlannedCrafty, BuilderBase):
+# 	def _integrate_spec(self, spec=None):
+# 		if spec is None:
+# 			spec = self.my_blueprint
+#
+# 		spec.node(self)  # add self to spec
+# 		for name, sub in self.named_submodules(hidden=True):
+# 			sub.setup_spec(self,
+# 			               spec=spec.sub(name))  # this should add builder/submodule to sub-spec (for space inference)
+#
+# 		for name in self._missing_spaces():  # explicitly requested spaces are inferred from spec (potentially using the subs)
+# 			self.change_space_of(name, spec.space_of(name))
+#
+# 		for name, space in self.named_spaces():
+# 			if space is None:
+# 				self.change_space_of(name, spec.space_of(name))
+#
+# 		for name, sub in self.named_submodules(hidden=True):
+# 			sub.validate(self)  # if sub is missing or a builder, this will instantiate it (using the sub-spec)
+#
+#
+# 	def space_of(self, gizmo: str) -> spaces.Dim:
+# 		try:
+# 			return super().space_of(gizmo)
+# 		except ToolFailedError:
+# 			return self.my_blueprint.space_of(gizmo)
+#
+# 	pass
+
+
+
+class PlannedBuilder(AbstractSpecced):
+	def build(self, *args, blueprint=None, **kwargs):
+		if blueprint is None:
+			blueprint = self._my_blueprint
+		return self._build(*args, blueprint=blueprint, **kwargs)
 
 
 
 class PlannedSpatial(PlannedCrafty, SpaceKit):
-	def _fix_missing_spaces(self, spec):
+	def _coordinate_submodules(self, spec=None):
+		if spec is None:
+			spec = self.my_blueprint
 
-		# find all missing spaces (in self + submodules)
+		for name, sub in self.named_submodules(hidden=True):
+			# this should add builder/submodule to sub-spec (for space inference)
+			sub.setup_spec(self, spec=spec.sub(name))
 
-		# fill in missing spaces that are in blueprint
+		# explicitly requested spaces are inferred from spec and set to self (potentially using the subs)
+		# add self to spec (implicitly adds all spaces defined in self to spec) (also means space wise self is ready)
+		spec.certify(self)
 
-		# fill in remaining missing spaces using submodules
+		for name, sub in self.named_submodules(hidden=True):
+			# if sub is missing or a builder, this will instantiate it (using the sub-spec)
+			sub.validate(self)
 
-		# update blueprint with new spaces (and resolve conflicts)
 
-		pass
+	# def _fix_missing_spaces(self, spec):
+	#
+	# 	# find all missing spaces (in self + submodules)
+	# 	todo = list(self._missing_spaces())
+	#
+	# 	# fill in missing spaces that are in blueprint
+	#
+	# 	# fill in remaining missing spaces using submodules
+	#
+	# 	# update blueprint with new spaces (and resolve conflicts)
+	#
+	# 	pass
 
 
 

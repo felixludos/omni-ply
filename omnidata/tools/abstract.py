@@ -240,9 +240,18 @@ class AbstractSpaced:
 		raise NotImplementedError
 
 
+	def space_is_missing(self, gizmo: str) -> bool:
+		raise NotImplementedError
+
+
 
 class AbstractChangableSpace(AbstractSpaced): # TODO: build into `space` crafts
 	def change_space_of(self, gizmo: str, space: spaces.Dim):
+		raise NotImplementedError
+
+
+	def _missing_spaces(self):
+		# yield from (gizmo for gizmo in self.gizmos() if self.space_is_missing(gizmo))
 		raise NotImplementedError
 
 

@@ -45,11 +45,13 @@ class ParameterizedBase(AbstractParameterized):
 		return kwargs
 
 
-	def get_hparam(self, key, default: Optional[Any] = unspecified_argument):
-		val = inspect.getattr_static(self, key, unspecified_argument)
+	@classmethod
+	def get_hparam(cls, key, default: Optional[Any] = unspecified_argument):
+		# val = inspect.getattr_static(self, key, unspecified_argument)
+		val = getattr(cls, key, unspecified_argument)
 		if val is unspecified_argument:
 			if default is unspecified_argument:
-				raise AttributeError(f'{self.__class__.__name__} has no attribute {key}')
+				raise AttributeError(f'{cls.__name__} has no hyperparameter {key}')
 			return default
 		return val
 

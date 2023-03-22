@@ -26,7 +26,7 @@ class SpacedTool(AbstractSpaced, AbstractTool):
 
 
 
-class SpaceKit(IndividualCrafty, AbstractChangableSpace):
+class SpaceKit(IndividualCrafty, AbstractChangableSpace): # processes `space` decorators
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._spaces = {}
@@ -47,6 +47,10 @@ class SpaceKit(IndividualCrafty, AbstractChangableSpace):
 			return self._spaces[gizmo][0].space_of(gizmo)
 		# return self._tools[gizmo].space_of(gizmo)
 		return super().space_of(gizmo)
+
+
+	def _default_space_of(self, gizmo: str):
+		raise NotImplementedError # TODO
 
 	
 	# def gizmos(self) -> Iterator[str]:
