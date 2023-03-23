@@ -93,13 +93,13 @@ class RelabeledCrafty(IndividualCrafty):
 
 	@classmethod
 	def _emit_all_craft_items(cls, *, remaining: Iterator[Type['InheritableCrafty']] = None,
-	                          start : Type['InheritableCrafty'] = None,
+	                          start : Type['InheritableCrafty'] = None, owner : Type['InheritableCrafty'] = None,
 	                          **kwargs) -> Iterator[Tuple[Type[AbstractCrafty], str, AbstractCraft]]: # N-O
 		live = start is None # make sure replacements only happen once
 		if start is None:
 			start = cls
 
-		for loc, key, craft in super()._emit_all_craft_items(remaining=remaining, start=start, **kwargs):
+		for loc, key, craft in super()._emit_all_craft_items(remaining=remaining, start=start, owner=owner, **kwargs):
 			if loc is start:
 				yield loc, key, craft
 			elif live and len(start._inherited_tool_relabels) and isinstance(craft, ReplaceableCraft):

@@ -66,6 +66,10 @@ class DefaultProperty:
 		return self.get_value(instance, owner=owner)
 
 
+	def is_missing(self, instance):
+		return self.attrname not in instance.__dict__ and self.default is self._unknown and self.fget is None
+
+
 	def get_value(self, instance=None, owner=None):
 		if instance is None:
 			if self.default is self._unknown:

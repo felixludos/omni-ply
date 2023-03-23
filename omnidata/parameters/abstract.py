@@ -161,8 +161,13 @@ class AbstractModular(AbstractParameterized):
 
 
 class AbstractSubmodule(AbstractHyperparameter):
-	def get_builder(self, *args, **kwargs) -> Optional[AbstractBuilder]:
+
+	def init(self, owner, spec=None):
 		raise NotImplementedError
+
+
+	# def get_builder(self, *args, **kwargs) -> Optional[AbstractBuilder]:
+	# 	raise NotImplementedError
 
 
 	_MissingBuilderError = MissingBuilderError

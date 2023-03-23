@@ -2,7 +2,7 @@ from ..tools import Industrial
 from .abstract import AbstractArgumentBuilder
 from .hyperparameters import InheritableHyperparameter
 from .parameterized import ModifiableParameterized, FingerprintedParameterized, InheritHparamsDecorator, \
-	InheritableParameterized, HparamWrapper
+	InheritableParameterized, HparamWrapper, SpatialParameterized
 from .building import ConfigBuilder, BuilderBase, BuildableBase, MultiBuilderBase, RegistryBuilderBase, \
 	HierarchyBuilderBase, RegisteredProductBase, ModifiableProduct, AnalysisBuilder
 from .submodules import SubmoduleBase, SubmachineBase
@@ -55,7 +55,7 @@ class Parameterized(ModifiableParameterized, InheritableParameterized, Fingerpri
 
 
 # class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameterized, PreparedParameterized):
-class Structured(Parameterized, Specced, Industrial):
+class Structured(SpatialParameterized, Parameterized, Specced, Industrial):
 	@classmethod
 	def inherit_hparams(cls, *names):
 		out = super().inherit_hparams(*names)

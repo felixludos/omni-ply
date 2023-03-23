@@ -11,9 +11,10 @@ from ..tools.errors import ToolFailedError
 from ..tools.kits import SpaceKit, ElasticCrafty
 from ..tools.context import DynamicContext
 from ..tools.kits import CraftyKit
+from ..tools.crafts import SpaceCraft
 from ..tools import Industrial
 
-from .abstract import AbstractModular, AbstractSubmodule, AbstractArgumentBuilder
+from .abstract import AbstractModular, AbstractSubmodule, AbstractArgumentBuilder, AbstractParameterized
 from .parameterized import ParameterizedBase
 from .building import BuilderBase
 
@@ -37,6 +38,10 @@ class AbstractSpecced(AbstractSpaced):
 
 class AbstractSpec(AbstractChangableSpace, AbstractContext):
 	def sub(self, submodule) -> 'AbstractSpec':
+		raise NotImplementedError
+
+	def for_builder(self):
+		'''Returns the spec for a builder (usually the builder is created automatically for a submodule)'''
 		raise NotImplementedError
 
 
@@ -109,7 +114,7 @@ class PlannedBase(AbstractSpecced):
 	_Spec = None
 	def __init__(self, *args, blueprint=None, **kwargs):
 		if blueprint is None:
-			blueprint = self._Spec()
+			blueprint = self._Spec() # TODO: maybe include `self`
 		super().__init__(*args, **kwargs)
 		self._my_blueprint = blueprint
 
@@ -120,25 +125,39 @@ class PlannedBase(AbstractSpecced):
 
 
 
-class ParamPlanned(ParameterizedBase, PlannedBase, AbstractModular):
-	# CANCELLED: manually specified submodules are usually shared in multiple places,
-	# so their spec should not be altered
-	# for the purposes of planning, they are ignored completely,
-	# and if they are submachines, the submachine tools handles scope/interface
-	# also, the spaces of explicit submodules can be verified -> no set, just get + check
-	#
-	def _extract_hparams(self, kwargs):
-		extra = super()._extract_hparams(kwargs)
-		for name in self.submodule_names(hidden=True):
-			if name in kwargs and isinstance(kwargs[name], AbstractSpecced):
-				kwargs[name].compatible(self.my_blueprint) # TODO: maybe move downstream after missing spaces are filled in!
-				# kwargs[name].update_blueprint_base(self.my_blueprint)
+class PlannedModules(PlannedBase, AbstractModular):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._initialize_submodules()
 
-		# TODO: extract explicit spaces from extra
 
-		return extra
-	pass
+	def _initialize_submodules(self):
+		for name, sub in self.named_submodules(hidden=True):
+			sub.init(self, spec=self.my_blueprint.sub(name))
 
+
+
+class PlannedSpatial(PlannedModules, SpaceKit): # could still be a builder
+	def _coordinate_submodules(self, spec=None):
+		if spec is None:
+			spec = self.my_blueprint
+
+		for name, sub in self.named_submodules(hidden=True):
+			# this should add builder/submodule to sub-spec (for space inference)
+			sub.setup_spec(self, spec=spec.sub(name))
+
+		# explicitly requested spaces are inferred from spec and set to self (potentially using the subs)
+		# add self to spec (implicitly adds all spaces defined in self to spec) (also means space wise self is ready)
+		spec.certify(self)
+
+		for name, sub in self.named_submodules(hidden=True):
+			# if sub is missing or a builder, this will instantiate it (using the sub-spec)
+			sub.validate(self)
+
+
+
+
+########################################################################################################################
 
 
 class PlannedCrafty(ParamPlanned, IndividualCrafty): # comes before SpaceKit/Industrial

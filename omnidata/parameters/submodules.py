@@ -7,7 +7,7 @@ from ..tools.assessments import Signatured, AbstractSignature, SimpleSignature
 from ..tools.crafts import AbstractCrafty, ToolCraft, ReplaceableCraft
 from ..tools.context import SimpleScope
 
-from .abstract import AbstractSubmodule, AbstractModular
+from .abstract import AbstractSubmodule, AbstractModular, AbstractBuilder
 from .errors import NoProductFound
 from .hyperparameters import HyperparameterBase
 from .building import get_builder, BuilderBase
@@ -32,6 +32,13 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 		return super().copy(typ=typ, builder=builder, **kwargs)
 
 
+	def init(self, owner, spec=None):
+		# TODO: (future) check for a special fget: spec -> builder for custom builders
+		if self.is_missing(owner):
+			builder = self._create_default_builder(blueprint=None if spec is None else spec.for_builder())
+			setattr(owner, self.attrname, builder)
+
+
 	# def validate(self, product, *, spec=None):
 	# 	value = super().validate(product)
 	# 	if self.typ is not None and not isinstance(value, self.typ):
@@ -41,46 +48,42 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 	# 		return builder.validate(value)
 
 
-	def get_builder(self, *args, **kwargs) -> Optional[BuilderBase]:
+	_default_builder_type = None # TODO: simple builder that is given the product_base at __init__
+	def _create_default_builder(self, *args, **kwargs) -> Optional[BuilderBase]:
 		if self.builder is not None:
-			builder = get_builder(self.builder) if isinstance(self.builder, str) else self.builder
+			builder = get_builder(self.builder) #if isinstance(self.builder, str) else self.builder
 			return builder(*args, **kwargs)
-
-
-	def build_with(self, *args, **kwargs):
 		if self.typ is not None:
-			return self.typ(*args, **kwargs)
-		builder = self.get_builder()
-		if builder is None:
-			raise ValueError(f'No builder for {self}')
-		return builder.build(*args, **kwargs)
+			return self._default_builder_type(self.typ)
+		raise NotImplementedError('no info for default builder was provided') # TODO: make custom error type
 
 
-	def build_with_spec(self, owner, spec):
-		builder = self.get_builder(blueprint=spec)
-		if builder is None:
-			raise ValueError(f'No builder for {self}')
-		product = builder.build()
-		spec.update_with(builder)
-		return product
+	# def build_with(self, *args, **kwargs):
+	# 	if self.typ is not None:
+	# 		return self.typ(*args, **kwargs)
+	# 	builder = self.get_builder()
+	# 	if builder is None:
+	# 		raise ValueError(f'No builder for {self}')
+	# 	return builder.build(*args, **kwargs)
+	#
+	#
+	# def build_with_spec(self, owner, spec):
+	# 	builder = self.get_builder(blueprint=spec)
+	# 	if builder is None:
+	# 		raise ValueError(f'No builder for {self}')
+	# 	product = builder.build()
+	# 	spec.update_with(builder)
+	# 	return product
 
 
-	def is_missing(self, owner):
-		return not (self.attrname in owner.__dict__ or self.fget is not None)
+	# def is_missing(self, owner):
+	# 	return not (self.attrname in owner.__dict__ or self.fget is not None)
 
 
-	def setup_builder(self, owner, spec=None):
-		builder = self.get_builder(blueprint=spec)
-		if builder is None:
-			raise ValueError(f'No builder for {self}')
-		spec.update_with(builder)
-		setattr(owner, self.attrname, builder)
-
-
-	def missing_spaces(self, owner):
-		sub = getattr(owner, self.attrname, None)
-		if sub is not None:
-			yield from sub.missing_spaces()
+	# def missing_spaces(self, owner):
+	# 	sub = getattr(owner, self.attrname, None)
+	# 	if sub is not None:
+	# 		yield from sub.missing_spaces()
 
 
 	# def create_value(self, base, owner=None):  # TODO: maybe make thread-safe by using a lock
@@ -220,13 +223,16 @@ class SubmachineBase(SubmoduleBase, Signatured, ReplaceableCraft):
 	# 			yield space
 
 
-	def _expected_signatures(self):
-		if self.typ is None:
-			builder = self.get_builder()
-			if builder is not None:
-				yield from builder.product_signatures()
+	def _expected_signatures(self, owner=None):
+		if owner is None:
+			builder = self._create_default_builder()
+			yield from builder.product_signatures()
 		else:
-			yield from self.typ.signatures()
+			value = getattr(owner, self.attrname)
+			if isinstance(value, AbstractBuilder):
+				yield from value.product_signatures()
+			else:
+				yield from value.signatures()
 
 
 	# def signatures(self, owner=None) -> Iterator[AbstractSignature]:
@@ -240,9 +246,9 @@ class SubmachineBase(SubmoduleBase, Signatured, ReplaceableCraft):
 	# 		yield signature.replace(changes)
 
 
-	def emit_craft_items(self):
+	def emit_craft_items(self, owner=None):
 		if self.replacements is not None:
-			for signature in self._expected_signatures():
+			for signature in self._expected_signatures(owner=owner):
 				if signature.output in self.replacements:
 					yield self._Tool(signature.output, attrname=self.attrname, replacements=self.replacements,
 					                 signature=signature)

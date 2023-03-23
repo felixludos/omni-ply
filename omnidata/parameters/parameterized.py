@@ -6,6 +6,7 @@ from omnibelt import split_dict, unspecified_argument, agnosticmethod, OrderedSe
 	extract_function_signature, method_wrapper, agnostic, Modifiable
 
 from ..persistent import AbstractFingerprinted, Fingerprinted
+from ..tools.crafts import SpaceCraft
 
 from .errors import InheritedHparamError
 from .abstract import AbstractParameterized, AbstractHyperparameter
@@ -15,7 +16,10 @@ from .hyperparameters import InheritableHyperparameter
 
 class ParameterizedBase(AbstractParameterized):
 	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **self._extract_hparams(kwargs))
+		params, remaining = self._extract_hparams(kwargs)
+		super().__init__(*args, **remaining)
+		for name, value in params.items():
+			setattr(self, name, value)
 
 
 	class _find_missing_hparam:
@@ -39,10 +43,12 @@ class ParameterizedBase(AbstractParameterized):
 
 
 	def _extract_hparams(self, kwargs):
+		params = {}
 		for name, _ in self.named_hyperparameters(hidden=True):
 			if name in kwargs:
-				setattr(self, name, kwargs.pop(name))
-		return kwargs
+				params[name] = kwargs.pop(name)
+				# setattr(self, name, kwargs.pop(name))
+		return params, kwargs
 
 
 	@classmethod
@@ -115,6 +121,21 @@ class FingerprintedParameterized(ParameterizedBase, Fingerprinted):
 				pass
 		data.update(hparams)
 		return data
+
+
+
+class SpatialParameterized(ParameterizedBase):
+	def _extract_hparams(self, kwargs):
+		params, remaining = super()._extract_hparams(kwargs)
+
+		cls = type(self)
+		for key in list(remaining.keys()):
+			attr = getattr(cls, key, None) # TODO: maybe clean up a little somehow
+			if isinstance(attr, SpaceCraft):
+				params[key] = remaining[key]
+				del remaining[key]
+
+		return params, remaining
 
 
 
