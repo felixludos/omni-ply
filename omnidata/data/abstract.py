@@ -16,7 +16,7 @@ from .errors import MissingBuffer
 prt = get_printer(__file__)
 
 
-class AbstractData(AbstractFingerprinted): # TODO: make fingerprinted
+class AbstractData(Prepared, AbstractFingerprinted): # TODO: make fingerprinted
 	def copy(self):
 		return duplicate_instance(self) # shallow copy
 
@@ -48,7 +48,7 @@ class AbstractCountableData(AbstractData):
 
 
 
-class AbstractDataSource(AbstractData, AbstractSpaced, AbstractTool, Prepared):
+class AbstractDataSource(AbstractTool, AbstractSpaced, AbstractData):
 	# @classmethod
 	# def _parse_context(cls, context: AbstractContext):
 	# 	return context
@@ -56,7 +56,7 @@ class AbstractDataSource(AbstractData, AbstractSpaced, AbstractTool, Prepared):
 
 
 
-class AbstractDataRouter(AbstractDataSource, AbstractKit):
+class AbstractDataRouter(AbstractKit, AbstractDataSource):
 	_MissingBuffer = MissingBuffer
 
 
@@ -102,7 +102,7 @@ class AbstractDataRouter(AbstractDataSource, AbstractKit):
 
 
 
-class AbstractView(AbstractDataSource, AbstractContext):
+class AbstractView(AbstractContext, AbstractDataSource):
 	def __init__(self, source: AbstractDataRouter = None, **kwargs):
 		super().__init__(**kwargs)
 
@@ -273,7 +273,7 @@ class AbstractBatch(AbstractCountableRouterView, AbstractSelector):
 
 
 
-class AbstractBatchable(AbstractDataSource, AbstractSchema):
+class AbstractBatchable(AbstractSchema, AbstractDataSource):
 	def __iter__(self):
 		return self.iterate()
 

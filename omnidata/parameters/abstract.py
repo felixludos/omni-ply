@@ -10,8 +10,8 @@ class AbstractHyperparameter:
 		raise NotImplementedError
 
 
-	def validate(self, value: Any):
-		return value
+	def validate(self, instance: 'AbstractParameterized') -> Any:
+		raise NotImplementedError
 
 
 
@@ -162,7 +162,7 @@ class AbstractModular(AbstractParameterized):
 
 class AbstractSubmodule(AbstractHyperparameter):
 
-	def init(self, owner, spec=None):
+	def init(self, instance):
 		raise NotImplementedError
 
 
@@ -170,22 +170,14 @@ class AbstractSubmodule(AbstractHyperparameter):
 	# 	raise NotImplementedError
 
 
-	_MissingBuilderError = MissingBuilderError
-	def build_with(self, *args, **kwargs):
-		builder = self.get_builder()
-		if builder is None:
-			raise self._MissingBuilderError(f'No builder for {self}')
-		return builder.build(*args, **kwargs)
-
-
-	def validate(self, product, *, spec=None):
-		builder = self.get_builder() if spec is None else self.get_builder(blueprint=spec)
-		if builder is None:
-			return super().validate(product)
-		try:
-			return builder.validate(product)
-		except InvalidProductError:
-			return self.build_with(product) if spec is None else self.build_with_spec(product, spec=spec)
+	# def validate(self, product, *, spec=None):
+	# 	builder = self.get_builder() if spec is None else self.get_builder(blueprint=spec)
+	# 	if builder is None:
+	# 		return super().validate(product)
+	# 	try:
+	# 		return builder.validate(product)
+	# 	except InvalidProductError:
+	# 		return self.build_with(product) if spec is None else self.build_with_spec(product, spec=spec)
 
 
 	# def build_with_spec(self, owner, spec=None): # TODO: --> architect

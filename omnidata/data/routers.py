@@ -6,6 +6,7 @@ from omnibelt import get_printer, unspecified_argument, filter_duplicates
 from .. import util
 from ..structure import Metric, Sampler, Generator
 from ..tools.kits import CraftyKit
+from ..tools.abstract import AbstractDynamicKit
 
 from .abstract import AbstractDataRouter, AbstractDataSource, AbstractBatchable, AbstractCountableData, AbstractContext
 from .errors import UnknownSize
@@ -42,7 +43,7 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 		buffer = self._buffers.get(name, None)
 		if name in self._buffers:
 			if isinstance(buffer, str):
-				return self.get_buffer(buffer, default=default) # TODO: check for circular references
+				return self.get_buffer(buffer, default=default)  # TODO: check for circular references
 			return buffer
 		if default is not unspecified_argument:
 			return default
@@ -55,7 +56,7 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 	# 		return buffer.space_of(gizmo)
 	# 	return super().space_of(gizmo)
 
-	
+
 	# def _fingerprint_data(self):
 	# 	# data = super()._fingerprint_data()
 	# 	# if self.is_ready:
@@ -77,7 +78,7 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 			yield from self._buffers[gizmo].vendors(gizmo)
 		yield from super().vendors(gizmo)
 
-	
+
 	def remove_buffer(self, gizmo: str):
 		if gizmo in self._buffers:
 			self._buffers.remove(gizmo)
@@ -117,20 +118,20 @@ class CountableDataRouter(AbstractDataRouter, AbstractDataSource, AbstractCounta
 		return self._expected_size()
 
 
-	def _expected_size(self): # should be implemented by subclasses
+	def _expected_size(self):  # should be implemented by subclasses
 		raise self._UnknownSize()
 
 
 
 class BranchedDataRouter(DataCollection):
-	def register_buffer(self, name, buffer=None, *, space=None, **kwargs): # TODO: with delimiter for name
+	def register_buffer(self, name, buffer=None, *, space=None, **kwargs):  # TODO: with delimiter for name
 		raise NotImplementedError
 
 
 
 class AutoCollection(DataCollection):
 	_Buffer = None
-	
+
 	def register_buffer(self, gizmo, buffer=None, *, space=None, **kwargs):
 		if buffer is None:
 			buffer = self._Buffer(space=space, **kwargs)
@@ -162,59 +163,52 @@ class AliasedCollection(DataCollection):
 
 
 
-class Observation(AbstractDataRouter): # SampleSource
+class Observation(AbstractDataRouter):  # SampleSource
 	@property
 	def din(self):
 		return self.observation_space
+
 	@property
 	def observation_space(self):
 		return self.space_of('observation')
-
 
 
 class Supervised(Observation, Metric):
 	@property
 	def dout(self):
 		return self.target_space
+
 	@property
 	def target_space(self):
 		return self.space_of('target')
 
-
 	def difference(self, a, b, standardize=None):
 		return self.dout.difference(a, b, standardize=standardize)
 
-
 	def measure(self, a, b, standardize=None):
 		return self.dout.measure(a, b, standardize=standardize)
-
 
 	def distance(self, a, b, standardize=None):
 		return self.dout.distance(a, b, standardize=standardize)
 
 
-
-class Labeled(Supervised):#, alias={'target': 'label'}):
+class Labeled(Supervised):  # , alias={'target': 'label'}):
 	@property
 	def label_space(self):
 		return self.space_of('label')
 
 
-
-class Synthetic(Labeled):#, alias={'label': 'mechanism'}): # TODO: include auto alias
+class Synthetic(Labeled):  # , alias={'label': 'mechanism'}): # TODO: include auto alias
 	_distinct_mechanisms = True
-
 
 	@property
 	def mechanism_space(self):
 		return self.space_of('mechanism')
 
-
 	def transform_to_mechanisms(self, data):
 		if not self._distinct_mechanisms:
 			return data
 		return self.mechanism_space.transform(data, self.label_space)
-
 
 	def transform_to_labels(self, data):
 		if not self._distinct_mechanisms:

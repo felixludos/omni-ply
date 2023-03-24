@@ -39,7 +39,7 @@ class BatchableView(Batchable, ViewBase):
 
 
 
-class BatchBase(Cached, BatchableView, SizeSelector, ScopedContext, DynamicContext, AbstractBatch):
+class BatchBase(Cached, SizeSelector, ScopedContext, DynamicContext, BatchableView, AbstractBatch):
 	def __init__(self, progress: AbstractProgression = None, **kwargs):
 		super().__init__(progress=progress, **kwargs)
 		self._progress = progress

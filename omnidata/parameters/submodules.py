@@ -32,20 +32,36 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 		return super().copy(typ=typ, builder=builder, **kwargs)
 
 
-	def init(self, owner, spec=None):
+	def init(self, instance):
 		# TODO: (future) check for a special fget: spec -> builder for custom builders
-		if self.is_missing(owner):
+		spec = instance.my_blueprint
+		if not self.is_cached(instance):
 			builder = self._create_default_builder(blueprint=None if spec is None else spec.for_builder())
-			setattr(owner, self.attrname, builder)
+			setattr(instance, self._default_builder_attr_code.format(self.attrname), builder)
 
 
-	# def validate(self, product, *, spec=None):
-	# 	value = super().validate(product)
-	# 	if self.typ is not None and not isinstance(value, self.typ):
-	# 		prt.warning(f'Value {value} is not of type {self.typ}')
-	# 	builder = self.get_builder()
-	# 	if builder is not None:
-	# 		return builder.validate(value)
+	_default_builder_attr_code = '_temporary_default_builder_for_{}'
+	def get_builder(self, owner):
+		if isinstance(owner, type):
+			return self._create_default_builder()
+		if self.is_cached(owner):
+			value = getattr(owner, self.attrname)
+			if isinstance(value, AbstractBuilder):
+				return value
+		return getattr(owner, self._default_builder_attr_code.format(self.attrname), None)
+
+
+	def validate(self, instance):
+		value = getattr(instance, self.attrname, unspecified_argument)
+		builder = getattr(instance, self._default_builder_attr_code.format(self.attrname), None)
+
+		if builder is None:
+			if value is unspecified_argument:
+				raise self._MissingValueError(f'No product found for {self.attrname}')
+		else:
+			value = builder.build() if value is unspecified_argument else builder.validate(value)
+			setattr(instance, self.attrname, value)
+			delattr(instance, self._default_builder_attr_code.format(self.attrname))
 
 
 	_default_builder_type = None # TODO: simple builder that is given the product_base at __init__
@@ -191,8 +207,6 @@ class SubmachineTool(ToolCraft, AbstractScopeGenerator):
 
 class SubmachineBase(SubmoduleBase, Signatured, ReplaceableCraft):
 	_Tool = SubmachineTool
-
-
 	def __init__(self, default=unspecified_argument, *, application=None, replacements=None, **kwargs):
 		if replacements is None:
 			replacements = application
@@ -211,20 +225,15 @@ class SubmachineBase(SubmoduleBase, Signatured, ReplaceableCraft):
 		return super().copy(replacements=replacements, label=label, **kwargs)
 
 
-	def get_builder(self, *args, application=None, **kwargs) -> Optional[BuilderBase]:
+	_default_builder_type = None # TODO: simple builder that is given the product_base at __init__
+	def _create_default_builder(self, *args, application=None, **kwargs) -> Optional[BuilderBase]:
 		if application is None:
 			application = self.replacements
-		return super().get_builder(*args, application=application, **kwargs)
-
-
-	# def missing_spaces(self, owner):
-	# 	for space in super().missing_spaces(owner):
-	# 		if space in self.replacements:
-	# 			yield space
+		return super()._create_default_builder(*args, application=application, **kwargs)
 
 
 	def _expected_signatures(self, owner=None):
-		if owner is None:
+		if owner is None or isinstance(owner, type):
 			builder = self._create_default_builder()
 			yield from builder.product_signatures()
 		else:
@@ -233,17 +242,6 @@ class SubmachineBase(SubmoduleBase, Signatured, ReplaceableCraft):
 				yield from value.product_signatures()
 			else:
 				yield from value.signatures()
-
-
-	# def signatures(self, owner=None) -> Iterator[AbstractSignature]:
-	# 	# if self.application is not None:
-	# 	for signature in self._expected_signatures():
-	# 		# TODO: create richer signature input categories for explicit hierarchy rather than editing the names
-	# 		changes = {name: '{' + f'{self.attrname}.{name}' + '}' for name in signature.inputs}
-	# 		changes[signature.output] = '{' + f'{self.attrname}.{signature.output}' + '}'
-	# 		if self.application is not None:
-	# 			changes.update(self.application)
-	# 		yield signature.replace(changes)
 
 
 	def emit_craft_items(self, owner=None):

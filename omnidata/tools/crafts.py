@@ -286,7 +286,7 @@ class SeededCraft(MetaArgCraft):
 
 
 
-class TransformCraft(MetaArgCraft):
+class TransformableCraft(AbstractCraft):
 	@staticmethod
 	def _parse_fn_args(fn: Callable, *, raw: Optional[bool] = False,
 	                   skip: Optional[Set[str]] = None) -> Iterator[Tuple[str, Any]]:
@@ -299,6 +299,8 @@ class TransformCraft(MetaArgCraft):
 				yield name, param.default
 
 
+
+class TransformCraft(TransformableCraft, MetaArgCraft):
 	def _transform_inputs(self, owner, fn, *, raw: Optional[bool] = None):
 		if raw is None:
 			raw = isinstance(owner, type)
@@ -309,7 +311,6 @@ class TransformCraft(MetaArgCraft):
 
 
 	_MachineError = MachineError
-
 	def _fillin_fn_args(self, owner, fn: Callable, ctx, *, existing=None):
 		# TODO: allow for arbitrary default values -> use omnibelt extract_signature
 
@@ -434,6 +435,10 @@ class CachedPropertyCraft(ReplaceableCraft, cached_property):
 		return new
 
 
+	def is_cached(self, instance: AbstractCrafty):
+		return self.attrname in instance.__dict__
+
+
 	def __call__(self, func: Callable):
 		self.func = func
 		return self
@@ -488,8 +493,24 @@ class SpaceCraft(CachedPropertyCraft): # TransformCraft
 		return self._get_instance_val(instance)
 
 
-	def _is_missing(self, instance: AbstractCrafty, gizmo: str = None):
-		return self.func is None and self.attrname not in instance.__dict__
+	# def _is_missing(self, instance: AbstractCrafty, gizmo: str = None):
+	# 	return self.func is None and self.attrname not in instance.__dict__
+
+
+
+class TransformedSpaceCraft(TransformableCraft, SpaceCraft):
+	def _get_instance_val(self, instance: AbstractCrafty, default: Optional[Any] = unspecified_argument):
+		fn = self.func
+		if self.is_cached(instance) or fn is None \
+				or len(inspect.signature(fn.__get__(instance, type(instance))).parameters) == 0:
+			return super()._get_instance_val(instance, default)
+
+		op = fn.__get__(instance, type(instance))
+		bases = {}
+		for name, val in self._parse_fn_args(op):
+			bases[name] = instance.space_of(val) # TODO: deal with cycles
+
+		return op(**bases)
 
 
 

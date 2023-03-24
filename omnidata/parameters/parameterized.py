@@ -68,7 +68,8 @@ class ParameterizedBase(AbstractParameterized):
 
 	@classmethod
 	def named_hyperparameters(cls, *, hidden=False):
-		for key, val in reversed(cls.__dict__.items()):
+		items = list(cls.__dict__.items())
+		for key, val in reversed(items):
 			if isinstance(val, AbstractHyperparameter) and (hidden or not val.hidden):
 				yield key, val
 

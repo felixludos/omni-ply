@@ -70,6 +70,10 @@ class DefaultProperty:
 		return self.attrname not in instance.__dict__ and self.default is self._unknown and self.fget is None
 
 
+	def is_cached(self, instance):
+		return self.attrname in instance.__dict__
+
+
 	def get_value(self, instance=None, owner=None):
 		if instance is None:
 			if self.default is self._unknown:

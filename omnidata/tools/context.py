@@ -12,7 +12,7 @@ from .assessments import Signatured
 
 
 
-class ContextBase(AbstractSpaced, AbstractContext, AbstractSourcedKit, AbstractAssessible, Signatured):
+class ContextBase(AbstractContext, AbstractSourcedKit, AbstractSpaced, AbstractAssessible, Signatured):
 	def context_id(self) -> Hashable:
 		return id(self)
 

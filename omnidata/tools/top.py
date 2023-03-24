@@ -1,7 +1,7 @@
 
 
 from .crafts import MachineCraft, ContextedCraft, SpacedCraft, OptionalCraft, DefaultCraft, LoggingCraft, \
-	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft
+	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft, TransformedSpaceCraft
 from .kits import MaterialedCrafty, AssessibleCrafty, SignaturedCrafty, RelabeledCrafty, ElasticCrafty, SpaceKit
 from .context import SizedContext, DynamicContext, ScopeBase, Cached, SeededContext, ScopedContext
 
@@ -33,7 +33,7 @@ class material(ContextedCraft, TensorCraft, SpacedCraft):
 
 
 
-class space(SpaceCraft):
+class space(TransformedSpaceCraft):
 	pass
 
 

@@ -34,7 +34,7 @@ class Buffer(Parameterized, Batchable, TensorSource, SpacedSource):#, BuildableD
 
 
 # print()
-# print('\n'.join(map(str, Parameterized.mro())))
+# print('\n'.join(map(str, Structured.mro())))
 # print()
 # print('\n'.join(map(str, Batchable.mro())))
 # print()

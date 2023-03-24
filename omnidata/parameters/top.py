@@ -6,7 +6,7 @@ from .parameterized import ModifiableParameterized, FingerprintedParameterized, 
 from .building import ConfigBuilder, BuilderBase, BuildableBase, MultiBuilderBase, RegistryBuilderBase, \
 	HierarchyBuilderBase, RegisteredProductBase, ModifiableProduct, AnalysisBuilder
 from .submodules import SubmoduleBase, SubmachineBase
-from .spec import ArchitectBase, Specced
+from .spec import ArchitectBase, Specced, SpecBase, PlannedBase
 # from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
 
 
@@ -49,13 +49,21 @@ class with_hparam(HparamWrapper):
 
 
 
-class Parameterized(ModifiableParameterized, InheritableParameterized, FingerprintedParameterized):
+
+class Parameterized(SpatialParameterized, ModifiableParameterized,
+                    InheritableParameterized, FingerprintedParameterized):
 	pass
 
 
 
+class Spec(SpecBase):
+	pass
+PlannedBase._Spec = Spec
+
+
+
 # class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameterized, PreparedParameterized):
-class Structured(SpatialParameterized, Parameterized, Specced, Industrial):
+class Structured(Parameterized, Specced):
 	@classmethod
 	def inherit_hparams(cls, *names):
 		out = super().inherit_hparams(*names)
@@ -76,7 +84,7 @@ class Structured(SpatialParameterized, Parameterized, Specced, Industrial):
 # 	pass
 
 
-class Builder(ModifiableProduct, Structured, ArchitectBase, AnalysisBuilder):#(ConfigBuilder, Parameterized):
+class Builder(ModifiableProduct, ArchitectBase, AnalysisBuilder):#(ConfigBuilder, Parameterized):
 	#, inheritable_auto_methods=['product_base']):
 
 	def _build_kwargs(self, product, *args, **kwargs):

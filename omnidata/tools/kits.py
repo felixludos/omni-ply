@@ -14,7 +14,7 @@ from .assessments import AbstractSignature, Signatured
 
 
 
-class SpacedTool(AbstractSpaced, AbstractTool):
+class SpacedTool(AbstractTool, AbstractSpaced):
 	def space_of(self, gizmo: str) -> spaces.Dim:
 		for tool in self.vendors(gizmo):
 			try:
