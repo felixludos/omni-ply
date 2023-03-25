@@ -4,11 +4,13 @@ from collections import OrderedDict
 from omnibelt import get_printer, unspecified_argument, filter_duplicates
 
 from .. import util
-from ..structure import Metric, Sampler, Generator
-from ..tools.kits import CraftyKit
+from ..structure import Metric, Sampler, Generator, spaces
+from ..tools.kits import CraftyKit, DynamicKit
 from ..tools.abstract import AbstractDynamicKit
+from ..tools.context import DynamicContext
 
-from .abstract import AbstractDataRouter, AbstractDataSource, AbstractBatchable, AbstractCountableData, AbstractContext
+from .abstract import AbstractDataRouter, AbstractDataSource, AbstractBatchable, \
+	AbstractCountableData, AbstractContext, AbstractTool
 from .errors import UnknownSize
 
 
@@ -16,7 +18,7 @@ prt = get_printer(__file__)
 
 
 
-class DataCollection(AbstractBatchable, AbstractDataRouter):
+class DataCollection(DynamicKit, AbstractBatchable, AbstractDataRouter):
 	_BufferTable = OrderedDict
 
 	def __init__(self, *, buffer_table=None, **kwargs):
@@ -26,12 +28,20 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 		self._buffers = buffer_table
 
 
-	# def __len__(self):
-	# 	return len(self._tools)
+	def include(self, *tools: AbstractTool, **buffers: AbstractDataSource) -> 'AbstractDynamicKit':
+		for gizmo, buffer in buffers.items():
+			self.register_buffer(gizmo, buffer)
+		return super().include(*tools)
 
 
-	def available_buffers(self) -> Iterator[str]:
-		yield from reversed(self._buffers)
+	def _validate_buffer(self, gizmo: str, buffer: AbstractTool):
+		if not isinstance(buffer, AbstractDataSource):
+			prt.warning(f'Expected buffer for {gizmo} in {self}, got: {buffer!r}')
+		return buffer
+
+
+	def buffer_names(self) -> Iterator[str]:
+		yield from self._buffers.keys()
 
 
 	def named_buffers(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
@@ -68,9 +78,13 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 	# 	#         **super()._fingerprint_data()}
 	# 	raise NotImplementedError
 
+	def register_buffer(self, gizmo: str, buffer: Optional[AbstractTool] = None):
+		self._buffers[gizmo] = self._validate_buffer(gizmo, buffer)
+		return self
+
 
 	def gizmos(self) -> Iterator[str]:
-		yield from filter_duplicates(self._buffers.keys(), super().gizmos())
+		yield from filter_duplicates(getattr(self, '_buffers', {}).keys(), super().gizmos())
 
 
 	def vendors(self, gizmo: str):
@@ -82,15 +96,6 @@ class DataCollection(AbstractBatchable, AbstractDataRouter):
 	def remove_buffer(self, gizmo: str):
 		if gizmo in self._buffers:
 			self._buffers.remove(gizmo)
-
-
-	def register_buffer(self, gizmo: str, buffer: AbstractDataSource):
-		if not isinstance(buffer, AbstractDataSource):
-			prt.warning(f'Expected buffer for {gizmo} in {self}, got: {buffer!r}')
-		self._buffers[gizmo] = buffer
-		# if gizmo in self._spaces:
-		# 	self._spaces.remove(gizmo)
-		return buffer
 
 
 	def rename_buffer(self, current: str, new: str):
@@ -132,12 +137,32 @@ class BranchedDataRouter(DataCollection):
 class AutoCollection(DataCollection):
 	_Buffer = None
 
-	def register_buffer(self, gizmo, buffer=None, *, space=None, **kwargs):
+	def _validate_buffer(self, gizmo: str, buffer: AbstractTool):
+		if not isinstance(buffer, AbstractDataSource) and self._Buffer is not None:
+			return self.register_buffer(gizmo, buffer)
+		return super()._validate_buffer(gizmo, buffer)
+
+
+	def register_buffer(self, gizmo, buffer: Optional[AbstractTool] = None, *,
+	                    space: Optional[spaces.Dim] = None, **kwargs):
 		if buffer is None:
 			buffer = self._Buffer(space=space, **kwargs)
 		elif not isinstance(buffer, AbstractDataSource):
 			buffer = self._Buffer(buffer, space=space, **kwargs)
 		return super().register_buffer(gizmo, buffer)
+
+
+
+class PlaceholderCollection(DataCollection):
+	def include(self, *tools: AbstractTool, **buffers: AbstractDataSource) -> 'AbstractDynamicKit':
+		aliases = []
+		remaining = []
+		for tool in tools:
+			(aliases if isinstance(tool, str) else remaining).append(tool)
+		out = super().include(*remaining, **buffers)
+		for alias in aliases:
+			self.register_buffer(alias)
+		return out
 
 
 
@@ -154,12 +179,16 @@ class AliasedCollection(DataCollection):
 
 		'''
 		for alias in aliases:
-			self._tools[alias] = name
+			self._buffers[alias] = name
 
 
 	def has_gizmo(self, gizmo: str):
-		alias = self._tools[gizmo]
+		alias = self._buffers[gizmo]
 		return super().has_gizmo(gizmo) and (not isinstance(alias, str) or self.has_gizmo(alias))
+
+
+
+########################################################################################################################
 
 
 

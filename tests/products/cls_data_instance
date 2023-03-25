@@ -1,6 +1,2 @@
 digraph unknown {
-	manifold -> target
-	manifold -> observation
-	size -> manifold [style=dashed]
-	size [shape=box]
 }

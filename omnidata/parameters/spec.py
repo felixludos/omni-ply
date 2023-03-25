@@ -40,6 +40,7 @@ class AbstractSpec(AbstractContext, AbstractChangableSpace):
 	def sub(self, submodule) -> 'AbstractSpec':
 		raise NotImplementedError
 
+
 	def for_builder(self):
 		'''Returns the spec for a builder (usually the builder is created automatically for a submodule)'''
 		raise NotImplementedError
@@ -55,6 +56,21 @@ class SpecBase(DynamicContext, AbstractSpec):
 			self._spaces.update(spaces)
 
 
+	def include(self, *sources: AbstractTool):
+		for source in sources:
+			self._integrate_source(source)
+		return super().include(*sources)
+
+
+	def _integrate_source(self, source: AbstractTool):
+		if isinstance(source, AbstractSpecced):
+			for gizmo in source.gizmos():
+				try:
+					self.space_of(gizmo)
+				except ToolFailedError:
+					self.change_space_of(gizmo, source.space_of(gizmo))
+
+
 	@property
 	def size(self):
 		return 1
@@ -64,6 +80,10 @@ class SpecBase(DynamicContext, AbstractSpec):
 
 
 	def sub(self, submodule) -> 'AbstractSpec':
+		return self
+
+
+	def for_builder(self):
 		return self
 
 
@@ -89,28 +109,27 @@ class SpecBase(DynamicContext, AbstractSpec):
 		return super().space_of(gizmo)
 
 
-	def update_with(self, other: 'AbstractSpecced'):
-		for gizmo in other.gizmos():
-			try:
-				space = other.space_of(gizmo)
-			except ToolFailedError:
-				continue
-			else:
-				try:
-					prev = self.space_of(gizmo)
-				except ToolFailedError:
-					self.change_space_of(gizmo, space)
-				else:
-					if prev is None:
-						self.change_space_of(gizmo, space)
+	# def update_with(self, other: 'AbstractSpecced'):
+	# 	for gizmo in other.gizmos():
+	# 		try:
+	# 			space = other.space_of(gizmo)
+	# 		except ToolFailedError:
+	# 			continue
+	# 		else:
+	# 			try:
+	# 				prev = self.space_of(gizmo)
+	# 			except ToolFailedError:
+	# 				self.change_space_of(gizmo, space)
+	# 			else:
+	# 				if prev is None:
+	# 					self.change_space_of(gizmo, space)
+	#
+	# 	return self
 
-		return self
 
-
+# one of the deepest classes in the MRO (before hparam extraction and craft processing)
 
 class PlannedBase(AbstractSpecced):
-	# one of the deepest classes in the MRO (before hparam extraction and craft processing)
-
 	_Spec = None
 	def __init__(self, *args, blueprint=None, **kwargs):
 		if blueprint is None:
@@ -136,14 +155,18 @@ class PlannedModules(PlannedBase, AbstractModular):
 			sub.init(self)
 
 
+	def _validate_with_spec(self, spec):
+		pass
+
+
 	def _validate_submodules(self, spec=None):
 		if spec is None:
 			spec = self.my_blueprint
 
 		# explicitly requested spaces are inferred from spec and set to self (potentially using the subs)
 		# add self to spec (implicitly adds all spaces defined in self to spec) (also means space wise self is ready)
-		if spec is not None:
-			spec.include(self)
+		self._validate_with_spec(spec)
+		spec.include(self)
 
 		# if sub is missing or a builder, this will instantiate it (using the sub-spec)
 		for name, sub in self.named_submodules(hidden=True):
@@ -157,12 +180,24 @@ class PlannedSpatial(Spatial, PlannedModules): # could still be a builder
 		self._validate_submodules()
 
 
-	def space_of(self, gizmo: str):
-		try:
-			return super().space_of(gizmo)
-		except ToolFailedError:
-			if self.my_blueprint is not None:
-				return self.my_blueprint.space_of(gizmo)
+	def _validate_with_spec(self, spec):
+		for gizmo in self._missing_spaces():
+			space = spec.space_of(gizmo)
+			self.change_space_of(gizmo, space)
+
+
+	def _missing_spaces(self):
+		for gizmo in self.gizmos():
+			try:
+				self.space_of(gizmo)
+			except ToolFailedError:
+				yield gizmo
+			else:
+				pass
+	# def space_of(self, gizmo: str):
+	# 	if self.my_blueprint is not None:
+	# 		return self.my_blueprint.space_of(gizmo)
+	# 	return super().space_of(gizmo)
 
 
 
@@ -177,7 +212,15 @@ class Specced(PlannedIndustrial):
 
 
 class ArchitectBase(PlannedSpatial):
-	pass
+	def _validate_with_spec(self, spec):
+		for gizmo in self._missing_spaces():
+			try:
+				space = spec.space_of(gizmo)
+			except ToolFailedError:
+				pass
+			else:
+				if space is not None:
+					self.change_space_of(gizmo, space)
 
 
 

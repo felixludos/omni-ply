@@ -44,7 +44,9 @@ class Sampledstream(Dataset, Seedable): # Datastream -> Dataset
 		batch = self.stream.batch(n_samples, seed=self.sampler_seed) # optionally sample in smaller batches
 		# batch.reset_rng(self.sampler_seed)
 		for gizmo in batch.gizmos():
-			self.get_buffer(gizmo).data = batch[gizmo]
+			buffer = self.get_buffer(gizmo)
+			data = batch[gizmo]
+			buffer.data = data
 
 
 	def _prepare(self, **kwargs):

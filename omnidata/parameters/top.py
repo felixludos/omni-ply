@@ -63,7 +63,7 @@ PlannedBase._Spec = Spec
 
 
 # class Parameterized(SpeccedBase, ModifiableParameterized, FingerprintedParameterized, PreparedParameterized):
-class Structured(Parameterized, Specced):
+class Structured(Specced, Parameterized):
 	@classmethod
 	def inherit_hparams(cls, *names):
 		out = super().inherit_hparams(*names)
@@ -84,7 +84,7 @@ class Structured(Parameterized, Specced):
 # 	pass
 
 
-class Builder(ModifiableProduct, ArchitectBase, AnalysisBuilder):#(ConfigBuilder, Parameterized):
+class Builder(ArchitectBase, ModifiableProduct, AnalysisBuilder, AbstractArgumentBuilder):#(ConfigBuilder, Parameterized):
 	#, inheritable_auto_methods=['product_base']):
 
 	def _build_kwargs(self, product, *args, **kwargs):

@@ -150,7 +150,7 @@ class AbstractDynamicKit(AbstractKit):
 
 
 
-class AbstractDynamicContext(AbstractDynamicKit, AbstractContext):
+class AbstractDynamicContext(AbstractContext, AbstractDynamicKit):
 	def include(self, *sources: AbstractTool) -> 'AbstractDynamicContext':
 		raise NotImplementedError
 
@@ -237,7 +237,7 @@ class AbstractReproducableScope(AbstractScopable, AbstractScope):
 
 class AbstractSpaced:
 	def space_of(self, gizmo: str) -> spaces.Dim:
-		raise NotImplementedError
+		raise ToolFailedError(gizmo)
 
 
 	def space_is_missing(self, gizmo: str) -> bool:

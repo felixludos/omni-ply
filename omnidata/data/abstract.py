@@ -1,11 +1,11 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
 
-from omnibelt import unspecified_argument, duplicate_instance, get_printer
+from omnibelt import unspecified_argument, duplicate_instance, get_printer, primitives
 
 
 from ..features import Prepared, Seedable
 from ..persistent import AbstractFingerprinted
-from ..tools.abstract import AbstractTool, AbstractKit, AbstractSourcedKit, \
+from ..tools.abstract import AbstractTool, AbstractKit, AbstractSourcedKit, AbstractDynamicKit, \
 	AbstractSpaced, AbstractContext, AbstractMogul, AbstractScope, AbstractSchema
 from ..tools.errors import MissingGizmoError
 from ..tools.moguls import BatchMogul, IteratorMogul, CreativeMogul
@@ -56,14 +56,19 @@ class AbstractDataSource(AbstractTool, AbstractSpaced, AbstractData):
 
 
 
-class AbstractDataRouter(AbstractKit, AbstractDataSource):
+class AbstractDataRouter(AbstractDynamicKit, AbstractDataSource):
 	_MissingBuffer = MissingBuffer
+
+
+	def include(self, *sources: AbstractTool, **buffers: AbstractDataSource) -> 'AbstractDynamicKit':
+		raise NotImplementedError
 
 
 	def _prepare(self, source=None, **kwargs):
 		super()._prepare(source=source, **kwargs)
 		for buffer in self.buffers():
-			buffer.prepare()
+			if isinstance(buffer, Prepared):
+				buffer.prepare()
 
 
 	def named_buffers(self) -> Iterator[Tuple[str, 'AbstractDataSource']]:
@@ -75,6 +80,11 @@ class AbstractDataRouter(AbstractKit, AbstractDataSource):
 			yield buffer
 
 
+	def buffer_names(self) -> Iterator[str]:
+		for name, buffer in self.named_buffers():
+			yield name
+
+
 	def tools(self) -> Iterator['AbstractTool']:
 		yield from self.buffers()
 		yield from super().tools()
@@ -84,13 +94,15 @@ class AbstractDataRouter(AbstractKit, AbstractDataSource):
 		raise NotImplementedError
 
 
-	def register_buffer(self, gizmo: str, buffer: AbstractTool):
-		raise NotImplementedError
+	# def register_buffer(self, gizmo: str, buffer: Optional[AbstractTool] = None):
+	# 	if not isinstance(gizmo, primitives):
+	# 		raise TypeError(f'Gizmo must be a primitive type, not {type(gizmo)}')
+	# 	return self.include(**{gizmo:buffer})
 
 
-	def _register_multi_buffer(self, buffer: AbstractTool, *gizmos: str): # TODO: move downstream (-> mixin)
-		for gizmo in gizmos:
-			self.register_buffer(gizmo, buffer)
+	# def _register_multi_buffer(self, buffer: AbstractTool, *gizmos: str): # TODO: move downstream (-> mixin)
+	# 	for gizmo in gizmos:
+	# 		self.register_buffer(gizmo, buffer)
 
 
 	def remove_buffer(self, name):

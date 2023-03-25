@@ -81,9 +81,24 @@ class CrossEntropyLoss(nn.CrossEntropyLoss):
 
 
 
+# @register_builder('criterion')
+# class CriterionBuilder(HierarchyBuilder, products={'cross-entropy': CrossEntropyLoss,
+#                                                    'mse': nn.MSELoss}):
+# 	target_space = space('target')
+# 	@space('input')
+# 	def input_space(self):
+# 		return self.target_space
+#
+#
+# 	def product_signatures(self, *args, **kwargs):
+# 		yield self._Signature('output', inputs=('input', 'target'))
+
+
+
 @register_builder('criterion')
 class CriterionBuilder(HierarchyBuilder, products={'cross-entropy': CrossEntropyLoss,
                                                    'mse': nn.MSELoss}):
+
 	target_space = space('target')
 	@space('input')
 	def input_space(self):
@@ -98,10 +113,7 @@ class CriterionBuilder(HierarchyBuilder, products={'cross-entropy': CrossEntropy
 @register_builder('comparison')
 class ComparisonBuilder(CriterionBuilder, branch='comparison', default_ident='mse',
                         products={'mse': nn.MSELoss}):
-
-	@space('input')
-	def input_space(self):
-		return self.target_space
+	pass
 
 
 

@@ -498,7 +498,7 @@ class SpaceCraft(CachedPropertyCraft): # TransformCraft
 
 
 
-class TransformedSpaceCraft(TransformableCraft, SpaceCraft):
+class TransformedSpaceCraft(TransformableCraft, SpaceCraft): # TODO: future
 	def _get_instance_val(self, instance: AbstractCrafty, default: Optional[Any] = unspecified_argument):
 		fn = self.func
 		if self.is_cached(instance) or fn is None \

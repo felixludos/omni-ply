@@ -33,7 +33,7 @@ class material(ContextedCraft, TensorCraft, SpacedCraft):
 
 
 
-class space(TransformedSpaceCraft):
+class space(SpaceCraft):
 	pass
 
 

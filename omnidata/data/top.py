@@ -43,7 +43,7 @@ class Buffer(Parameterized, Batchable, TensorSource, SpacedSource):#, BuildableD
 # print('\n'.join(map(str, AliasedCollection.mro())))
 # print()
 # print('\n'.join(map(str, DataCollection.mro())))
-class _FeaturedDataRouter(Structured, Batchable, AutoCollection, AliasedCollection, DataCollection):
+class _FeaturedDataRouter(AutoCollection, AliasedCollection, DataCollection, Structured, Batchable):
 	# #, BuildableData):
 	# def register_buffer(self, gizmo: str, buffer=None, **kwargs):
 	# 	buffer = super().register_buffer(gizmo, buffer, **kwargs)

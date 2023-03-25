@@ -32,7 +32,7 @@ def test_dataset_init():
 	# assert len(buffers) == len(dataset)
 	assert gizmos == ('manifold', 'observation', 'target')
 
-	buffers = tuple(sorted(dataset.available_buffers()))
+	buffers = tuple(sorted(dataset.buffer_names()))
 	# assert len(buffers) == len(dataset)
 	assert buffers == ('manifold', 'observation', 'target')
 
@@ -221,7 +221,7 @@ def test_simple_dataset():
 	assert dataset.size == 100
 	assert dataset[0].sub(X).sum().item() == 0
 
-	buffers = tuple(sorted(dataset.available_buffers()))
+	buffers = tuple(sorted(dataset.buffer_names()))
 	# assert len(buffers) == len(dataset)
 	assert buffers == (0, 1)
 
@@ -231,7 +231,7 @@ def test_simple_dataset():
 	assert ds2.size == 100
 	assert ds2['X'].sub(X).sum().item() == 0
 
-	buffers = tuple(sorted(ds2.available_buffers()))
+	buffers = tuple(sorted(ds2.buffer_names()))
 	# assert len(buffers) == len(ds2)
 	assert buffers == ('X', 'Y')
 

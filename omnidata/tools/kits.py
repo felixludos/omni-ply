@@ -7,10 +7,25 @@ from ..features import Prepared
 from ..structure import spaces
 
 from .abstract import AbstractSpaced, Loggable, AbstractAssessible, AbstractKit, SingleVendor, AbstractTool, \
-	AbstractChangableSpace
+	AbstractChangableSpace, AbstractDynamicKit
 from .errors import ToolFailedError, MissingGizmoError
 from .crafts import ToolCraft, OptionalCraft, DefaultCraft, LabelCraft, SpaceCraft, InitCraft, ReplaceableCraft
 from .assessments import AbstractSignature, Signatured
+
+
+class DynamicKit(AbstractDynamicKit):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._added_tools = []
+
+
+	def include(self, *tools: AbstractTool) -> 'AbstractDynamicKit':
+		self._added_tools.extend(tools)
+		return self
+
+
+	def tools(self) -> Iterator['AbstractTool']:
+		yield from getattr(self, '_added_tools', [])
 
 
 
@@ -30,6 +45,15 @@ class SpaceKit(IndividualCrafty, AbstractChangableSpace): # processes `space` de
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._spaces = {}
+
+
+		# for gizmo in self._spaces:
+		# 	try:
+		# 		self.space_of(gizmo)
+		# 	except ToolFailedError:
+		# 		yield gizmo
+		# 	else:
+		# 		pass
 
 
 	def gizmos(self) -> Iterator[str]:
@@ -165,30 +189,30 @@ class CraftyKit(SpaceKit, SpacedTool, AbstractKit):
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self._tools = {}
+		self._tool_skills = {}
 
 
 	def _process_skill(self, src: Type[AbstractCrafty], key: str, craft: AbstractCraft, skill: LabelCraft.Skill):
 		super()._process_skill(src, key, craft, skill)
 		if isinstance(skill, ToolCraft.Skill):
-			if skill.label not in self._tools:
-				self._tools[skill.label] = self._SkillTool(skill.label)
-			self._tools[skill.label].add(skill)
+			if skill.label not in self._tool_skills:
+				self._tool_skills[skill.label] = self._SkillTool(skill.label)
+			self._tool_skills[skill.label].add(skill)
 
 
 	def has_gizmo(self, gizmo: str) -> bool:
-		return gizmo in self._tools
+		return gizmo in self._tool_skills
 
 
 	def vendors(self, gizmo: str):
 		# gizmo = self.validate_label(gizmo)
-		if gizmo not in self._tools:
+		if gizmo not in self._tool_skills:
 			raise MissingGizmoError(gizmo)
-		yield from self._tools[gizmo].tools()
+		yield from self._tool_skills[gizmo].tools()
 
 
 	def tools(self) -> Iterator['AbstractTool']:
-		for skill in self._tools.values():
+		for skill in self._tool_skills.values():
 			yield from skill.tools()
 
 
@@ -202,12 +226,12 @@ class MaterialedCrafty(CraftyKit, Prepared): # allows materials to be initialize
 		super()._prepare(*args, **kwargs)
 
 		materials = {}
-		for gizmo, tool in self._tools.items():
+		for gizmo, tool in self._tool_skills.items():
 			if isinstance(tool, self._SkillTool):
 				skill = tool.tool()
 				if isinstance(skill, InitCraft.Skill):
 					materials[gizmo] = skill.init(self)
-		self._tools.update(materials)
+		self._tool_skills.update(materials)
 
 
 
