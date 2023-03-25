@@ -483,7 +483,11 @@ class SpaceCraft(CachedPropertyCraft): # TransformCraft
 			if gizmo is None:
 				gizmo = self.label
 			return self._base._is_missing(self._instance, gizmo)
-	
+
+
+		def clear_space(self, gizmo: str) -> bool:
+			return self._base._clear_space(self._instance, gizmo)
+
 	
 	def _change_space_of(self, instance: AbstractCrafty, gizmo, space):
 		self.update_value(instance, space)
@@ -493,8 +497,15 @@ class SpaceCraft(CachedPropertyCraft): # TransformCraft
 		return self._get_instance_val(instance)
 
 
-	# def _is_missing(self, instance: AbstractCrafty, gizmo: str = None):
-	# 	return self.func is None and self.attrname not in instance.__dict__
+	def _is_missing(self, instance: AbstractCrafty, gizmo: str = None):
+		return self.func is None and self.attrname not in instance.__dict__
+
+
+	def _clear_space(self, instance: AbstractCrafty, gizmo: str = None):
+		if self.attrname in instance.__dict__:
+			del instance.__dict__[self.attrname]
+			return True
+		return False
 
 
 

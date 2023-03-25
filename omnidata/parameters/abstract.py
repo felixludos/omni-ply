@@ -24,6 +24,12 @@ class AbstractParameterized:
 		raise NotImplementedError
 
 
+	def _existing_hparams(self, *, hidden=False):
+		for key, param in self.named_hyperparameters(hidden=hidden):
+			if param.is_missing(self):
+				yield key, getattr(self, key)
+
+
 	def has_hparam(self, key):
 		raise NotImplementedError
 
@@ -111,12 +117,6 @@ class AbstractMultiBuilder(AbstractArgumentBuilder, AbstractParameterized):
 	@classmethod
 	def named_products(cls):
 		raise NotImplementedError
-
-
-	def build(self, ident: Optional[str] = unspecified_argument, **kwargs):
-		if ident is unspecified_argument:
-			ident = self.ident
-		return super().build(ident=ident, **kwargs)
 
 
 	def _build_kwargs(self, product, ident: Optional[str] = unspecified_argument, **kwargs):

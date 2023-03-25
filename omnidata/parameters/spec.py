@@ -14,7 +14,8 @@ from ..tools.kits import CraftyKit
 from ..tools.crafts import SpaceCraft
 from ..tools import Industrial, Spatial
 
-from .abstract import AbstractModular, AbstractSubmodule, AbstractArgumentBuilder, AbstractParameterized
+from .abstract import AbstractModular, AbstractBuilder, \
+	AbstractSubmodule, AbstractArgumentBuilder, AbstractParameterized
 from .parameterized import ParameterizedBase
 from .building import BuilderBase
 
@@ -183,21 +184,16 @@ class PlannedSpatial(Spatial, PlannedModules): # could still be a builder
 	def _validate_with_spec(self, spec):
 		for gizmo in self._missing_spaces():
 			space = spec.space_of(gizmo)
-			self.change_space_of(gizmo, space)
+			if space is not None:
+				self.change_space_of(gizmo, space)
 
 
 	def _missing_spaces(self):
-		for gizmo in self.gizmos():
-			try:
-				self.space_of(gizmo)
-			except ToolFailedError:
+		for gizmo, opts in self._spaces.items():
+			if not len(opts):
 				yield gizmo
-			else:
-				pass
-	# def space_of(self, gizmo: str):
-	# 	if self.my_blueprint is not None:
-	# 		return self.my_blueprint.space_of(gizmo)
-	# 	return super().space_of(gizmo)
+			elif opts[0].is_missing(gizmo):
+				yield gizmo
 
 
 
@@ -211,7 +207,7 @@ class Specced(PlannedIndustrial):
 
 
 
-class ArchitectBase(PlannedSpatial):
+class ArchitectBase(PlannedSpatial, AbstractBuilder):
 	def _validate_with_spec(self, spec):
 		for gizmo in self._missing_spaces():
 			try:
@@ -221,6 +217,40 @@ class ArchitectBase(PlannedSpatial):
 			else:
 				if space is not None:
 					self.change_space_of(gizmo, space)
+
+
+	class _Plan:
+		arch: 'ArchitectBase'
+
+		def __init__(self, arch, blueprint):
+			self.arch = arch
+			self.spec = blueprint
+			self.fixes = None
+
+
+		def __enter__(self):
+			fixes = []
+			for gizmo in self.arch._missing_spaces():
+				space = self.spec.space_of(gizmo)
+				if space is not None:
+					self.arch.change_space_of(gizmo, space)
+					fixes.append(gizmo)
+			self.fixes = fixes
+
+
+		def __exit__(self, exc_type, exc_val, exc_tb):
+			for gizmo in self.fixes:
+				self.arch.clear_space(gizmo)
+
+
+	def build_with_spec(self, blueprint, *args, **kwargs):
+		with self._Plan(self, blueprint):
+			return self.build(*args, **kwargs)
+
+
+	def validate_with_spec(self, blueprint, value):
+		with self._Plan(self, blueprint):
+			return self.validate(value)
 
 
 

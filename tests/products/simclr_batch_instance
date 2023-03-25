@@ -1,8 +1,4 @@
 digraph unknown {
-	manifold -> target
-	manifold -> observation
-	size -> manifold [style=dashed]
-	size [shape=box]
 	observation -> latent
 	similarity_matrix -> negatives
 	target -> negatives

@@ -47,13 +47,9 @@ class SpaceKit(IndividualCrafty, AbstractChangableSpace): # processes `space` de
 		self._spaces = {}
 
 
-		# for gizmo in self._spaces:
-		# 	try:
-		# 		self.space_of(gizmo)
-		# 	except ToolFailedError:
-		# 		yield gizmo
-		# 	else:
-		# 		pass
+	def clear_space(self, gizmo: str) -> bool:
+		if gizmo in self._spaces:
+			self._spaces[gizmo][0].clear_space(gizmo)
 
 
 	def gizmos(self) -> Iterator[str]:
@@ -115,11 +111,12 @@ class RelabeledCrafty(IndividualCrafty):
 		cls._inherited_tool_relabels = replace
 
 
-	@classmethod
-	def _emit_all_craft_items(cls, *, remaining: Iterator[Type['InheritableCrafty']] = None,
+	@agnostic
+	def _emit_all_craft_items(self, *, remaining: Iterator[Type['InheritableCrafty']] = None,
 	                          start : Type['InheritableCrafty'] = None, owner : Type['InheritableCrafty'] = None,
 	                          **kwargs) -> Iterator[Tuple[Type[AbstractCrafty], str, AbstractCraft]]: # N-O
 		live = start is None # make sure replacements only happen once
+		cls = self if isinstance(self, type) else type(self)
 		if start is None:
 			start = cls
 

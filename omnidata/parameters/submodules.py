@@ -59,7 +59,12 @@ class SubmoduleBase(HyperparameterBase, AbstractSubmodule): # TODO: check builde
 			if value is unspecified_argument:
 				raise self._MissingValueError(f'No product found for {self.attrname}')
 		else:
-			value = builder.build() if value is unspecified_argument else builder.validate(value)
+			spec = instance.my_blueprint
+			if spec is None:
+				value = builder.build() if value is unspecified_argument else builder.validate(value)
+			else:
+				value = builder.build_with_spec(spec) if value is unspecified_argument \
+					else builder.validate_with_spec(spec, value)
 			setattr(instance, self.attrname, value)
 			delattr(instance, self._default_builder_attr_code.format(self.attrname))
 
@@ -233,15 +238,14 @@ class SubmachineBase(SubmoduleBase, Signatured, ReplaceableCraft):
 
 
 	def _expected_signatures(self, owner=None):
-		if owner is None or isinstance(owner, type):
-			builder = self._create_default_builder()
-			yield from builder.product_signatures()
-		else:
+		if not isinstance(owner, type) and self.is_cached(owner):
 			value = getattr(owner, self.attrname)
-			if isinstance(value, AbstractBuilder):
-				yield from value.product_signatures()
-			else:
+			if isinstance(value, Signatured):
 				yield from value.signatures()
+				return
+		builder = self.get_builder(owner)
+		if builder is not None:
+			yield from builder.product_signatures()
 
 
 	def emit_craft_items(self, owner=None):
