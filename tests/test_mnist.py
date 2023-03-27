@@ -160,7 +160,7 @@ def test_mnist():
 
 	dataset = MNIST(download=True)
 
-	# dataset.prepare()
+	# dataset.prepare() # this will actually load the dataset (after downloading from the internet)
 
 	print()
 	print(dataset)

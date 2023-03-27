@@ -463,6 +463,8 @@ class RegisteredProductBase(BuildableBase):
 		if registry is None:
 			registry = getattr(cls, '_owning_registry', None)
 		else:
+			if isinstance(registry, str):
+				registry = get_builder(registry) # TODO: better error handling
 			setattr(cls, '_owning_registry', registry)
 		if ident is not None and registry is not None:
 			registry.register_product(ident, cls, is_default=is_default)
