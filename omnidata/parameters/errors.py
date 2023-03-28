@@ -16,6 +16,14 @@ class NoProductFound(KeyError):
 
 
 
+class MissingBranchError(NoProductFound):
+	def __init__(self, branch, ident, msg=None):
+		if msg is None:
+			msg = f'Branch {branch!r} not found for ident {ident!r}'
+		super().__init__(msg)
+
+
+
 class InheritedHparamError(AttributeError):
 	pass
 

@@ -236,11 +236,16 @@ class ArchitectBase(PlannedSpatial, AbstractBuilder):
 					self.arch.change_space_of(gizmo, space)
 					fixes.append(gizmo)
 			self.fixes = fixes
+			self.old_blueprint = self.arch.my_blueprint
+			if isinstance(self.arch, PlannedBase):
+				self.arch._my_blueprint = self.spec
 
 
 		def __exit__(self, exc_type, exc_val, exc_tb):
 			for gizmo in self.fixes:
 				self.arch.clear_space(gizmo)
+			if isinstance(self.arch, PlannedBase):
+				self.arch._my_blueprint = self.old_blueprint
 
 
 	def build_with_spec(self, blueprint, *args, **kwargs):

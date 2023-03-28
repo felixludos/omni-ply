@@ -9,7 +9,7 @@ from ..tools.assessments import Signatured, AbstractSignature, SimpleSignature
 
 from .abstract import AbstractBuilder, AbstractParameterized, AbstractArgumentBuilder, \
 	AbstractMultiBuilder, AbstractRegistryBuilder
-from .errors import NoProductFound
+from .errors import NoProductFound, MissingBranchError
 from .hyperparameters import HyperparameterBase
 from .parameterized import ParameterizedBase
 from ..structure import spaces
@@ -395,46 +395,61 @@ class RegistryBuilderBase(ModifiableProduct, IdentBuilder):
 
 
 class HierarchyBuilderBase(RegistryBuilderBase, create_registry=False):
+	_branch_registry_type = Class_Registry
 	_branch_registries = None
-	_branch_address = None
+	_branch_parent_registries = None
 	_branch_address_delimiter = '/'
+	_MissingBranchError = MissingBranchError
 
-	def __init_subclass__(cls, branch=None, create_registry=None, owners=None, **kwargs):
+
+	def __init_subclass__(cls, branch=None, create_registry=None, parents=None, **kwargs):
+		if branch is None and parents is not None:
+			raise ValueError(f'{cls.__name__} is a branch but has no branch name')
 		if branch is not None:
-			if owners is None:
-				owners = cls._product_registry_owner
+			if parents is None:
+				parents = cls._product_registry_owner
 			create_registry = create_registry is None or create_registry
-			cls._branch_address = branch
 		super().__init_subclass__(create_registry=create_registry, **kwargs)
-		cls._branch_registries = []
-		cls._owner_registries = []
-		if owners is not None:
-			if isinstance(owners, type):
-				owners = [owners]
-			for owner in owners:
+		cls._branch_parent_registries = []
+		cls._branch_registries = cls._branch_registry_type()
+
+		if branch is not None and parents is None:
+			for base in cls.__bases__:
+				if issubclass(base, HierarchyBuilderBase):
+					base._branch_registries.new(branch, cls)
+					# cls._branch_parent_registries.append(base)
+					
+		if parents is not None:
+			assert branch is not None
+			if isinstance(parents, (str, type)):
+				parents = [parents]
+			for owner in parents:
+				if isinstance(owner, str):
+					owner = get_builder(owner)
 				if issubclass(owner, HierarchyBuilderBase):
-					owner._branch_registries.append(cls)
-					# cls._owner_registries.append(owner)
+					owner._branch_registries.new(branch, cls)
+					# cls._branch_parent_registries.append(owner)
 
 
 	@classmethod
 	def branch_registries(cls):
-		yield from cls._branch_registries
+		for branch, entry in cls._branch_registries.items():
+			yield branch, entry.cls
 
 
 	@classmethod
 	def registry_hierarchy(cls):
 		yield cls
-		for branch in cls._branch_registries:
-			yield from branch.registry_hierarchy()
+		for entry in cls._branch_registries.values():
+			yield from entry.cls.registry_hierarchy()
 
 
 	@classmethod
 	def product_hierarchy(cls):
 		yield from cls.named_products()
-		for branch in cls._branch_registries:
-			for name, product in branch.product_hierarchy():
-				yield f'{branch._branch_address}{cls._branch_address_delimiter}{name}', product
+		for entry in cls._branch_registries.values():
+			for name, product in entry.cls.product_hierarchy():
+				yield f'{entry.name}{cls._branch_address_delimiter}{name}', product
 
 
 	@classmethod
@@ -442,10 +457,12 @@ class HierarchyBuilderBase(RegistryBuilderBase, create_registry=False):
 		try:
 			return super().find_product_entry(ident, default=default)
 		except cls._NoProductFound:
-			for branch in cls._branch_registries:
-				prefix = f'{branch._branch_address}{cls._branch_address_delimiter}'
-				if ident.startswith(prefix):
-					return branch.find_product_entry(ident[len(prefix):], default=default)
+			terms = ident.split(cls._branch_address_delimiter, 1)
+			if len(terms) > 1:
+				branch, ident = terms
+				if branch in cls._branch_registries:
+					return cls._branch_registries.get_class(branch).find_product_entry(ident, default=default)
+				raise cls._MissingBranchError(branch, ident) from None
 			raise
 
 

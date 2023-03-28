@@ -91,6 +91,8 @@ class Builder(ArchitectBase, ModifiableProduct, AnalysisBuilder, AbstractArgumen
 		kwargs = super()._build_kwargs(product, *args, **kwargs)
 		if issubclass(product, Industrial) and 'application' not in kwargs and self._application is not None:
 			kwargs['application'] = self._application
+		if issubclass(product, Specced) and 'blueprint' not in kwargs and self.my_blueprint is not None:
+			kwargs['blueprint'] = self.my_blueprint
 		return kwargs
 
 
