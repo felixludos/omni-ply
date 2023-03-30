@@ -114,7 +114,7 @@ class ConfigBuilder(BuilderBase, AbstractArgumentBuilder, fig.Configurable):
 
 
 
-class ModifiableProduct(BuilderBase):
+class ModifiableProduct(BuilderBase, AbstractArgumentBuilder):
 	_product_mods = ()
 
 	def __init__(self, *args, **kwargs):
@@ -196,10 +196,10 @@ class BuildCreator(fig.Node.DefaultCreator): # creates using build() instead of 
 
 
 
-class BuildableBase(ModifiableProduct, BuilderBase, AbstractArgumentBuilder):
-	@classmethod
-	def product_base(cls, *args, **kwargs) -> Type:
-		return cls
+# class BuildableBase(ModifiableProduct, BuilderBase, AbstractArgumentBuilder):
+# 	@classmethod
+# 	def product_base(cls, *args, **kwargs) -> Type:
+# 		return cls
 
 
 
@@ -242,7 +242,7 @@ get_builder = builder_registry.get_class
 
 
 
-class IdentBuilder(AbstractMultiBuilder):
+class IdentBuilder(AbstractMultiBuilder, AbstractArgumentBuilder):
 	_IdentParameter = HyperparameterBase
 
 	def __init_subclass__(cls, _register_ident=True, default_ident=None, **kwargs):
@@ -264,8 +264,14 @@ class IdentBuilder(AbstractMultiBuilder):
 		return super().build(ident=ident, **kwargs)
 
 
+	def _build_kwargs(self, product, ident=unspecified_argument, **kwargs):
+		if ident is unspecified_argument:
+			ident = self.ident
+		return super()._build_kwargs(product, ident=ident, **kwargs)
 
-class MultiBuilderBase(ModifiableProduct, IdentBuilder):
+
+
+class MultiBuilderBase(IdentBuilder, ModifiableProduct):
 	@classmethod
 	def available_products(cls):
 		return {}
@@ -286,7 +292,7 @@ class MultiBuilderBase(ModifiableProduct, IdentBuilder):
 
 
 
-class RegistryBuilderBase(ModifiableProduct, IdentBuilder):
+class RegistryBuilderBase(IdentBuilder, ModifiableProduct):
 	class _IdentParameter(IdentBuilder._IdentParameter):
 		_IdentSpace = spaces.Selection
 		def __init__(self, *, space=None, **kwargs):
@@ -397,6 +403,7 @@ class RegistryBuilderBase(ModifiableProduct, IdentBuilder):
 class HierarchyBuilderBase(RegistryBuilderBase, create_registry=False):
 	_branch_registry_type = Class_Registry
 	_branch_registries = None
+	_branch_name = None
 	_branch_parent_registries = None
 	_branch_address_delimiter = '/'
 	_MissingBranchError = MissingBranchError
@@ -412,6 +419,9 @@ class HierarchyBuilderBase(RegistryBuilderBase, create_registry=False):
 		super().__init_subclass__(create_registry=create_registry, **kwargs)
 		cls._branch_parent_registries = []
 		cls._branch_registries = cls._branch_registry_type()
+
+		if branch is not None:
+			cls._branch_name = branch
 
 		if branch is not None and parents is None:
 			for base in cls.__bases__:
@@ -429,6 +439,14 @@ class HierarchyBuilderBase(RegistryBuilderBase, create_registry=False):
 				if issubclass(owner, HierarchyBuilderBase):
 					owner._branch_registries.new(branch, cls)
 					# cls._branch_parent_registries.append(owner)
+
+
+	@classmethod
+	def hierarchy_registry_address(cls):
+		if len(cls._branch_parent_registries) == 0:
+			return cls._branch_name
+		return f'{cls._branch_parent_registries[0].hierarchy_registry_address()}' \
+		       f'{cls._branch_address_delimiter}{cls._branch_name}'
 
 
 	@classmethod
@@ -467,7 +485,7 @@ class HierarchyBuilderBase(RegistryBuilderBase, create_registry=False):
 
 
 
-class RegisteredProductBase(BuildableBase):
+class RegisteredProductBase:
 	ident = None
 	_owning_registry = None
 

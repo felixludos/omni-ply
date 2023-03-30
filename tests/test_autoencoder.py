@@ -10,12 +10,12 @@ import omnifig as fig
 
 import omnidata as od
 from omnidata import toy
-from omnidata import Builder, Buildable, HierarchyBuilder, RegisteredProduct, MatchingBuilder
+from omnidata import Builder, HierarchyBuilder, RegisteredProduct, MatchingBuilder
 from omnidata import hparam, inherit_hparams, submodule, spaces
 from omnidata import Guru, Context, Industrial, material, space, indicator, machine
 from omnidata.data import toy
 
-from omnidata import Spec, Builder, Buildable
+from omnidata import Spec, Builder
 
 
 

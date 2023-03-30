@@ -2,6 +2,6 @@ from .abstract import AbstractHyperparameter, AbstractSubmodule, AbstractBuilder
 
 from .building import register_builder, get_builder, BuildCreator
 
-from .top import Builder, Buildable, MultiBuilder, RegistryBuilder, RegisteredProduct, \
+from .top import Builder, MultiBuilder, RegistryBuilder, RegisteredProduct, \
 	Structured, HierarchyBuilder, Parameterized, Spec
 from .top import hparam, submodule, submachine, with_hparam, inherit_hparams, Structured, MatchingBuilder

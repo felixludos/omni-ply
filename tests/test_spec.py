@@ -14,13 +14,13 @@ from functools import lru_cache
 
 import omnidata as od
 from omnidata import toy
-from omnidata import Builder, Buildable, HierarchyBuilder, RegisteredProduct, MatchingBuilder, RegistryBuilder, \
+from omnidata import Builder, HierarchyBuilder, RegisteredProduct, MatchingBuilder, RegistryBuilder, \
 	register_builder, get_builder
 from omnidata import BudgetLoader
 from omnidata import hparam, inherit_hparams, submodule, submachine, spaces
 from omnidata import Guru, Context, material, space, indicator, machine, Structured
 
-from omnidata import Spec, Builder, Buildable, InitWall
+from omnidata import Spec, Builder, InitWall
 from omnidata import toy
 
 

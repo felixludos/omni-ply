@@ -207,7 +207,16 @@ class Specced(PlannedIndustrial):
 
 
 
-class ArchitectBase(PlannedSpatial, AbstractBuilder):
+class ArchitectBase(PlannedSpatial, AbstractArgumentBuilder):
+	def _build_kwargs(self, product, *args, **kwargs):
+		kwargs = super()._build_kwargs(product, *args, **kwargs)
+		if issubclass(product, Industrial) and 'application' not in kwargs and self._application is not None:
+			kwargs['application'] = self._application
+		if issubclass(product, Specced) and 'blueprint' not in kwargs and self.my_blueprint is not None:
+			kwargs['blueprint'] = self.my_blueprint
+		return kwargs
+
+
 	def _validate_with_spec(self, spec):
 		for gizmo in self._missing_spaces():
 			try:

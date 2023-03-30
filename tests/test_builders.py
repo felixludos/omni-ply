@@ -9,7 +9,7 @@ import omnifig as fig
 
 import omnidata as od
 from omnidata import toy
-from omnidata import Builder, Buildable, RegistryBuilder, RegisteredProduct, MatchingBuilder
+from omnidata import Builder, RegistryBuilder, RegisteredProduct, MatchingBuilder
 from omnidata import hparam, inherit_hparams, submodule, spaces
 
 
@@ -107,7 +107,7 @@ def test_mod_product():
 
 
 
-class MyModels(MatchingBuilder, RegistryBuilder, nn.Module, default_ident='b'):
+class MyModels(RegistryBuilder, nn.Module, default_ident='b'):
 	p1 = hparam(required=True)
 	p2 = hparam(10)
 	p3 = hparam('hello', inherit=True)
@@ -152,15 +152,15 @@ def test_param_product():
 	assert builder.p2 == 10
 	assert ModelA().p2 == 20
 	assert builder.build('a').p2 == 10
-	assert ModelA().build().p2 == 20
+	# assert ModelA().build().p2 == 20
 
 	a = ModelA(p2=50)
-	assert a.build().p2 == 20
-	assert a.build(p2=50).p2 == 50
+	# assert a.build().p2 == 20
+	# assert a.build(p2=50).p2 == 50
 	# assert a.build_replica().p2 == 50
 
 	assert isinstance(ModelA(), ModelA)
-	assert isinstance(ModelA().build(), ModelA)
+	# assert isinstance(ModelA().build(), ModelA)
 	assert isinstance(builder.build('a'), ModelA)
 
 	assert builder.build('b').p2 == 10

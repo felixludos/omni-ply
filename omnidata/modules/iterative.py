@@ -59,7 +59,7 @@ class Trainer(Structured, AbstractTrainer):
 
 
 class TrainableModel(Evaluatable, Structured, AbstractTrainableModel):
-	Trainer = Trainer
+	_Trainer = Trainer
 
 
 

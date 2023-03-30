@@ -3,8 +3,8 @@ from .abstract import AbstractArgumentBuilder
 from .hyperparameters import InheritableHyperparameter
 from .parameterized import ModifiableParameterized, FingerprintedParameterized, InheritHparamsDecorator, \
 	InheritableParameterized, HparamWrapper, SpatialParameterized
-from .building import ConfigBuilder, BuilderBase, BuildableBase, MultiBuilderBase, RegistryBuilderBase, \
-	HierarchyBuilderBase, RegisteredProductBase, ModifiableProduct, AnalysisBuilder
+from .building import ConfigBuilder, BuilderBase, MultiBuilderBase, RegistryBuilderBase, \
+	HierarchyBuilderBase, ModifiableProduct, AnalysisBuilder, RegisteredProductBase
 from .submodules import SubmoduleBase, SubmachineBase
 from .spec import ArchitectBase, Specced, SpecBase, PlannedBase
 # from .spec import PreparedParameterized, SpeccedBase, BuilderSpecced, StatusSpec, BuildableSpec
@@ -84,44 +84,6 @@ class Structured(Specced, Parameterized):
 # 	pass
 
 
-class Builder(ArchitectBase, ModifiableProduct, AnalysisBuilder, AbstractArgumentBuilder):#(ConfigBuilder, Parameterized):
-	#, inheritable_auto_methods=['product_base']):
-
-	def _build_kwargs(self, product, *args, **kwargs):
-		kwargs = super()._build_kwargs(product, *args, **kwargs)
-		if issubclass(product, Industrial) and 'application' not in kwargs and self._application is not None:
-			kwargs['application'] = self._application
-		if issubclass(product, Specced) and 'blueprint' not in kwargs and self.my_blueprint is not None:
-			kwargs['blueprint'] = self.my_blueprint
-		return kwargs
-
-
-
-
-class Buildable(Builder, BuildableBase):
-	pass
-
-
-
-class MultiBuilder(Builder, MultiBuilderBase):#, wrap_existing=True):
-	pass
-
-
-
-class RegistryBuilder(Builder, RegistryBuilderBase, create_registry=False):
-	pass
-
-
-
-class HierarchyBuilder(RegistryBuilder, HierarchyBuilderBase, create_registry=False):
-	pass
-
-
-
-class RegisteredProduct(Buildable, RegisteredProductBase):
-	pass
-
-
 
 class MatchingBuilder(Structured, AbstractArgumentBuilder):
 	'''Automatically fills in common hyperparameters between the builder and the product'''
@@ -138,7 +100,7 @@ class MatchingBuilder(Structured, AbstractArgumentBuilder):
 
 	def _build_kwargs(self, product, *args, **kwargs):
 		kwargs = super()._build_kwargs(product, *args, **kwargs)
-		if self.fillin_hparams:
+		if self.fillin_hparams and issubclass(product, Parameterized):
 			for key in self._matching_hparams(product):
 				if key not in kwargs:
 					try:
@@ -150,6 +112,35 @@ class MatchingBuilder(Structured, AbstractArgumentBuilder):
 		return kwargs
 
 
+
+class Builder(MatchingBuilder, ArchitectBase, ModifiableProduct, AnalysisBuilder):#(ConfigBuilder, Parameterized):
+	#, inheritable_auto_methods=['product_base']):
+	pass
+
+
+
+# class Buildable(Builder, BuildableBase):
+# 	pass
+
+
+
+class MultiBuilder(MultiBuilderBase, Builder):#, wrap_existing=True):
+	pass
+
+
+
+class RegistryBuilder(RegistryBuilderBase, Builder, create_registry=False):
+	pass
+
+
+
+class HierarchyBuilder(HierarchyBuilderBase, RegistryBuilder, create_registry=False):
+	pass
+
+
+
+class RegisteredProduct(Structured, RegisteredProductBase):
+	pass
 
 
 

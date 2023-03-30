@@ -22,7 +22,7 @@ class AbstractData(Prepared, AbstractFingerprinted): # TODO: make fingerprinted
 
 
 	def _title(self):
-		return self.__class__.__name__
+		return getattr(self, 'name', self.__class__.__name__)
 	@property
 	def title(self):
 		return self._title()
