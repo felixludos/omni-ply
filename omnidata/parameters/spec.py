@@ -84,6 +84,10 @@ class SpecBase(DynamicContext, AbstractSpec):
 		return self
 
 
+	def adapt(self, overrides):
+		raise NotImplementedError
+
+
 	def for_builder(self):
 		return self
 

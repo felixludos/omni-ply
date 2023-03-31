@@ -1,4 +1,6 @@
-from ..tools import Industrial
+from omnibelt.crafts import HiddenCrafty
+
+from ..tools import Industrial, SignatureCraft, Signature
 from .abstract import AbstractArgumentBuilder
 from .hyperparameters import InheritableHyperparameter
 from .parameterized import ModifiableParameterized, FingerprintedParameterized, InheritHparamsDecorator, \
@@ -72,7 +74,26 @@ class Structured(Specced, Parameterized):
 			if isinstance(val, submachine) and len(cls._inherited_tool_relabels):
 				setattr(cls, name, val.replace(cls._inherited_tool_relabels))
 		return out
-	pass
+
+
+
+class Function(Structured, HiddenCrafty):
+	_auto_machine = SignatureCraft
+	def __init_subclass__(cls, signature: Signature = None, **kwargs):
+		super().__init_subclass__(**kwargs)
+		if signature is not None:
+			if signature.fn is None:
+				signature.fn = getattr(cls, '__call__', None)
+			cls._hidden_crafts.append(cls._auto_machine(signature))
+
+
+
+class SimpleFunction(Function):
+	_Signature = Signature
+	def __init_subclass__(cls, inputs=None, output=None, metas=None, signature=None, **kwargs):
+		if signature is None:
+			signature = cls._Signature(inputs=inputs, output=output, metas=metas)
+		super().__init_subclass__(signature=signature, **kwargs)
 
 
 

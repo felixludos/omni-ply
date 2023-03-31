@@ -1,10 +1,12 @@
 
 
 from .crafts import MachineCraft, ContextedCraft, SpacedCraft, OptionalCraft, DefaultCraft, LoggingCraft, \
-	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft, TransformedSpaceCraft
+	TensorCraft, SizeCraft, IndexCraft, SampleCraft, IndexSampleCraft, SpaceCraft, \
+	TransformedSpaceCraft, SignatureCraft
 from .kits import MaterialedCrafty, AssessibleCrafty, SignaturedCrafty, RelabeledCrafty, ElasticCrafty, SpaceKit
 from .context import SizedContext, DynamicContext, ScopeBase, Cached, SeededContext, ScopedContext
 
+from .assessments import SimpleSignature
 
 
 class machine(ContextedCraft, MachineCraft, SpacedCraft):
@@ -62,6 +64,10 @@ class Spatial(ElasticCrafty, RelabeledCrafty, SpaceKit):
 class Industrial(Spatial, MaterialedCrafty, SignaturedCrafty, AssessibleCrafty):
 	pass
 
+
+
+class Signature(SimpleSignature):
+	pass
 
 
 # class Elastic(ElasticCrafty):

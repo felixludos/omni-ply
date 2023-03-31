@@ -1,7 +1,7 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable, Type, Set
 
 from omnibelt import method_decorator, agnostic, unspecified_argument, filter_duplicates
-from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, SkilledCraft, IndividualCrafty
+from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, SkilledCraft, IndividualCrafty, HiddenCrafty
 
 from ..features import Prepared
 from ..structure import spaces

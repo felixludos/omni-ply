@@ -201,6 +201,10 @@ class FunctionCraft(method_decorator, NestableCraft, CopyCraft):
 		return super()._setup_decorator(owner, name)
 
 
+	def setup(self, owner: Type, name: str):
+		return self._setup_decorator(owner, name)
+
+
 	def _get_instance_fn(self, instance: AbstractCrafty, name: Optional[str] = None):
 		if name is None:
 			name = self._name
@@ -342,8 +346,69 @@ class TransformCraft(TransformableCraft, MetaArgCraft):
 
 
 
+class SignatureCraft(TransformCraft):
+	def __init__(self, signature, fn_name=None, **kwargs):
+		if fn_name is None:
+			assert signature.fn is not None, f'no function provided for signature {signature}'
+			fn_name = signature.fn.__name__
+		super().__init__(**kwargs)
+		self._fn_name = fn_name
+		self._signature = signature
+
+
+	_MachineError = MachineError
+	def _fillin_fn_args(self, owner, fn: Callable, ctx, *, existing=None):
+		# TODO: allow for arbitrary default values -> use omnibelt extract_signature
+		if len(self._signature.meta):
+			raise NotImplementedError # TODO
+
+		inputs = [existing[key] if existing is not None and key in existing else ctx[key]
+		          for key in self._known_input_args(owner)]
+		return inputs
+
+
+	def replace(self, replacements: Dict[str, str], **kwargs):
+		new = super().replace(replacements, **kwargs)
+		new._signature = self._signature.replace(replacements)
+		return new
+
+
+	def _known_meta_args(self, owner) -> Iterator[str]:
+		yield from self._signature.meta
+
+
+	def _known_input_args(self, owner) -> Iterator[str]:
+		yield from self._signature.inputs
+
+
+	def signatures(self, owner: Type[AbstractCrafty] = None):
+		yield self._signature
+
+
+
 class MachineCraft(SeededCraft, TransformCraft):
-	pass
+	_MachineError = MachineError
+	def _fillin_fn_args(self, owner, fn: Callable, ctx, *, existing=None):
+		# TODO: allow for arbitrary default values -> use omnibelt extract_signature
+
+		if existing is None:
+			existing = {}
+		for key, default in self._transform_inputs(owner, fn, raw=False):
+			name = self._validate_label(owner, key)
+			try:
+				existing[key] = ctx[name]
+			except KeyError:
+				if default is inspect.Parameter.empty:
+					raise self._MachineError(key, self.label, owner)
+				existing[key] = default
+
+		return existing
+
+
+	def _get_fn_args(self, instance, fn, ctx, gizmo):
+		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
+		kwargs.update(self._fillin_fn_args(instance, fn, ctx))
+		return args, kwargs
 
 
 
