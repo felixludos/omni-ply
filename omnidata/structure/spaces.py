@@ -1,3 +1,4 @@
+from typing import Sequence as _Sequence
 from omnibelt import Packable
 
 # import math
@@ -661,9 +662,8 @@ class Volume(Spatial):
 
 class Categorical(Dim):
 	def __init__(self, n, **kwargs):
-		if isinstance(n, (list, tuple, set)):
-			if isinstance(n, set):
-				n = list(n)
+		if isinstance(n, _Sequence):
+			n = list(n)
 			n, values = len(n), n
 		else:
 			assert isinstance(n, int), f'bad: {n}'

@@ -1,17 +1,17 @@
 from ..features.containers import SourceContainer, ScoreContainer
 from ..parameters import Structured
 
-from .abstract import AbstractResultable, AbstractFitable, AbstractEvaluatable, AbstractModel
+from .abstract import AbstractFitable, AbstractEvaluatable, AbstractModel
 
 
 
-class Resultable(AbstractResultable):
-	class DataContainer(SourceContainer, ScoreContainer):
-		pass
+# class Resultable(AbstractResultable):
+# 	class DataContainer(SourceContainer, ScoreContainer):
+# 		pass
 
 
 
-class Evaluatable(Resultable, AbstractEvaluatable):
+class Evaluatable(AbstractEvaluatable):
 	def create_eval_container(self, *args, **kwargs):
 		return self.create_container(*args, **kwargs)
 
@@ -28,7 +28,7 @@ class Evaluatable(Resultable, AbstractEvaluatable):
 
 
 
-class Fitable(Resultable, AbstractFitable, AbstractEvaluatable):
+class Fitable(AbstractFitable, AbstractEvaluatable):
 	def create_fit_container(self, *args, **kwargs):
 		return self.create_container(*args, **kwargs)
 

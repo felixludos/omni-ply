@@ -25,8 +25,8 @@ class DefaultProperty:
 		fget, default = self._check_fget(fget, default)
 		super().__init__(**kwargs)
 		self.attrname = attrname
-		if not cache:
-			raise NotImplementedError('cache=False not implemented') # TODO: implement
+		# if not cache:
+		# 	raise NotImplementedError('cache=False not implemented') # TODO: implement
 		self.cache = cache
 		self.default = default
 		self.fget = fget

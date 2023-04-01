@@ -347,11 +347,15 @@ class TransformCraft(TransformableCraft, MetaArgCraft):
 
 
 class SignatureCraft(TransformCraft):
-	def __init__(self, signature, fn_name=None, **kwargs):
+	def __init__(self, signature, *, fn_name=None, label=None, **kwargs):
 		if fn_name is None:
 			assert signature.fn is not None, f'no function provided for signature {signature}'
 			fn_name = signature.fn.__name__
-		super().__init__(**kwargs)
+		if label is None:
+			label = signature.output
+		else:
+			signature.output = label
+		super().__init__(label=label, **kwargs)
 		self._fn_name = fn_name
 		self._signature = signature
 
