@@ -27,6 +27,13 @@ class BuilderBase(ParameterizedBase, AbstractBuilder):
 
 
 
+
+class AdaptableBuilderBase(ParameterizedBase, AbstractBuilder):
+	def __call__(self, *args, **kwargs):
+		return self.copy(*args, **kwargs)
+
+
+
 class AnalysisBuilder(AbstractBuilder):
 	_Signature = SimpleSignature
 	def product_signatures(self, *args, **kwargs):
