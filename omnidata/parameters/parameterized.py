@@ -74,30 +74,50 @@ class ParameterizedBase(AbstractParameterized):
 				yield key, val
 
 
+
+class InheritableParameterized(ParameterizedBase):
+	_inherited_hyperparameters = None
+	def __init_subclass__(cls, skip_inherit_inheritable_hparams=False, **kwargs):
+		super().__init_subclass__(**kwargs)
+		cls._inherited_hyperparameters = []
+		if not skip_inherit_inheritable_hparams:
+			existing = set(cls.hyperparameter_names(hidden=True))
+			todo = []
+			for base in cls.__bases__:
+				if issubclass(base, ParameterizedBase):
+					todo.extend(name for name, param in base.named_hyperparameters(hidden=True)
+					            if name not in existing and isinstance(param, InheritableHyperparameter) and param.inherit)
+			if len(todo):
+				cls.inherit_hparams(*todo)
+
+
+	@classmethod
+	def named_hyperparameters(cls, *, hidden=False):
+		yield from cls._inherited_named_hyperparameters(hidden=hidden)
+		yield from super().named_hyperparameters(hidden=hidden)
+
+
+	@classmethod
+	def _inherited_named_hyperparameters(cls, *, hidden=False):
+		if cls._inherited_hyperparameters is not None:
+			for key in cls._inherited_hyperparameters:
+				val = getattr(cls, key, None)
+				if isinstance(val, AbstractHyperparameter) and (hidden or not val.hidden):
+					yield key, val
+
+
 	_InheritedHparamError = InheritedHparamError
 
 	@classmethod
 	def inherit_hparams(cls, *names):
-		for name in reversed(names):
-			val = getattr(cls, name, None)
-			if val is None:
-				raise cls._InheritedHparamError(f'{cls.__name__} cannot inherit the hparam: {name!r}')
-			setattr(cls, name, val)
+		# for name in reversed(names):
+		# 	val = getattr(cls, name, None)
+		# 	if val is None:
+		# 		raise cls._InheritedHparamError(f'{cls.__name__} cannot inherit the hparam: {name!r}')
+		# 	setattr(cls, name, val)
+		# return cls
+		cls._inherited_hyperparameters.extend(name for name in names if name not in cls._inherited_hyperparameters)
 		return cls
-
-
-
-class InheritableParameterized(AbstractParameterized):
-	def __init_subclass__(cls, **kwargs):
-		super().__init_subclass__(**kwargs)
-		existing = set(cls.hyperparameter_names(hidden=True))
-		todo = []
-		for base in cls.__bases__:
-			if issubclass(base, ParameterizedBase):
-				todo.extend(name for name, param in base.named_hyperparameters(hidden=True)
-				            if name not in existing and isinstance(param, InheritableHyperparameter) and param.inherit)
-		if len(todo):
-			cls.inherit_hparams(*todo)
 
 
 

@@ -1,5 +1,4 @@
 digraph unknown {
-	observation -> latent
 	similarity_matrix -> negatives
 	class_id -> negatives
 	similarity_matrix -> positives
@@ -10,4 +9,5 @@ digraph unknown {
 	projection2 -> similarity_matrix
 	latent -> projection1
 	latent -> projection2
+	observation -> latent
 }

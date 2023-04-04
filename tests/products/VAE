@@ -1,7 +1,7 @@
 digraph unknown {
+	latent -> reconstruction
 	reconstruction -> rec_loss
 	observation -> rec_loss
-	latent -> reconstruction
 	rec_loss -> loss
 	reg_loss -> loss
 	posterior -> reg_loss
