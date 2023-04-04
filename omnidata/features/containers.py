@@ -1,5 +1,5 @@
 
-from collections import OrderedDict, Mapping
+from collections import OrderedDict#, Mapping
 import torch
 from omnibelt import agnostic, unspecified_argument
 
@@ -7,7 +7,7 @@ from .hardware import Device
 from .random import Seeded
 
 
-class AbstractContainer(Mapping):
+class AbstractContainer:#(Mapping):
 	pass
 
 
