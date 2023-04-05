@@ -415,15 +415,18 @@ class MachineCraft(SeededCraft, TransformCraft):
 		return args, kwargs
 
 
+class MaterialCraft(SeededCraft):
+	pass
 
-class ContextToolCraft(SeededCraft):
+
+class ContextToolCraft(MaterialCraft):
 	def _get_fn_args(self, instance, fn, ctx, gizmo):
 		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
 		return (ctx, *args), kwargs
 
 
 
-class BatchCraft(SeededCraft):
+class BatchCraft(MaterialCraft):
 	_context_batch_key = 'batch'
 	def _get_fn_args(self, instance, fn, ctx, gizmo):
 		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
@@ -436,7 +439,7 @@ class BatchCraft(SeededCraft):
 
 
 
-class SizeCraft(SeededCraft):
+class SizeCraft(MaterialCraft):
 	_context_size_key = 'size'
 	def _get_fn_args(self, instance, fn, ctx, gizmo):
 		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
@@ -449,7 +452,7 @@ class SizeCraft(SeededCraft):
 
 
 
-class IndexCraft(SeededCraft):
+class IndexCraft(MaterialCraft):
 	_context_indices_key = 'indices'
 	def _get_fn_args(self, instance, fn, ctx, gizmo):
 		args, kwargs = super()._get_fn_args(instance, fn, ctx, gizmo)
@@ -462,7 +465,7 @@ class IndexCraft(SeededCraft):
 
 
 
-class SampleCraft(SeededCraft):
+class SampleCraft(MaterialCraft):
 	_context_size_key = 'size'
 	def _get_from_fn(self, instance, fn, ctx, gizmo):
 		size = getattr(ctx, self._context_size_key, None)
@@ -473,7 +476,7 @@ class SampleCraft(SeededCraft):
 
 
 
-class IndexSampleCraft(SeededCraft):
+class IndexSampleCraft(MaterialCraft):
 	_context_index_key = 'index'
 	_context_indices_key = 'indices'
 

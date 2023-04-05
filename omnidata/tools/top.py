@@ -10,6 +10,11 @@ from .assessments import SimpleSignature
 
 
 class machine(ContextedCraft, MachineCraft, SpacedCraft):
+	@classmethod
+	def is_derivative(cls, obj):
+		return isinstance(obj._base, machine)
+	
+	
 	class Skill(MachineCraft.Skill, SpacedCraft.Skill):
 		pass
 
@@ -25,6 +30,12 @@ class indicator(machine, LoggingCraft):
 
 
 class material(ContextedCraft, TensorCraft, SpacedCraft):
+	@classmethod
+	def is_derivative(cls, obj):
+		return isinstance(obj._base, cls.from_size) or isinstance(obj._base, cls.from_indices) \
+			or isinstance(obj._base, cls.next_sample) or isinstance(obj._base, cls.sample_from_index)
+	
+	
 	class Skill(TensorCraft.Skill, SpacedCraft.Skill):
 		pass
 
