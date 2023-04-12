@@ -33,7 +33,7 @@ class LabelCraft(SkilledCraft):
 			return self._base._validate_label(owner, label)
 
 
-	def __init__(self, label: str, **kwargs):
+	def __init__(self, label: str, **kwargs): # TODO: infer label from function name if not specified
 		super().__init__(**kwargs)
 		self._label = label
 
