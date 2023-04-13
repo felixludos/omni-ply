@@ -262,7 +262,7 @@ class SeededCraft(MetaArgCraft):
 	_context_seed_key = 'seed'
 	_context_rng_key = 'rng'
 
-	def __init__(self, label: str, *, include_seed=None, include_rng=None, **kwargs):
+	def __init__(self, label: str = None, *, include_seed=None, include_rng=None, **kwargs):
 		if include_seed and not isinstance(include_seed, str):
 			include_seed = self._context_seed_key
 		if include_rng and not isinstance(include_rng, str):
@@ -287,6 +287,19 @@ class SeededCraft(MetaArgCraft):
 		if self._include_rng:
 			kwargs[self._include_rng] = getattr(ctx, self._context_rng_key, None)
 		return args, kwargs
+
+
+
+class AutoCraft(NestableCraft, LabelCraft):
+	def __init__(self, label: Optional[str] = None, *args, **kwargs):
+		super().__init__(label=label, *args, **kwargs)
+
+
+	@property
+	def label(self):
+		if self._label is None:
+			return self.content.__name__
+		return self._label
 
 
 
@@ -390,7 +403,7 @@ class SignatureCraft(TransformCraft):
 
 
 
-class MachineCraft(SeededCraft, TransformCraft):
+class MachineCraft(AutoCraft, SeededCraft, TransformCraft):
 	_MachineError = MachineError
 	def _fillin_fn_args(self, owner, fn: Callable, ctx, *, existing=None):
 		# TODO: allow for arbitrary default values -> use omnibelt extract_signature
@@ -415,8 +428,10 @@ class MachineCraft(SeededCraft, TransformCraft):
 		return args, kwargs
 
 
-class MaterialCraft(SeededCraft):
+
+class MaterialCraft(AutoCraft, SeededCraft):
 	pass
+
 
 
 class ContextToolCraft(MaterialCraft):
