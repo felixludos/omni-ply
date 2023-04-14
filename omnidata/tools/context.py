@@ -22,7 +22,9 @@ class ContextBase(AbstractContext, AbstractSourcedKit, AbstractSpaced, AbstractA
 
 
 	def vendors(self, gizmo: str) -> Iterator['AbstractTool']:
-		yield from self.sources()
+		for source in self.sources():
+			if source.has_gizmo(gizmo):
+				yield source
 
 
 	def _get_from(self, ctx: AbstractContext, gizmo: str):
