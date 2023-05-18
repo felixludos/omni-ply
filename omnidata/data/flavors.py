@@ -1,6 +1,6 @@
 import os
 import json
-import h5py as hf
+# import h5py as hf
 # import torch
 from pathlib import Path
 from omnibelt import unspecified_argument, agnostic, agnosticproperty, md5

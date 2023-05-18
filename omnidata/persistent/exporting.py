@@ -6,7 +6,7 @@ from omnibelt import exporting_common as _exporting_common
 
 import numpy as np
 import pandas as pd
-import h5py as hf
+# import h5py as hf
 # import torch
 from PIL import Image
 
