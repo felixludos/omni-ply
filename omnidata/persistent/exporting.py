@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 # import h5py as hf
 # import torch
-from PIL import Image
+# from PIL import Image
 
 from .filesystem import Rooted
 
