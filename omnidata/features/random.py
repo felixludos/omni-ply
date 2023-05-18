@@ -3,7 +3,7 @@ import os
 import random
 import inspect
 import numpy as np
-import torch
+# import torch
 
 
 class RNGManager:
@@ -118,25 +118,31 @@ class RNGManager:
 			self.pop()
 
 
+import numpy as np
 
 class PytorchManager(RNGManager):
 	@agnostic
 	def gen_random_seed(self, gen=None):
-		return torch.randint(-2 ** 63, 2 ** 63 - 1, size=(), generator=gen).item()
+		if gen is None:
+			gen = np.random
+		return gen.randint(0, 2**32 - 1)#.item()
+		# return torch.randint(-2 ** 63, 2 ** 63 - 1, size=(), generator=gen).item()
 
 	@agnostic
 	def _create_rng(self, seed):
-		gen = torch.Generator()
-		gen.manual_seed(seed)
+		# gen = torch.Generator()
+		# gen.manual_seed(seed)
+		gen = np.random.RandomState(seed)
 		return gen
 
 	@agnostic
 	def set_global_seed(self, seed):
 		super().set_global_seed(seed)
-		torch.manual_seed(seed)
-		torch.cuda.manual_seed(seed)
-		torch.backends.cudnn.deterministic = True
-		torch.backends.cudnn.benchmark = False
+		np.random.seed(seed)
+		# torch.manual_seed(seed)
+		# torch.cuda.manual_seed(seed)
+		# torch.backends.cudnn.deterministic = True
+		# torch.backends.cudnn.benchmark = False
 
 
 # class NumpyManager(RNGManager):

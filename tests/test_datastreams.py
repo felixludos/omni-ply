@@ -1,7 +1,7 @@
 import sys, os
 import yaml
 
-import torch
+# import torch
 
 import omnidata as od
 from omnidata import toy

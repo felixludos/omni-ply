@@ -4,7 +4,7 @@ from collections import OrderedDict
 from omnibelt import unspecified_argument, get_printer
 
 import math
-import torch
+# import torch
 
 from ..structure import Generator, Sampler
 from .. import util

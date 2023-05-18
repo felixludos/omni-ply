@@ -1,7 +1,7 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
 
 import math
-import torch
+# import torch
 
 from ..features import Prepared, ProgressBarred
 from ..tools.abstract import AbstractScope, AbstractTool, AbstractResource
@@ -109,7 +109,7 @@ class EpochProgression(ProgressionBase, EpochStatMogul):
 		return super().set_source(source)
 
 
-	def _setup_epoch(self, remaining: Optional[torch.Tensor] = None):
+	def _setup_epoch(self, remaining: Optional['torch.Tensor'] = None):
 		self._indices = self._generate_sample_order()
 		# TODO: add option to not overlap epochs (e.g. for contrastive learning, to make sure samples in batch are unique)
 		if remaining is not None:
@@ -135,7 +135,7 @@ class EpochProgression(ProgressionBase, EpochStatMogul):
 		return ctx
 
 
-	def _next_batch_indices(self, size: int) -> torch.Tensor:
+	def _next_batch_indices(self, size: int) -> 'torch.Tensor':
 		remaining = self.epoch_size - self._order_index
 		if remaining < size:
 			self._reset_epoch()
@@ -145,7 +145,7 @@ class EpochProgression(ProgressionBase, EpochStatMogul):
 		return indices
 
 
-	def _create_context(self, *args, indices: Optional[torch.Tensor] = None, size: Optional[int] = None, **kwargs):
+	def _create_context(self, *args, indices: Optional['torch.Tensor'] = None, size: Optional[int] = None, **kwargs):
 		if self._indices is None:
 			self._setup_epoch()
 
@@ -181,7 +181,7 @@ class EpochProgression(ProgressionBase, EpochStatMogul):
 		return self._samples_in_epoch
 
 
-	def _generate_sample_order(self) -> torch.Tensor:
+	def _generate_sample_order(self) -> 'torch.Tensor':
 		return self.source._validate_selection(torch.arange(self.epoch_size))
 
 
@@ -192,7 +192,7 @@ class ShuffleProgression(EpochProgression, Shufflable):
 		self._shuffle_batches = shuffle
 
 
-	def _generate_sample_order(self) -> torch.Tensor:
+	def _generate_sample_order(self) -> 'torch.Tensor':
 		if self._shuffle_batches:
 			return self._shuffle_indices(self.epoch_size)
 		return super()._generate_sample_order()

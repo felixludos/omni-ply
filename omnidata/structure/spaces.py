@@ -4,8 +4,8 @@ from omnibelt import Packable
 # import math
 
 import numpy as np
-import torch
-from torch.nn import functional as F
+# import torch
+# from torch.nn import functional as F
 
 from ..util import angle_diff
 from ..persistent import Fingerprinted
@@ -72,7 +72,7 @@ class Dim(Packable, Measure, Sampler, Fingerprinted):
 	def shape(self, shape):
 		if isinstance(shape, int):
 			shape = (shape,)
-		self._shape = torch.Size(shape)
+		self._shape = shape# torch.Size(shape)
 
 
 	@property
@@ -136,7 +136,7 @@ class Dim(Packable, Measure, Sampler, Fingerprinted):
 		return self._min
 	@min.setter
 	def min(self, val):
-		self._min = val if val is None else torch.as_tensor(val)
+		self._min = val if val is None else val#torch.as_tensor(val)
 
 
 	@property
@@ -144,7 +144,7 @@ class Dim(Packable, Measure, Sampler, Fingerprinted):
 		return self._max
 	@max.setter
 	def max(self, val):
-		self._max = val if val is None else torch.as_tensor(val)
+		self._max = val if val is None else val#torch.as_tensor(val)
 
 
 	@property
@@ -668,9 +668,10 @@ class Categorical(Dim):
 		else:
 			assert isinstance(n, int), f'bad: {n}'
 			n, values = n, list(range(n))
-		super().__init__(min=torch.as_tensor(0), max=torch.as_tensor(n - 1), **kwargs)
-		self._min = self._min.long()
-		self._max = self._max.long()
+		super().__init__(min=0, max=n - 1, **kwargs)
+		# super().__init__(min=torch.as_tensor(0), max=torch.as_tensor(n - 1), **kwargs)
+		self._min = self._min#.long()
+		self._max = self._max#.long()
 		self.n = n
 		self.values = values
 

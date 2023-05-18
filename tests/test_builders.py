@@ -1,8 +1,8 @@
 import sys, os
 import yaml
 
-import torch
-from torch import nn
+# import torch
+# from torch import nn
 
 from omnibelt import unspecified_argument, agnostic
 import omnifig as fig
@@ -20,14 +20,14 @@ def _cmp_dicts(d1, d2):
 
 
 class Activation(RegistryBuilder, default_ident='relu', products={
-							'relu': nn.ReLU,
-							'prelu': nn.PReLU,
-							'lrelu': nn.LeakyReLU,
-							'tanh': nn.Tanh,
-							'softplus': nn.Softplus,
-							'sigmoid': nn.Sigmoid,
-							'elu': nn.ELU,
-							'selu': nn.SELU,
+							# 'relu': nn.ReLU,
+							# 'prelu': nn.PReLU,
+							# 'lrelu': nn.LeakyReLU,
+							# 'tanh': nn.Tanh,
+							# 'softplus': nn.Softplus,
+							# 'sigmoid': nn.Sigmoid,
+							# 'elu': nn.ELU,
+							# 'selu': nn.SELU,
                          }):
 	inplace = hparam(True, space=spaces.Binary(), hidden=True)
 
@@ -62,7 +62,7 @@ def test_reg_builder():
 
 
 
-class Negative(nn.Module):
+class Negative():#(nn.Module):
 	def forward(self, x):
 		return -super().forward(x)
 
@@ -107,7 +107,8 @@ def test_mod_product():
 
 
 
-class MyModels(RegistryBuilder, nn.Module, default_ident='b'):
+# class MyModels(RegistryBuilder, nn.Module, default_ident='b'):
+class MyModels(RegistryBuilder, default_ident='b'):
 	p1 = hparam(required=True)
 	p2 = hparam(10)
 	p3 = hparam('hello', inherit=True)

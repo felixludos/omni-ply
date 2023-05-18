@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+# import torch
 from omnibelt import unspecified_argument, agnostic
 # from sklearn.datasets import make_swiss_roll
 

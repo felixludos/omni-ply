@@ -1,7 +1,7 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
 
 import math
-import torch
+# import torch
 
 from omnidata.features import Prepared, ProgressBarred
 from omnidata.tools.abstract import AbstractScope, AbstractTool, AbstractResource

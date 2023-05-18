@@ -3,9 +3,9 @@ import sys, os
 from pathlib import Path
 import yaml
 
-import torch
-from torch import nn
-from torch.nn import functional as F
+# import torch
+# from torch import nn
+# from torch.nn import functional as F
 
 from omnibelt import unspecified_argument, agnostic
 import omnifig as fig
@@ -25,7 +25,7 @@ from omnidata import Spec, Builder, InitWall
 from omnidata import toy
 
 
-class Basic_Autoencoder(Structured, InitWall, nn.Module):
+class Basic_Autoencoder(Structured, InitWall):#, nn.Module):
 	encoder = submodule(builder='encoder')
 	decoder = submodule(builder='decoder')
 
@@ -73,7 +73,7 @@ def test_signature():
 
 
 
-class CrossEntropyLoss(nn.CrossEntropyLoss):
+class CrossEntropyLoss():#nn.CrossEntropyLoss):
 	def forward(self, input, target):
 		if target.ndim > 1:
 			target = target.view(-1)
@@ -97,7 +97,8 @@ class CrossEntropyLoss(nn.CrossEntropyLoss):
 
 @register_builder('criterion')
 class CriterionBuilder(HierarchyBuilder, products={'cross-entropy': CrossEntropyLoss,
-                                                   'mse': nn.MSELoss}):
+                                                   # 'mse': nn.MSELoss
+                                                   }):
 
 	target_space = space('target')
 	@space('input')
@@ -112,7 +113,8 @@ class CriterionBuilder(HierarchyBuilder, products={'cross-entropy': CrossEntropy
 
 @register_builder('comparison')
 class ComparisonBuilder(CriterionBuilder, branch='comparison', default_ident='mse',
-                        products={'mse': nn.MSELoss}):
+                        # products={'mse': nn.MSELoss}
+                        ):
 	pass
 
 
@@ -150,12 +152,12 @@ class LinearBuilder(FunctionBuilder):
 
 @register_builder('nonlin')
 class Nonlin_Builder(HierarchyBuilder, branch='nonlin', default_ident='relu', products={
-	'relu': nn.ReLU,
-	'lrelu': nn.LeakyReLU,
-	'prelu': nn.PReLU,
-	'elu': nn.ELU,
-	'sigmoid': nn.Sigmoid,
-	'tanh': nn.Tanh,
+	# 'relu': nn.ReLU,
+	# 'lrelu': nn.LeakyReLU,
+	# 'prelu': nn.PReLU,
+	# 'elu': nn.ELU,
+	# 'sigmoid': nn.Sigmoid,
+	# 'tanh': nn.Tanh,
 }):
 	pass
 
@@ -555,7 +557,7 @@ def test_init2():
 
 
 
-class SimpleFunction(Structured, nn.Module):
+class SimpleFunction(Structured, ):#nn.Module):
 	@machine('output')
 	def compute(self, input):
 		return self(input)

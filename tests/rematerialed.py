@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+# import torch
 
 from omnidata.data.materials import Materialed, material
 from omnidata.structure import spaces, Decoder, Generator, NormalDistribution

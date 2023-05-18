@@ -4,7 +4,7 @@ import inspect
 from functools import cached_property
 from collections import OrderedDict
 
-import torch
+# import torch
 
 from omnibelt import method_decorator, agnostic, unspecified_argument, filter_duplicates, get_printer
 from omnibelt.crafts import AbstractCraft, AbstractCrafty, NestableCraft, SkilledCraft, IndividualCrafty

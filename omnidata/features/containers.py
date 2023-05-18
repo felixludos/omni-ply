@@ -1,6 +1,6 @@
 
 from collections import OrderedDict#, Mapping
-import torch
+# import torch
 from omnibelt import agnostic, unspecified_argument
 
 from .hardware import Device

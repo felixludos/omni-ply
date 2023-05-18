@@ -1,6 +1,6 @@
 from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, Iterator, Iterable
 from collections import OrderedDict
-import torch
+# import torch
 
 from ..features import Seeded, Prepared
 from ..tools.abstract import AbstractScope

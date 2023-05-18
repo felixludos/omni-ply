@@ -1,9 +1,9 @@
 from omnibelt import unspecified_argument, InitWall
-import torch
-from torch.nn import functional as F
-import torch.distributions as distrib
-from torch.distributions.utils import lazy_property
-from torch.distributions import constraints
+# import torch
+# from torch.nn import functional as F
+# import torch.distributions as distrib
+# from torch.distributions.utils import lazy_property
+# from torch.distributions import constraints
 
 from ..util.tensors import WrappedTensor
 from ..features import Device
@@ -14,7 +14,7 @@ from .operations import Sampler
 
 # TODO: make exportable
 # TODO: add warnings for non-seeded functions like rsample()
-class Distribution(Sampler, Fingerprinted, distrib.Distribution): # TODO: saving and loading distributions
+class Distribution(Sampler, Fingerprinted, ):#distrib.Distribution): # TODO: saving and loading distributions
 	def __init__(self, params=None, apply_constraints=False, constraints=None, soft_constraints=False, **kwargs):
 		if params is None:
 			params = {key: kwargs[key] for key in self.arg_constraints if key in kwargs}
@@ -105,7 +105,7 @@ class Distribution(Sampler, Fingerprinted, distrib.Distribution): # TODO: saving
 
 
 
-class NormalDistribution(Distribution, distrib.Normal):
+class NormalDistribution(Distribution, ):#distrib.Normal):
 	def __init__(self, loc, scale, **kwargs):
 		super().__init__(loc=loc, scale=scale, **kwargs)
 
@@ -117,7 +117,7 @@ class NormalDistribution(Distribution, distrib.Normal):
 
 
 
-class CategoricalDistribution(Distribution, distrib.Categorical):
+class CategoricalDistribution(Distribution, ):#distrib.Categorical):
 	def __init__(self, probs=None, logits=None, **kwargs):
 		super().__init__(probs=probs, logits=logits, **kwargs)
 

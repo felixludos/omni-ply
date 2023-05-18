@@ -1,5 +1,5 @@
 import numpy as _np
-import torch as _torch
+# import torch as _torch
 
 
 def deviced_fn(fn, device='cuda', out_device='cpu'):

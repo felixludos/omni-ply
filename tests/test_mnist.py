@@ -4,10 +4,10 @@ from pathlib import Path
 import yaml
 
 import numpy as np
-import torch
-from torch import nn
-from torch.nn import functional as F
-import torchvision
+# import torch
+# from torch import nn
+# from torch.nn import functional as F
+# import torchvision
 
 from omnibelt import unspecified_argument, agnostic
 import omnifig as fig
@@ -141,14 +141,14 @@ class _Torchvision_Toy_Dataset(RootedDataset):
 @inherit_hparams('resize', 'mode', 'download')
 class MNIST(_Torchvision_Toy_Dataset):
 	_dirname = 'mnist'
-	_source_type = torchvision.datasets.MNIST
+	# _source_type = torchvision.datasets.MNIST
 
 
 
 @inherit_hparams('resize', 'mode', 'download')
 class KMNIST(_Torchvision_Toy_Dataset):
 	_dirname = 'kmnist'
-	_source_type = torchvision.datasets.KMNIST
+	# _source_type = torchvision.datasets.KMNIST
 	_target_names = ['お', 'き', 'す', 'つ', 'な', 'は', 'ま', 'や', 'れ', 'を']
 
 

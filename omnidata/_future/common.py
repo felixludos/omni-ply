@@ -1,6 +1,6 @@
 
 from omnibelt import agnosticmethod
-import torch
+# import torch
 
 from omnidata.parameters import abstract
 from omnidata.modules.models import Function

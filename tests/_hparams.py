@@ -1,8 +1,8 @@
 import sys, os
 import yaml
 
-import torch
-from torch import nn
+# import torch
+# from torch import nn
 
 from omnibelt import unspecified_argument, agnostic
 import omnifig as fig

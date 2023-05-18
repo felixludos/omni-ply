@@ -1,7 +1,7 @@
 from typing import Union, Any, Callable, Type, Iterable, Iterator, Optional, List, Dict, Tuple, Sequence, Hashable
 from pathlib import Path
 import numpy as np
-import torch
+# import torch
 from omnibelt import unspecified_argument, agnosticmethod, md5, primitive, JSONABLE
 from omnibelt import Exportable, ExportManager
 
