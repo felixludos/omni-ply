@@ -1,3 +1,10 @@
 omnibelt
 omnifig
 dill
+tqdm
+tabulate
+numpy
+pandas
+matplotlib
+h5py
+pillow
