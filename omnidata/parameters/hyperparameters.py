@@ -14,11 +14,15 @@ ch.setLevel(0)
 prt.addHandler(ch)
 
 
+class IgnoreUpdateFlag(ValueError):
+	pass
+
+
 
 class DefaultProperty:
 	_unknown = object()
 
-	def __init__(self, default=unspecified_argument, *, fget=None, fset=None, fdel=None, cache=True,
+	def __init__(self, default=unspecified_argument, *, fget=None, fset=None, fdel=None, fformat=None, cache=True,
 	             attrname=None, **kwargs):
 		if default is unspecified_argument:
 			default = self._unknown
@@ -30,6 +34,7 @@ class DefaultProperty:
 		self.cache = cache
 		self.default = default
 		self.fget = fget
+		self.fformat = fformat
 		self.fset = fset
 		self.fdel = fdel
 
@@ -113,7 +118,15 @@ class DefaultProperty:
 		self.update_value(instance, value)
 
 
+	_IgnoreUpdateFlag = IgnoreUpdateFlag
+
 	def update_value(self, instance, value):
+		if self.fformat is not None:
+			try:
+				value = self.fformat.__get__(instance, type(instance))(value)
+			except self._IgnoreUpdateFlag:
+				return
+
 		if self.fset is None:
 			return instance.__dict__.setdefault(self.attrname, value)
 
@@ -146,13 +159,20 @@ class DefaultProperty:
 
 
 	def copy(self, **kwargs):
-		return self.__class__(default=self.default, fget=self.fget, fset=self.fset, fdel=self.fdel,
+		return self.__class__(default=self.default,
+		                      fget=self.fget, fset=self.fset, fdel=self.fdel, fformat=self.fformat,
 		                      cache=self.cache, attrname=self.attrname, **kwargs)
 
 
 	def getter(self, fget):
 		new = self.copy()
 		new.fget = fget
+		return new
+
+
+	def formatter(self, fformat):
+		new = self.copy()
+		new.fformat = fformat
 		return new
 
 
