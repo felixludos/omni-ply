@@ -125,7 +125,7 @@ class PytorchManager(RNGManager):
 	def gen_random_seed(self, gen=None):
 		if gen is None:
 			gen = np.random
-		return gen.randint(0, 2**32 - 1)#.item()
+		return gen.randint(0, 2**30)#.item()
 		# return torch.randint(-2 ** 63, 2 ** 63 - 1, size=(), generator=gen).item()
 
 	@agnostic
