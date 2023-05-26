@@ -8,14 +8,14 @@ import yaml
 from omnibelt import unspecified_argument, agnostic
 import omnifig as fig
 
-import omnidata as od
-from omnidata import toy
-from omnidata import Builder, HierarchyBuilder, RegisteredProduct, MatchingBuilder
-from omnidata import hparam, inherit_hparams, submodule, spaces
-from omnidata import Guru, Context, Industrial, material, space, indicator, machine
-from omnidata.data import toy
+import omniplex as od
+from omniplex import toy
+from omniplex import Builder, HierarchyBuilder, RegisteredProduct, MatchingBuilder
+from omniplex import hparam, inherit_hparams, submodule, spaces
+from omniplex import Guru, Context, Industrial, material, space, indicator, machine
+from omniplex.data import toy
 
-from omnidata import Spec, Builder
+from omniplex import Spec, Builder
 
 
 

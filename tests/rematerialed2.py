@@ -1,13 +1,13 @@
 import numpy as np
 # import torch
 
-from omnidata.data.materials import Materialed, material
-from omnidata.structure import spaces, Decoder, Generator, NormalDistribution
-from omnidata.features import Seeded
-from omnidata.parameters import hparam, inherit_hparams
+from omniplex.data.materials import Materialed, material
+from omniplex.structure import spaces, Decoder, Generator, NormalDistribution
+from omniplex.features import Seeded
+from omniplex.parameters import hparam, inherit_hparams
 
-from omnidata.data.flavors import Synthetic, Sampledstream
-from omnidata.data.top import Datastream, Dataset, Buffer
+from omniplex.data.flavors import Synthetic, Sampledstream
+from omniplex.data.top import Datastream, Dataset, Buffer
 
 
 
@@ -684,8 +684,8 @@ def train_loop3(config):
 	return context.fit()
 
 
-from omnidata import Prepared
-from omnidata.tools import space, machine
+from omniplex import Prepared
+from omniplex.tools import space, machine
 
 
 class SimpleFunction:
