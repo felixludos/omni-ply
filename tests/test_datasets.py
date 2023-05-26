@@ -3,9 +3,9 @@ import yaml
 
 # import torch
 
-import omnidata as od
-from omnidata import toy
-from omnidata.data import BudgetLoader
+import omniplex as od
+from omniplex import toy
+from omniplex.data import BudgetLoader
 
 def _cmp_dicts(d1, d2):
 	return yaml.dump(d1, sort_keys=True) == yaml.dump(d2, sort_keys=True)

@@ -8,16 +8,16 @@ import yaml
 from omnibelt import unspecified_argument, agnostic
 import omnifig as fig
 
-import omnidata as od
-from omnidata import toy
-from omnidata import Builder, Buildable, HierarchyBuilder, RegisteredProduct, MatchingBuilder, RegistryBuilder, \
+import omniplex as od
+from omniplex import toy
+from omniplex import Builder, Buildable, HierarchyBuilder, RegisteredProduct, MatchingBuilder, RegistryBuilder, \
 	register_builder, get_builder
-from omnidata import BudgetLoader
-from omnidata import hparam, inherit_hparams, submodule, submachine, spaces
-from omnidata import Guru, Context, material, space, indicator, machine, Structured
+from omniplex import BudgetLoader
+from omniplex import hparam, inherit_hparams, submodule, submachine, spaces
+from omniplex import Guru, Context, material, space, indicator, machine, Structured
 
-from omnidata import Spec, Builder, Buildable, InitWall
-from omnidata import toy
+from omniplex import Spec, Builder, Buildable, InitWall
+from omniplex import toy
 
 
 

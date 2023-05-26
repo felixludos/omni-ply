@@ -13,16 +13,16 @@ import omnifig as fig
 from collections import OrderedDict
 from functools import lru_cache
 
-import omnidata as od
-from omnidata import toy
-from omnidata import Builder, HierarchyBuilder, RegisteredProduct, MatchingBuilder, RegistryBuilder, \
+import omniplex as od
+from omniplex import toy
+from omniplex import Builder, HierarchyBuilder, RegisteredProduct, MatchingBuilder, RegistryBuilder, \
 	register_builder, get_builder
-from omnidata import BudgetLoader
-from omnidata import hparam, inherit_hparams, submodule, submachine, spaces
-from omnidata import Guru, Context, material, space, indicator, machine, Structured
+from omniplex import BudgetLoader
+from omniplex import hparam, inherit_hparams, submodule, submachine, spaces
+from omniplex import Guru, Context, material, space, indicator, machine, Structured
 
-from omnidata import Spec, Builder, InitWall
-from omnidata import toy
+from omniplex import Spec, Builder, InitWall
+from omniplex import toy
 
 
 class Basic_Autoencoder(Structured, InitWall):#, nn.Module):
@@ -446,7 +446,7 @@ _PRODUCTS_PATH = Path(__file__).parent / 'products'
 
 
 
-from omnidata.util.viz import signature_graph
+from omniplex.util.viz import signature_graph
 
 
 

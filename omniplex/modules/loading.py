@@ -3,14 +3,14 @@ from typing import Tuple, List, Dict, Optional, Union, Any, Callable, Sequence, 
 import math
 # import torch
 
-from omnidata.features import Prepared, ProgressBarred
-from omnidata.tools.abstract import AbstractScope, AbstractTool, AbstractResource
-from omnidata.tools.moguls import BatchMogul, IteratorMogul, SelectionMogul, LimitMogul, \
+from omniplex.features import Prepared, ProgressBarred
+from omniplex.tools.abstract import AbstractScope, AbstractTool, AbstractResource
+from omniplex.tools.moguls import BatchMogul, IteratorMogul, SelectionMogul, LimitMogul, \
 	BatchBudgetStatMogul, EpochStatMogul, EpochBudgetMogul, SimpleMogul
 
-from omnidata.data.abstract import AbstractProgression, AbstractContext
-from omnidata.data.errors import BudgetExceeded, EpochEnd, UnknownSize
-from omnidata.data.sources import Shufflable
+from omniplex.data.abstract import AbstractProgression, AbstractContext
+from omniplex.data.errors import BudgetExceeded, EpochEnd, UnknownSize
+from omniplex.data.sources import Shufflable
 
 
 

@@ -8,10 +8,10 @@ import random
 from omnibelt import unspecified_argument, agnostic
 import omnifig as fig
 
-import omnidata as od
-from omnidata import toy
-from omnidata.tools import Guru, Context, Industrial, material, space, indicator, machine
-from omnidata.tools.assessments import SimpleAssessment
+import omniplex as od
+from omniplex import toy
+from omniplex.tools import Guru, Context, Industrial, material, space, indicator, machine
+from omniplex.tools.assessments import SimpleAssessment
 
 
 class Simple(Industrial):
