@@ -1,6 +1,6 @@
-# omni-plex
+# omni-ply
 
-Build yourself a clever prototype for great good.
+> Build yourself a clever prototype for great good.
 
 Tools and structures for better research code.
 
