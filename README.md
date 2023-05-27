@@ -1,7 +1,7 @@
 # omni-ply
 
-> Build yourself a clever prototype for great good.
+> Before your code complexity multiplies, use omniply.
 
-Tools and structures for better research code.
+Tools and structures for stellar research code without compromises.
 
 This project is currently under development - lots of cool things coming soon.
