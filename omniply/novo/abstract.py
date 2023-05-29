@@ -1,5 +1,4 @@
 from .imports import *
-# from .errors import *
 
 
 
@@ -14,9 +13,13 @@ class AbstractTool:
 		return gizmo in self.gizmos()
 
 
-	def get_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
+	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
 		'''returns the given gizmo from this tool, or raises ToolFailedError'''
 		raise NotImplementedError
+
+
+	def __repr__(self):
+		return f'{self.__class__.__name__}({", ".join(map(str, self.gizmos()))})'
 
 
 
@@ -48,8 +51,12 @@ class AbstractMultiTool(AbstractToolKit):
 
 
 class AbstractContext(AbstractToolKit):
-	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-		raise NotImplementedError
+	# def get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+	# 	raise NotImplementedError
+
+
+	def package(self, src: AbstractTool, gizmo: str, val: Any) -> Any:
+		return val
 
 
 

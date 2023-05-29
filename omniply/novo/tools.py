@@ -1,6 +1,7 @@
 from .imports import *
 
 from .abstract import *
+from .errors import *
 
 
 
@@ -16,18 +17,29 @@ class FunctionTool(MyAbstractTool):
 		self._gizmo = gizmo
 		self._fn = fn
 
+
+	def __repr__(self):
+		return f'{self.__class__.__name__}({self._fn.__name__}: {self._gizmo})'
+
+
 	@property
 	def __call__(self):
 		return self._fn
+
+
+	@staticmethod
+	def _extract_gizmo_args(fn: Callable, ctx: AbstractContext,
+	                        args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None) \
+			-> Tuple[Tuple, Dict[str, Any]]:
+		return extract_function_signature(fn, default_fn=lambda gizmo, default: ctx.get(gizmo, default))
 
 
 	def get_from(self, ctx: Union['AbstractContext', None], gizmo: str) -> Any:
 		if gizmo != self._gizmo:
 			raise self._MissingGizmoError(gizmo)
 
-
-
-		return self._fn(ctx)
+		args, kwargs = self._extract_gizmo_args(self._fn, ctx)
+		return self._fn(*args, **kwargs)
 
 
 	def gizmos(self) -> Iterator[str]:
@@ -39,7 +51,7 @@ class FunctionTool(MyAbstractTool):
 
 
 
-class Tool(AbstractTool):
+class ToolDecorator(AbstractTool):
 	def __init__(self, gizmo: str, **kwargs):
 		super().__init__(**kwargs)
 		self._gizmo = gizmo

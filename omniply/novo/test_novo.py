@@ -1,7 +1,8 @@
 from .imports import *
 
 from .tools import *
-from .tools import Tool as tool
+from .kits import *
+from .tools import ToolDecorator as tool
 
 
 
@@ -18,10 +19,41 @@ def test_tool():
 
 
 
+class TestKit(LoopyKit, MutableKit):
+	def __init__(self, *tools: AbstractTool, **kwargs):
+		super().__init__(**kwargs)
+		self.include(*tools)
 
 
 
+class TestContext(Cached, Context, TestKit, AbstractContext):
+	pass
 
+
+
+def test_kit():
+	@tool('y')
+	def f(x):
+		return x + 1
+
+	@tool('z')
+	def g(x, y):
+		return x + y
+
+	@tool('y')
+	def f2(y):
+		return -y
+
+	ctx = TestContext(f, g)
+
+	ctx['x'] = 1
+	assert ctx['y'] == 2
+
+	ctx.clear_cache()
+	ctx.include(f2)
+
+	ctx['x'] = 1
+	assert ctx['y'] == -2
 
 
 

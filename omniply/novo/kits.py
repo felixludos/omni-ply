@@ -39,14 +39,11 @@ class Kit(AbstractToolKit, MyAbstractTool):
 		for tool in self.vendors(gizmo):
 			try:
 				return tool.get_from(ctx, gizmo)
-			except SkipToolFlag:
-				continue
 			except ToolFailedError as e:
 				failures.append((tool, e))
 			except:
 				prt.debug(f'{tool!r} failed while trying to produce: {gizmo!r}')
 				raise
-
 		if failures:
 			raise self._AssemblyFailedError(gizmo, failures)
 		raise self._ToolFailedError(gizmo)
@@ -60,14 +57,22 @@ class LoopyKit(Kit):
 
 
 	def get_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
-		for tool in self._get_from_status.setdefault(gizmo, self.vendors(gizmo)):
+		failures = []
+		itr = self._get_from_status.setdefault(gizmo, self.vendors(gizmo))
+		for tool in itr:
 			try:
 				out = tool.get_from(ctx, gizmo)
-			except ToolFailedError:
-				continue
+			except ToolFailedError as e:
+				failures.append((tool, e))
+			except:
+				prt.debug(f'{tool!r} failed while trying to produce: {gizmo!r}')
+				raise
 			else:
-				del self._get_from_status[gizmo]
+				if gizmo in self._get_from_status:
+					self._get_from_status.pop(gizmo)
 				return out
+		if failures:
+			raise self._AssemblyFailedError(gizmo, failures)
 		raise self._ToolFailedError(gizmo)
 
 
@@ -83,9 +88,8 @@ class MutableKit(Kit):
 			if gizmo in self._tools_table:
 				for tool in tools:
 					if tool in self._tools_table[gizmo]:
-
+						self._tools_table[gizmo].remove(tool)
 			self._tools_table.setdefault(gizmo, []).extend(reversed(tools))
-
 		return self
 
 
@@ -95,7 +99,6 @@ class MutableKit(Kit):
 			for gizmo in tool.gizmos():
 				if gizmo in self._tools_table and tool in self._tools_table[gizmo]:
 					self._tools_table[gizmo].remove(tool)
-
 		return self
 
 
@@ -109,7 +112,6 @@ class MutableKit(Kit):
 
 
 
-
 class Context(AbstractContext):
 	def get(self, gizmo: str, default: Any = unspecified_argument):
 		try:
@@ -118,6 +120,69 @@ class Context(AbstractContext):
 			if default is unspecified_argument:
 				raise
 			return default
+
+
+	def __getitem__(self, item):
+		return self.get(item)
+
+
+	def _get_from_fallback(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		return ctx.get_from(self, gizmo)
+
+
+	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		try:
+			return super().get_from(self, gizmo)
+		except ToolFailedError:
+			if ctx is None or ctx is self:
+				raise
+			return self._get_from_fallback(ctx, gizmo)
+
+
+
+class TwostageContext(AbstractContext):
+	'''splits the get_from into a public and protected method'''
+	def _get_from(self, ctx: AbstractContext, gizmo: str) -> Any:
+		return super().get_from(ctx, gizmo)
+
+
+	def get_from(self, ctx: Optional[AbstractContext], gizmo: str) -> Any:
+		return self._get_from(ctx, gizmo)
+
+
+
+class Cached(TwostageContext, UserDict):
+	def __repr__(self):
+		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + gizmo + '}') for gizmo in self.gizmos()]
+		return f'{self.__class__.__name__}({", ".join(gizmos)})'
+
+
+	def gizmos(self) -> Iterator[str]:
+		yield from filter_duplicates(self.cached(), super().gizmos())
+
+
+	def is_cached(self, gizmo: str) -> bool:
+		return gizmo in self.data
+
+
+	def cached(self) -> Iterator[str]:
+		yield from self.data.keys()
+
+
+	def clear_cache(self) -> None:
+		self.data.clear()
+
+
+	def _find_from(self, ctx: AbstractContext, gizmo: str) -> Any:
+		val = super()._get_from(ctx, gizmo)
+		self.data[gizmo] = val  # cache loaded val
+		return val
+
+
+	def _get_from(self, ctx: AbstractContext, gizmo: str) -> Any:
+		val = self.data[gizmo] if self.is_cached(gizmo) else self._find_from(ctx, gizmo)
+		# return val if ctx is self else ctx.package(self, gizmo, val)
+		return val
 
 
 

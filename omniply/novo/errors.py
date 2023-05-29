@@ -17,8 +17,11 @@ class ToolFailedError(Exception):
 
 
 class AssemblyFailedError(ToolFailedError):
-	def __init__(self, gizmo: str, failures: List[Tuple[AbstractTool, ToolFailedError]]):
-		super().__init__(gizmo, )
+	def __init__(self, gizmo: str, failures: List[Tuple[AbstractTool, ToolFailedError]], *,
+	             message: Optional[str] = None):
+		if message is None:
+			message = self.verbalize_failures(gizmo, failures)
+		super().__init__(gizmo, message=message)
 		self.gizmo = gizmo
 		self.failures = failures
 
@@ -27,7 +30,8 @@ class AssemblyFailedError(ToolFailedError):
 		return f'tried {len(self.failures)} tool/s'
 
 
-	def verbalize_failures(self, gizmo: str, failures: List[Tuple[AbstractTool, ToolFailedError]]):
+	@staticmethod
+	def verbalize_failures(gizmo: str, failures: List[Tuple[AbstractTool, ToolFailedError]]):
 		path = [e.gizmo for tool, e in failures]
 		terminal = failures[-1][1].reason()
 		return f'Failed to assemble {gizmo!r} due to {" -> ".join(path)} ({terminal!r})'
@@ -46,9 +50,9 @@ class MissingGizmoError(ToolFailedError, KeyError):
 
 
 
-class SkipToolFlag(ToolFailedError):
-	'''raised by a tool to indicate that it should be skipped'''
-	pass
+# class SkipToolFlag(ToolFailedError):
+# 	'''raised by a tool to indicate that it should be skipped'''
+# 	pass
 
 
 
