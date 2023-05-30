@@ -7,12 +7,12 @@ from .tools import *
 
 
 class Kit(AbstractToolKit, MyAbstractTool):
-	_tools_table: Dict[str, List[AbstractTool]]
+	_tools_table: Dict[str, List[AbstractTool]] # tools are kept in O-N order (reversed) for easy updates
 
-	def __init__(self, tools_table: Optional[Mapping] = None, **kwargs):
+	def __init__(self, *args, tools_table: Optional[Mapping] = None, **kwargs):
 		if tools_table is None:
 			tools_table = {}
-		super().__init__(**kwargs)
+		super().__init__(*args, **kwargs)
 		self._tools_table = tools_table
 
 
@@ -26,11 +26,11 @@ class Kit(AbstractToolKit, MyAbstractTool):
 
 	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		if gizmo is None:
-			yield from filter_duplicates(chain.from_iterable(self._tools_table.values()))
+			yield from filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values())))
 		else:
 			if gizmo not in self._tools_table:
 				raise self._MissingGizmoError(gizmo)
-			yield from self._tools_table[gizmo]
+			yield from reversed(self._tools_table[gizmo])
 
 
 	_AssemblyFailedError = AssemblyFailedError
@@ -80,6 +80,10 @@ class LoopyKit(Kit):
 class MutableKit(Kit):
 	def include(self, *tools: AbstractTool) -> 'MutableKit': # TODO: return Self
 		'''adds given tools in reverse order'''
+		return self.extend(tools)
+		
+		
+	def extend(self, tools: Iterable[AbstractTool]):
 		new = {}
 		for tool in tools:
 			for gizmo in tool.gizmos():
@@ -100,18 +104,25 @@ class MutableKit(Kit):
 				if gizmo in self._tools_table and tool in self._tools_table[gizmo]:
 					self._tools_table[gizmo].remove(tool)
 		return self
+	
 
 
-	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
-		if gizmo is None:
-			yield from filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values())))
-		else:
-			if gizmo not in self._tools_table:
-				raise self._MissingGizmoError(gizmo)
-			yield from reversed(self._tools_table[gizmo])
-
-
-
-
+class CraftyKit(Kit, InheritableCrafty):
+	def _process_crafts(self):
+		# avoid duplicate keys (if you overwrite a method, only the last one will be used)
+		items = OrderedDict()
+		for src, key, craft in self._emit_all_craft_items(): # N-O
+			if key not in items:
+				items[key] = craft
+			
+		# convert crafts to skills and add in N-O order
+		table = {}
+		for key, craft in items.items(): # N-O
+			for gizmo in craft.gizmos():
+				table.setdefault(gizmo, []).append(craft.as_skill(self))
+			
+		# add N-O skills in reverse order for O-N _tools_table
+		for gizmo, tools in table.items(): # tools is N-O
+			self._tools_table.setdefault(gizmo, []).extend(reversed(tools)) # added in O-N order
 
 
