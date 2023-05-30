@@ -34,7 +34,7 @@ class Kit(AbstractToolKit, MyAbstractTool):
 
 
 	_AssemblyFailedError = AssemblyFailedError
-	def get_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
+	def _get_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
 		failures = []
 		for tool in self.vendors(gizmo):
 			try:
@@ -56,9 +56,10 @@ class LoopyKit(Kit):
 		self._get_from_status: Optional[Dict[str, Iterator[AbstractTool]]] = {}
 
 
-	def get_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
+	def _get_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
 		failures = []
 		itr = self._get_from_status.setdefault(gizmo, self.vendors(gizmo))
+		# should be the same as Kit, except the iterators are cached until the gizmo is produced
 		for tool in itr:
 			try:
 				out = tool.get_from(ctx, gizmo)
@@ -83,7 +84,7 @@ class MutableKit(Kit):
 		return self.extend(tools)
 		
 		
-	def extend(self, tools: Iterable[AbstractTool]):
+	def extend(self, tools: Iterable[AbstractTool]) -> 'MutableKit':
 		new = {}
 		for tool in tools:
 			for gizmo in tool.gizmos():
@@ -122,7 +123,7 @@ class CraftyKit(Kit, InheritableCrafty):
 				table.setdefault(gizmo, []).append(craft.as_skill(self))
 			
 		# add N-O skills in reverse order for O-N _tools_table
-		for gizmo, tools in table.items(): # tools is N-O
+		for gizmo, tools in reversed(table.items()): # tools is N-O
 			self._tools_table.setdefault(gizmo, []).extend(reversed(tools)) # added in O-N order
 
 

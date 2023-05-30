@@ -8,14 +8,25 @@ class AbstractTool:
 		raise NotImplementedError
 
 
+	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str,
+	             default: Optional[Any] = unspecified_argument) -> Any:
+		'''returns the given gizmo from this tool, or raises ToolFailedError'''
+		raise NotImplementedError
+
+
+	def vendors(self, gizmo: str) -> Iterator['AbstractTool']:
+		'''returns all tools that can produce the given gizmo'''
+		yield self
+
+
+	def vendors_terminal(self, gizmo: str) -> Iterator['AbstractTool']:
+		'''returns all tools that can produce a gizmo recursively'''
+		yield self
+
+
 	def produces_gizmo(self, gizmo: str) -> bool:
 		'''returns True if this tool can produce the given gizmo'''
 		return gizmo in self.gizmos()
-
-
-	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-		'''returns the given gizmo from this tool, or raises ToolFailedError'''
-		raise NotImplementedError
 
 
 	def __repr__(self):
@@ -29,18 +40,15 @@ class AbstractToolKit(AbstractTool):
 		raise NotImplementedError
 
 
+	def vendors_terminal(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+		'''returns all tools that can produce a gizmo recursively'''
+		for vendor in self.vendors(gizmo):
+			yield from vendor.vendors_terminal(gizmo)
+
+
 
 ###########################################################################
 
-
-
-class AbstractSpaced(AbstractTool):
-	def space_of(self, gizmo: str):
-		raise NotImplementedError
-
-
-	def space_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
-		raise NotImplementedError
 
 
 

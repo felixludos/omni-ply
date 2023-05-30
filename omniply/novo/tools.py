@@ -10,6 +10,20 @@ class MyAbstractTool(AbstractTool):
 	_MissingGizmoError = MissingGizmoError
 
 
+	def _get_from(self, ctx: AbstractContext, gizmo: str) -> Any:
+		raise NotImplementedError
+
+
+	def get_from(self, ctx: Optional[AbstractContext], gizmo: str,
+	             default: Optional[Any] = unspecified_argument) -> Any:
+		try:
+			return self._get_from(ctx, gizmo)
+		except self._ToolFailedError:
+			if default is unspecified_argument:
+				raise
+			return default
+
+
 
 class FunctionTool(MyAbstractTool):
 	def __init__(self, gizmo: str, fn: Callable, **kwargs):
@@ -19,12 +33,19 @@ class FunctionTool(MyAbstractTool):
 
 
 	def __repr__(self):
-		return f'{self.__class__.__name__}({self._fn.__name__}: {self._gizmo})'
+		return f'{self.__class__.__name__}({self.__call__.__name__}: {self._gizmo})'
 
 
 	@property
 	def __call__(self):
-		return self._fn
+		return self._fn#.__get__(None, type(None))
+
+
+	def __get__(self, instance, owner):
+		return self._fn.__get__(instance, owner)
+		if instance is None:
+			return self
+		return self._fn.__get__(instance, owner)
 
 
 	@staticmethod
@@ -34,7 +55,7 @@ class FunctionTool(MyAbstractTool):
 		return extract_function_signature(fn, default_fn=lambda gizmo, default: ctx.get(gizmo, default))
 
 
-	def get_from(self, ctx: Union['AbstractContext', None], gizmo: str) -> Any:
+	def _get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
 		if gizmo != self._gizmo:
 			raise self._MissingGizmoError(gizmo)
 
@@ -51,21 +72,40 @@ class FunctionTool(MyAbstractTool):
 
 
 
-class ToolDecorator(AbstractTool):
+class ToolDecorator(MyAbstractTool):
 	def __init__(self, gizmo: str, **kwargs):
 		super().__init__(**kwargs)
 		self._gizmo = gizmo
 
 
+	def gizmos(self) -> Iterator[str]:
+		yield self._gizmo
+
+
+	def produces_gizmo(self, gizmo: str) -> bool:
+		return gizmo == self._gizmo
+
+
+	def _get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		raise self._ToolFailedError(gizmo)
+
+
 	def _actualize_tool(self, fn: Callable, **kwargs):
-		return FunctionTool(self._gizmo, fn, **kwargs)
+		return ToolCraft(self._gizmo, fn, **kwargs)
 
 
-	def __call__(self, fn: Callable):
+	def __call__(self, fn):
 		return self._actualize_tool(fn)
 
 
 
+class ToolCraft(FunctionTool, NestableCraft):
+	def _wrapped_content(self): # wrapped method
+		return self._fn
+
+
+	def as_skill(self, owner: AbstractCrafty):
+		return self # same instance each time _process_crafts is called
 
 
 
