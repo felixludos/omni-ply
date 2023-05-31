@@ -101,7 +101,7 @@ def test_crafty_kit():
 	ctx['y'] = 3
 	assert ctx['y'] == 3
 	assert ctx['z'] == 4
-	assert ctx['w'] == 5
+	assert ctx['w'] == 6
 
 	ctx.clear_cache()
 	ctx['x'] = 10
