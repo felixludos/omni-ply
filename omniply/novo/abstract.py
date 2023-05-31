@@ -15,12 +15,7 @@ class AbstractTool:
 
 
 	def vendors(self, gizmo: str) -> Iterator['AbstractTool']:
-		'''returns all tools that can produce the given gizmo'''
-		yield self
-
-
-	def vendors_terminal(self, gizmo: str) -> Iterator['AbstractTool']:
-		'''returns all tools that can produce a gizmo recursively'''
+		'''returns all known tools that can produce the given gizmo'''
 		yield self
 
 
@@ -36,14 +31,8 @@ class AbstractTool:
 
 class AbstractToolKit(AbstractTool):
 	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
-		'''returns all tools that can produce the given gizmo'''
+		'''returns all known tools that can produce the given gizmo'''
 		raise NotImplementedError
-
-
-	def vendors_terminal(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
-		'''returns all tools that can produce a gizmo recursively'''
-		for vendor in self.vendors(gizmo):
-			yield from vendor.vendors_terminal(gizmo)
 
 
 
@@ -51,16 +40,31 @@ class AbstractToolKit(AbstractTool):
 
 
 
-
 class AbstractMultiTool(AbstractToolKit):
-	def vendors(self, gizmo: str) -> Iterator[AbstractTool]:
+	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		yield self
 
 
 
 class AbstractContext(AbstractToolKit):
-	# def get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-	# 	raise NotImplementedError
+	'''
+	Contexts are a specific type of tool kit which takes ownership of a get_from call,
+	rather than (usually) silently delegating to an appropriate tool.
+
+	That means in general, a kit's get_from method is not called directly, but rather the containing
+	tools are accessed through the kit's vendors method.
+
+	It's the context that dictates how it's members are used to produce a gizmo.
+	'''
+	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+		'''returns all tools that can produce a gizmo recursively'''
+		for vendor in self.members(gizmo):
+			yield from vendor.vendors(gizmo)
+
+
+	def members(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+		'''returns all known tools/kits in this context'''
+		raise NotImplementedError
 
 
 	def package(self, src: AbstractTool, gizmo: str, val: Any) -> Any:

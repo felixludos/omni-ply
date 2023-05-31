@@ -26,11 +26,13 @@ class Kit(AbstractToolKit, MyAbstractTool):
 
 	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		if gizmo is None:
-			yield from filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values())))
+			for tool in filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values()))):
+				yield from tool.vendors(gizmo)
 		else:
 			if gizmo not in self._tools_table:
 				raise self._MissingGizmoError(gizmo)
-			yield from reversed(self._tools_table[gizmo])
+			for tool in filter_duplicates(reversed(self._tools_table[gizmo])):
+				yield from tool.vendors(gizmo)
 
 
 	_AssemblyFailedError = AssemblyFailedError
@@ -116,14 +118,14 @@ class CraftyKit(Kit, InheritableCrafty):
 			if key not in items:
 				items[key] = craft
 			
-		# convert crafts to skills and add in N-O order
+		# convert crafts to skills and add in O-N order
 		table = {}
-		for key, craft in items.items(): # N-O
+		for key, craft in reversed(items.items()): # N-O
 			for gizmo in craft.gizmos():
 				table.setdefault(gizmo, []).append(craft.as_skill(self))
 			
 		# add N-O skills in reverse order for O-N _tools_table
-		for gizmo, tools in reversed(table.items()): # tools is N-O
-			self._tools_table.setdefault(gizmo, []).extend(reversed(tools)) # added in O-N order
+		for gizmo, tools in table.items(): # tools is N-O
+			self._tools_table.setdefault(gizmo, []).extend(tools) # added in O-N order
 
 

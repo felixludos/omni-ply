@@ -27,8 +27,14 @@ class TestKit(LoopyKit, MutableKit):
 
 
 
-class TestContext(Cached, Context, TestKit, AbstractContext):
-	pass
+class TestContext(Cached, Context, TestKit):#, Kit, AbstractContext):
+	def members(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+		if gizmo is None:
+			yield from filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values())))
+		else:
+			if gizmo not in self._tools_table:
+				raise self._MissingGizmoError(gizmo)
+			yield from reversed(self._tools_table[gizmo])
 
 
 
@@ -109,6 +115,70 @@ def test_crafty_kit():
 	assert ctx['w'] == 23
 
 
+
+class TestCraftyKit2(TestCraftyKit): # by default inherits all tools from the parents
+	def __init__(self, sign=1):
+		super().__init__()
+		self._sign = sign
+
+
+	@tool('y') # tool replaced
+	def change_y(self, y): # "refinement" - chaining the tool implicitly
+		return y + 10
+
+
+	@tool('x') # new tool added
+	def get_x(self):
+		return 100 * self._sign # freely use object attributes
+
+
+	def check(self): # freely calling tools as methods
+		return self.f(9) + type(self).h(8) + type(self).f(19) # 40
+
+
+	def g(self, x): # overriding a tool (this will be registered, rather than the super method)
+		# use with caution - it's recommended to use clear naming for the function
+		return super().g(x, x) # super method can be called as usual
+
+
+
+def test_crafty_kit_inheritance():
+
+	assert TestCraftyKit2.f(1) == 2
+	assert TestCraftyKit2.h(1) == 3
+
+	kit = TestCraftyKit2()
+	assert kit.f(1) == 2
+	assert kit.g(2) == 4
+	assert kit.h(1) == 3
+	assert kit.check() == 40
+	assert kit.get_x() == 100
+	assert kit.change_y(1) == 11
+
+	ctx = TestContext(kit)
+
+	assert list(ctx.gizmos()) == ['y', 'z', 'w', 'x']
+
+	assert ctx['x'] == 100
+	assert ctx['y'] == 111
+	assert ctx['z'] == 200
+	assert ctx['w'] == 202
+
+	ctx.clear_cache()
+
+	@tool('z')
+	def new_z():
+		return 1000
+
+	ctx.include(new_z)
+
+	assert 'x' not in ctx.cached()
+	assert ctx['y'] == 111
+	assert 'x' in ctx.cached()
+	assert ctx['x'] == 100
+
+	assert ctx['z'] == 1000
+	assert ctx['w'] == 1002
 
 
 

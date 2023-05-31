@@ -33,7 +33,10 @@ class FunctionTool(MyAbstractTool):
 
 
 	def __repr__(self):
-		return f'{self.__class__.__name__}({self.__call__.__name__}: {self._gizmo})'
+		name = getattr(self._fn, '__qualname__', None)
+		if name is None:
+			name = getattr(self._fn, '__name__', None)
+		return f'{self.__class__.__name__}({name}: {self._gizmo})'
 
 
 	@property
@@ -100,9 +103,11 @@ class ToolDecorator(MyAbstractTool):
 
 
 class ToolSkill(FunctionTool, AbstractSkill):
-	def __init__(self, gizmo: str, fn: Callable, unbound_fn: Callable, **kwargs):
+	def __init__(self, gizmo: str, fn: Callable, unbound_fn: Callable, *,
+	             base: Optional[AbstractCraft] = None, **kwargs):
 		super().__init__(gizmo, fn, **kwargs)
 		self._unbound_fn = unbound_fn
+		self._base = base
 		
 
 	@property
@@ -118,13 +123,19 @@ class ToolSkill(FunctionTool, AbstractSkill):
 
 
 class ToolCraft(FunctionTool, NestableCraft):
-	_SkillCraft = ToolSkill
 	def _wrapped_content(self): # wrapped method
 		return self._fn
 
 
+	_ToolSkill = ToolSkill
 	def as_skill(self, owner: AbstractCrafty):
-		return self._SkillCraft(self._gizmo, fn=self._fn.__get__(owner, type(owner)), unbound_fn=self._fn)
+		unbound_fn = self._wrapped_content_leaf()
+		fn_name = getattr(unbound_fn, '__name__', None)
+		if fn_name is None:
+			fn = unbound_fn.__get__(owner, type(owner))
+		else:
+			fn = getattr(owner, fn_name) # get most recent version of method
+		return self._ToolSkill(self._gizmo, fn=fn, unbound_fn=unbound_fn, base=self)
 
 
 
