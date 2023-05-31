@@ -42,7 +42,7 @@ class FunctionTool(MyAbstractTool):
 
 
 	def __get__(self, instance, owner):
-		return self._fn.__get__(instance, owner)
+		# return self._fn.__get__(instance, owner)
 		if instance is None:
 			return self
 		return self._fn.__get__(instance, owner)
@@ -98,13 +98,34 @@ class ToolDecorator(MyAbstractTool):
 		return self._actualize_tool(fn)
 
 
+class ToolSkill(FunctionTool, AbstractSkill):
+	def __init__(self, gizmo: str, fn: Callable, unbound_fn: Callable, **kwargs):
+		super().__init__(gizmo, fn, **kwargs)
+		self._unbound_fn = unbound_fn
+		
+
+	@property
+	def __call__(self):
+		return self._unbound_fn
+	
+
+	def __get__(self, instance, owner):
+		if instance is None:
+			return self
+		return self._unbound_fn.__get__(instance, owner)
+
+
 
 class ToolCraft(FunctionTool, NestableCraft):
+	_SkillCraft = ToolSkill
 	def _wrapped_content(self): # wrapped method
 		return self._fn
 
 
 	def as_skill(self, owner: AbstractCrafty):
+		return self._SkillCraft(self._gizmo,
+		                        fn=self._fn.__get__(owner, type(owner)),
+		                        unbound_fn=self._fn)
 		return self # same instance each time _process_crafts is called
 
 
