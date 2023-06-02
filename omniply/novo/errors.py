@@ -3,6 +3,27 @@ from .abstract import *
 
 
 
+class MissingValueError(AttributeError):
+	def __init__(self, descriptor: Any, message: Optional[str] = None):
+		if message is None:
+			message = f'{descriptor}'
+		super().__init__(message)
+
+
+
+class MissingOwnerError(TypeError):
+	def __init__(self, descriptor: Any, message: Optional[str] = None):
+		if message is None:
+			message = f'Cannot delete {descriptor} without providing an instance.'
+		super().__init__(message)
+
+
+
+class IgnoreResetFlag(Exception):
+	pass
+
+
+
 class ToolFailedError(Exception):
 	def __init__(self, gizmo: str, *, message: Optional[str] = None):
 		if message is None:

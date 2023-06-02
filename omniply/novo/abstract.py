@@ -14,7 +14,7 @@ class AbstractTool:
 		raise NotImplementedError
 
 
-	def vendors(self, gizmo: str) -> Iterator['AbstractTool']:
+	def vendors(self, gizmo: Optional[str] = None) -> Iterator['AbstractTool']:
 		'''returns all known tools that can produce the given gizmo'''
 		yield self
 
@@ -30,9 +30,20 @@ class AbstractTool:
 
 
 class AbstractToolKit(AbstractTool):
+	def gizmos(self) -> Iterator[str]:
+		'''lists known products of this tool'''
+		raise NotImplementedError
+
+
+	def gadgets(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+		'''returns all known tools/kits in this kit'''
+		raise NotImplementedError
+
+
 	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		'''returns all known tools that can produce the given gizmo'''
-		raise NotImplementedError
+		for vendor in self.gadgets(gizmo):
+			yield from vendor.vendors(gizmo)
 
 
 
@@ -56,15 +67,10 @@ class AbstractContext(AbstractToolKit):
 
 	It's the context that dictates how it's members are used to produce a gizmo.
 	'''
-	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
-		'''returns all tools that can produce a gizmo recursively'''
-		for vendor in self.members(gizmo):
-			yield from vendor.vendors(gizmo)
-
-
-	def members(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
-		'''returns all known tools/kits in this context'''
-		raise NotImplementedError
+	# def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+	# 	'''returns all tools that can produce a gizmo recursively'''
+	# 	for vendor in self.gadgets(gizmo):
+	# 		yield from vendor.vendors(gizmo)
 
 
 	def package(self, src: AbstractTool, gizmo: str, val: Any) -> Any:

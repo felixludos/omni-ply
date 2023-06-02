@@ -28,7 +28,7 @@ class TestKit(LoopyKit, MutableKit):
 
 
 class TestContext(Cached, Context, TestKit):#, Kit, AbstractContext):
-	def members(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+	def gadgets(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		if gizmo is None:
 			yield from filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values())))
 		else:
