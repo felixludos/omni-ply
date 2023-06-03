@@ -2,6 +2,7 @@ from .imports import *
 
 from .tools import *
 from .kits import *
+from .behaviors import *
 from .contexts import *
 from .tools import ToolDecorator as tool
 
@@ -28,7 +29,7 @@ class TestKit(LoopyKit, MutableKit):
 
 
 class TestContext(Cached, Context, TestKit):#, Kit, AbstractContext):
-	def gadgets(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+	def tools(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		if gizmo is None:
 			yield from filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values())))
 		else:
@@ -179,6 +180,16 @@ def test_crafty_kit_inheritance():
 
 	assert ctx['z'] == 1000
 	assert ctx['w'] == 1002
+
+
+
+trait = AbstractTrait
+
+
+class SuperModule:
+	subA = trait()
+	subB = trait()
+
 
 
 

@@ -36,6 +36,7 @@ class ReplicatorQuirk(AbstractQuirk):
 		return self.__class__(**self._replicator_kwargs(kwargs))
 
 
+
 # class ReferenceQuirk(AbstractQuirk):
 # 	def reference(self, **update):
 # 		raise NotImplementedError
@@ -89,6 +90,7 @@ class DescriptorQuirk(ReplicatorQuirk):
 
 	def __delete__(self, instance: T):
 		self.rip(instance)
+
 
 
 class OwnedDescriptorQuirk(DescriptorQuirk):
@@ -146,11 +148,15 @@ class DefaultQuirk(DescriptorQuirk):
 		return getter, default  # getter was specified as keyword argument
 
 
+	def realize(self, instance: T, owner: Optional[Type[T]] = None) -> Any:
+		if self._default is self._missing_value:
+			raise self._MissingValueError(self)
+		return self._default
+
+
 	def resolve(self, instance: Optional[T] = None, owner: Optional[Type[T]] = None) -> Any:
 		if self._getter is None:
-			if self._default is self._missing_value:
-				raise self._MissingValueError(self)
-			return self._default
+			return self.realize(instance, owner=owner)
 		if instance is None:
 			raise self._MissingOwnerError(self)
 		return self._getter.__get__(instance, owner=owner)()

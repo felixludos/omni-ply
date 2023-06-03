@@ -35,14 +35,14 @@ class AbstractToolKit(AbstractTool):
 		raise NotImplementedError
 
 
-	def gadgets(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+	def tools(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		'''returns all known tools/kits in this kit'''
 		raise NotImplementedError
 
 
 	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		'''returns all known tools that can produce the given gizmo'''
-		for vendor in self.gadgets(gizmo):
+		for vendor in self.tools(gizmo):
 			yield from vendor.vendors(gizmo)
 
 
