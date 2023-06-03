@@ -52,6 +52,7 @@ class AbstractToolKit(AbstractTool):
 
 
 class AbstractMultiTool(AbstractToolKit):
+	'''a special kind of kit that doesn't allow subtools to be accessed directly through vendors()'''
 	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		yield self
 
