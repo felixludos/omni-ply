@@ -2,6 +2,15 @@ from .imports import *
 from .abstract import *
 
 
+class ApplicationAmbiguityError(ValueError):
+	def __init__(self, gizmo: str, options: Sequence[str], *, message: Optional[str] = None):
+		if message is None:
+			message = f'{gizmo!r} cant choose between: {options}'
+		super().__init__(message)
+		self.gizmo = gizmo
+		self.options = options
+
+
 
 class MissingValueError(AttributeError):
 	def __init__(self, descriptor: Any, message: Optional[str] = None):
@@ -16,6 +25,12 @@ class MissingOwnerError(TypeError):
 		if message is None:
 			message = f'Cannot delete {descriptor} without providing an instance.'
 		super().__init__(message)
+
+
+
+class ReachFailedFlag(Exception):
+	def __init__(self):
+		super().__init__('to access this "realize()" is necessary')
 
 
 

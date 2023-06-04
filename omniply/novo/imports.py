@@ -3,6 +3,7 @@ from typing import Callable, Union, Optional, Any, Iterator, Iterable, Hashable,
 
 import inspect
 import logging
+from functools import lru_cache
 from collections import OrderedDict, UserDict
 from itertools import chain
 

@@ -254,6 +254,7 @@ class CachedQuirk(DescriptorQuirk):
 
 	def resolve(self, instance: Optional[T] = None, owner: Optional[Type[T]] = None) -> Any:
 		if self.is_cached(instance):
+			# NOTE: this is usually redundant, since descriptor is called after __dict__ is checked
 			return instance.__dict__[self._attrname]
 
 		value = self._resolve(instance, owner=owner)

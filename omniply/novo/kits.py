@@ -58,7 +58,8 @@ class LoopyKit(Kit):
 		self._get_from_status: Optional[Dict[str, Iterator[AbstractTool]]] = {}
 
 
-	def _get_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
+	def _get_from(self, ctx: 'AbstractContext',
+	              gizmo: str) -> Any:
 		failures = []
 		itr = self._get_from_status.setdefault(gizmo, self.vendors(gizmo))
 		# should be the same as Kit, except the iterators are cached until the gizmo is produced
@@ -121,8 +122,9 @@ class CraftyKit(Kit, InheritableCrafty):
 		# convert crafts to skills and add in O-N order
 		table = {}
 		for key, craft in reversed(items.items()): # N-O
-			for gizmo in craft.gizmos():
-				table.setdefault(gizmo, []).append(craft.as_skill(self))
+			skill = craft.as_skill(self)
+			for gizmo in skill.gizmos():
+				table.setdefault(gizmo, []).append(skill)
 			
 		# add N-O skills in reverse order for O-N _tools_table
 		for gizmo, tools in table.items(): # tools is N-O
