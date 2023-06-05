@@ -74,8 +74,28 @@ class AbstractContext(AbstractToolKit):
 	# 		yield from vendor.vendors(gizmo)
 
 
-	def package(self, src: AbstractTool, gizmo: str, val: Any) -> Any:
+	def package(self, val: Any, gizmo: Optional[str] = None) -> Any:
 		return val
+
+
+
+
+class AbstractGang(AbstractContext, AbstractMultiTool):
+	def gizmoto(self) -> Iterator[str]:
+		yield from super().gizmos()
+
+
+	def gizmos(self) -> Iterator[str]:
+		for gizmo in self.gizmoto():
+			yield self.gizmo_to(gizmo)
+
+
+	def gizmo_from(self, gizmo: str) -> str:
+		raise NotImplementedError
+
+
+	def gizmo_to(self, external: str) -> str:
+		raise NotImplementedError
 
 
 

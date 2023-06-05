@@ -128,7 +128,8 @@ class TraitTool(AbstractTool): # TODO: should this be an AbstractMultiTool?
 
 	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str,
 	             default: Optional[Any] = unspecified_argument) -> Any:
-		return self._resolve_tool().get_from(ctx, gizmo, default=default)
+		tool = self._resolve_tool()
+		return tool.get_from(ctx, gizmo, default=default)
 
 
 	def __repr__(self):
@@ -150,7 +151,7 @@ class SimpleTrait(DescriptorQuirk, AbstractTrait):
 
 
 
-class AppliedTraitTool(SimpleGang, TraitTool): # TODO: should this be an AbstractMultiTool?
+class AppliedTraitTool(SimpleGang, TraitTool, AbstractMultiTool): # TODO: should this be an AbstractMultiTool?
 	'''
 	delegates work to submodule by accessing it with `getattr(self.owner, self.attrname)`
 	(thereby building lazily)

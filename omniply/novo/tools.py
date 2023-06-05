@@ -55,7 +55,7 @@ class FunctionTool(MyAbstractTool):
 	def _extract_gizmo_args(fn: Callable, ctx: AbstractContext,
 	                        args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None) \
 			-> Tuple[Tuple, Dict[str, Any]]:
-		return extract_function_signature(fn, default_fn=lambda gizmo, default: ctx.get(gizmo, default))
+		return extract_function_signature(fn, default_fn=lambda gizmo, default: ctx.get_from(ctx, gizmo))
 
 
 	def _get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
