@@ -242,11 +242,10 @@ def test_trait():
 
 	assert ctx['y'] == 4 # not 3, because the augmentation is applied first
 
-	print(ctx)
 
 
-
-
+def test_end():
+	print('done')
 
 
 

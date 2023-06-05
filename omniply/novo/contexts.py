@@ -70,7 +70,7 @@ class Cached(AbstractContext, UserDict):
 
 
 
-class AbstractGang(AbstractTool):
+class AbstractGang(AbstractContext):
 	pass
 	# def gizmoto(self) -> Iterator[str]: # iterates over internal gizmos (products)
 	# 	for external in self.gizmos():
@@ -109,6 +109,7 @@ class SimpleGang(AbstractGang):
 			apply = {}
 		super().__init__(**kwargs)
 		self._raw_apply = apply
+		self._context_path = []
 
 
 	def gizmoto(self) -> Iterator[str]:
@@ -128,10 +129,11 @@ class SimpleGang(AbstractGang):
 		self._raw_apply = value
 		self._raw_reverse_apply = None
 
+
 	@property
 	def external2internal(self) -> Dict[str, str]:
 		if self._raw_reverse_apply is None:
-			self._raw_reverse_apply = self._infer_external2internal(self._raw_apply, self.gizmos())
+			self._raw_reverse_apply = self._infer_external2internal(self._raw_apply, self.gizmoto())
 		return self._raw_reverse_apply
 
 
@@ -166,10 +168,11 @@ class SimpleGang(AbstractGang):
 		return super()._fallback_get_from(self.gizmo_to(gizmo))
 
 
-	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str):
+	def get_from(self, ctx: Optional[AbstractContext], gizmo: str):
 		if ctx is not self: # coming from external context
+			self._context_path.append(gizmo)
 			gizmo = self.gizmo_to(gizmo)
-			return super().get_from(ctx, gizmo)
+			out = super().get_from(self, gizmo)
 
 		return super().get_from(ctx, gizmo)
 
