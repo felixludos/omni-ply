@@ -8,7 +8,7 @@ from .quirks import *
 from .quirky import *
 from .tools import ToolDecorator as tool
 
-
+# added by codespaces
 
 def test_tool():
 	@tool('a')
