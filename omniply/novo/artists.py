@@ -6,8 +6,12 @@ class AbstractBlueprint:
 	pass
 
 
-
 class AbstractArtist:
+
+	def details(self) -> Dict[str, Any]:
+		raise NotImplementedError
+
+
 	def derivative(self, *args, **kwargs) -> 'AbstractArtist':
 		'''Returns a new artist that is a derivative of this one (ie. same except for the given args, and kwargs).'''
 		raise NotImplementedError
