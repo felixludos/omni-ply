@@ -27,13 +27,8 @@ class AbstractQuirk:
 
 
 
-class ReplicatorQuirk(AbstractQuirk):
-	def _replicator_kwargs(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-		return kwargs
-
-
-	def replicate(self, **kwargs) -> Any:
-		return self.__class__(**self._replicator_kwargs(kwargs))
+class ReplicatorQuirk(AbstractQuirk, Replicator):
+	pass
 
 
 
@@ -312,8 +307,48 @@ class UpdateQuirk(AbstractQuirk):
 
 
 
-class SimpleQuirk(UpdateQuirk, CachedQuirk, DefaultQuirk, SetterQuirk, DeleterQuirk):
-	pass
+class InheritableQuirk(AbstractQuirk):
+	def inherit(self, owner: Union[T, Type[T]]) -> bool:
+		return False
+
+
+
+class HiddenQuirk(AbstractQuirk):
+	def hidden(self, owner: Union[T, Type[T]]) -> bool:
+		return False
+
+
+
+class SimpleQuirk(UpdateQuirk, CachedQuirk, DefaultQuirk, SetterQuirk, DeleterQuirk, InheritableQuirk, HiddenQuirk):
+	def __init__(self, *, inherit: bool = False, hidden: bool = False, **kwargs):
+		super().__init__(**kwargs)
+		self._inherit = inherit
+		self._hidden = hidden
+
+
+	# def resolve(self, instance: Optional[T] = None, owner: Optional[Type[T]] = None) -> Any:
+	# 	if instance is None:
+	# 		return self
+	# 	return super().resolve(instance, owner=owner)
+
+
+	def _replicator_kwargs(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+		if 'inherit' not in kwargs:
+			kwargs['inherit'] = self._inherit
+		if 'hidden' not in kwargs:
+			kwargs['hidden'] = self._hidden
+		return super()._replicator_kwargs(kwargs)
+
+
+	def inherit(self, owner: Union[T, Type[T]]) -> bool:
+		return self._inherit
+
+
+	def hidden(self, owner: Union[T, Type[T]]) -> bool:
+		return self._hidden
+
+
+
 
 
 

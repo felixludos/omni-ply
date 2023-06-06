@@ -10,18 +10,6 @@ from .tools import ToolDecorator as tool
 
 # added by codespaces
 
-def test_tool():
-	@tool('a')
-	def f(x):
-		return x + 1
-
-	assert f(1) == 2
-
-	@tool('b')
-	def g(x, y, z):
-		return x + y + z
-
-
 
 class TestKit(LoopyKit, MutableKit):
 	def __init__(self, *tools: AbstractTool, **kwargs):
@@ -47,9 +35,17 @@ class TestContext(Cached, Context, TestKit):#, Kit, AbstractContext):
 			yield from reversed(self._tools_table[gizmo])
 
 
-	# def get_from(self, ctx: Optional['AbstractContext'], gizmo: str,
-	#              default: Optional[Any] = unspecified_argument) -> Any:
-	# 	return super().get_from(ctx, gizmo.replace('-', '_'), default) # TODO: handle "-" in gizmo names
+
+def test_tool():
+	@tool('a')
+	def f(x):
+		return x + 1
+
+	assert f(1) == 2
+
+	@tool('b')
+	def g(x, y, z):
+		return x + y + z
 
 
 
@@ -79,19 +75,15 @@ def test_kit():
 
 
 
-
 class TestCraftyKit(MutableKit, TestCraftyKitBase):
-
 	@tool('y')
 	@staticmethod
 	def f(x):
 		return x + 1
 
-
 	@tool('z')
 	def g(self, x, y):
 		return x + y
-
 
 	@tool('w')
 	@classmethod
@@ -101,7 +93,6 @@ class TestCraftyKit(MutableKit, TestCraftyKitBase):
 
 
 def test_crafty_kit():
-
 	assert TestCraftyKit.f(1) == 2
 	assert TestCraftyKit.h(1) == 3
 
@@ -133,20 +124,16 @@ class TestCraftyKit2(TestCraftyKit): # by default inherits all tools from the pa
 		super().__init__()
 		self._sign = sign
 
-
 	@tool('y') # tool replaced
 	def change_y(self, y): # "refinement" - chaining the tool implicitly
 		return y + 10
-
 
 	@tool('x') # new tool added
 	def get_x(self):
 		return 100 * self._sign # freely use object attributes
 
-
 	def check(self): # freely calling tools as methods
 		return self.f(9) + type(self).h(8) + type(self).f(19) # 40
-
 
 	def g(self, x): # overriding a tool (this will be registered, rather than the super method)
 		# use with caution - it's recommended to use clear naming for the function
@@ -221,12 +208,6 @@ class LambdaTool(AbstractTool):
 
 
 
-class trait(AppliedTrait, SimpleQuirk):
-	pass
-
-
-
-
 class TestData(TestCraftyKitBase):
 	@tool('data')
 	def get_data(self):
@@ -239,6 +220,11 @@ class TestData(TestCraftyKitBase):
 	@tool('y_true')
 	def get_y_true(self, data):
 		return data[1]
+
+
+
+class trait(AppliedTrait, SimpleQuirk):
+	pass
 
 
 
