@@ -212,12 +212,11 @@ class LambdaTool(AbstractTool):
 		yield self.output_key
 
 
-	def get_from(self, ctx: Optional[AbstractContext], gizmo: str,
-	             default: Optional[Any] = unspecified_argument) -> Any:
+	def grab_from(self, ctx: Optional[AbstractContext], gizmo: str) -> Any:
 		if gizmo != self.output_key:
 			raise ToolFailedError(gizmo)
 		# inputs = [ctx[g] for g in self.input_keys]
-		inputs = [ctx.get_from(ctx, g) for g in self.input_keys]
+		inputs = [ctx.grab_from(ctx, g) for g in self.input_keys]
 		return self.fn(*inputs)
 
 
@@ -226,16 +225,6 @@ class trait(AppliedTrait, SimpleQuirk):
 	pass
 
 
-
-class SuperModule(TestCraftyKitBase, Capable):
-	augmentation = trait(apply={'input': 'x', 'output': 'x'})
-	model = trait(apply={'input': 'x', 'output': 'y'})
-
-
-	@tool('loss')
-	@staticmethod
-	def loss(y, y_true):
-		return (y - y_true) ** 2
 
 
 class TestData(TestCraftyKitBase):
@@ -253,6 +242,16 @@ class TestData(TestCraftyKitBase):
 
 
 
+class SuperModule(TestCraftyKitBase, Capable):
+	augmentation = trait(apply={'input': 'x', 'output': 'x'})
+	model = trait(apply={'input': 'x', 'output': 'y'})
+
+
+	@tool('loss')
+	@staticmethod
+	def loss(y, y_true):
+		return (y - y_true) ** 2
+
 
 
 def test_trait():
@@ -267,7 +266,9 @@ def test_trait():
 
 	sup = SuperModule(augmentation=augmentation, model=model)
 
-	ctx = TestContext(sup)
+	assert list(sup.gizmos()) == ['x', 'y', 'loss']
+
+	ctx = TestContext(sup) # uses loopy getting
 
 	assert list(ctx.gizmos()) == ['x', 'y', 'loss']
 

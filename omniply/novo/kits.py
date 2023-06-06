@@ -6,7 +6,12 @@ from .tools import *
 
 
 
-class Kit(AbstractToolKit, MyAbstractTool):
+# class KitBase(AbstractToolKit, ToolBase):
+# 	pass
+
+
+
+class Kit(AbstractToolKit, ToolBase):
 	_tools_table: Dict[str, List[AbstractTool]] # tools are kept in O-N order (reversed) for easy updates
 
 	def __init__(self, *args, tools_table: Optional[Mapping] = None, **kwargs):
@@ -20,11 +25,11 @@ class Kit(AbstractToolKit, MyAbstractTool):
 		yield from self._tools_table.keys()
 
 
-	def produces_gizmo(self, gizmo: str) -> bool:
+	def gives(self, gizmo: str) -> bool:
 		return gizmo in self._tools_table
 
 
-	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+	def _vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		if gizmo is None:
 			for tool in filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values()))):
 				yield from tool.vendors(gizmo)
@@ -36,18 +41,18 @@ class Kit(AbstractToolKit, MyAbstractTool):
 
 
 	_AssemblyFailedError = AssemblyFailedError
-	def _get_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
 		failures = []
-		for tool in self.vendors(gizmo):
+		for tool in self._vendors(gizmo):
 			try:
-				return tool.get_from(ctx, gizmo)
+				return tool.grab_from(ctx, gizmo)
 			except ToolFailedError as e:
 				failures.append((tool, e))
 			except:
 				prt.debug(f'{tool!r} failed while trying to produce: {gizmo!r}')
 				raise
 		if failures:
-			raise self._AssemblyFailedError(gizmo, failures)
+			raise self._AssemblyFailedError(gizmo, *failures)
 		raise self._ToolFailedError(gizmo)
 
 
@@ -58,14 +63,13 @@ class LoopyKit(Kit):
 		self._get_from_status: Optional[Dict[str, Iterator[AbstractTool]]] = {}
 
 
-	def _get_from(self, ctx: 'AbstractContext',
-	              gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
 		failures = []
-		itr = self._get_from_status.setdefault(gizmo, self.vendors(gizmo))
+		itr = self._get_from_status.setdefault(gizmo, self._vendors(gizmo))
 		# should be the same as Kit, except the iterators are cached until the gizmo is produced
 		for tool in itr:
 			try:
-				out = tool.get_from(ctx, gizmo)
+				out = tool.grab_from(ctx, gizmo)
 			except ToolFailedError as e:
 				failures.append((tool, e))
 			except:

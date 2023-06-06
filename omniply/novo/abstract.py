@@ -8,8 +8,7 @@ class AbstractTool:
 		raise NotImplementedError
 
 
-	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str,
-	             default: Optional[Any] = unspecified_argument) -> Any:
+	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
 		'''returns the given gizmo from this tool, or raises ToolFailedError'''
 		raise NotImplementedError
 
@@ -19,7 +18,7 @@ class AbstractTool:
 		yield self
 
 
-	def produces_gizmo(self, gizmo: str) -> bool:
+	def gives(self, gizmo: str) -> bool:
 		'''returns True if this tool can produce the given gizmo'''
 		return gizmo in self.gizmos()
 
@@ -40,10 +39,15 @@ class AbstractToolKit(AbstractTool):
 		raise NotImplementedError
 
 
-	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+	def _vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		'''returns all known tools that can produce the given gizmo'''
 		for vendor in self.tools(gizmo):
 			yield from vendor.vendors(gizmo)
+
+
+	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+		'''returns all known tools that can produce the given gizmo'''
+		yield from self._vendors(gizmo)
 
 
 
@@ -58,7 +62,12 @@ class AbstractMultiTool(AbstractToolKit):
 
 
 
-class AbstractContext(AbstractToolKit):
+class AbstractToolFailedError(Exception):
+	pass
+
+
+
+class AbstractContext(AbstractMultiTool):
 	'''
 	Contexts are a specific type of tool kit which takes ownership of a get_from call,
 	rather than (usually) silently delegating to an appropriate tool.
@@ -68,33 +77,43 @@ class AbstractContext(AbstractToolKit):
 
 	It's the context that dictates how it's members are used to produce a gizmo.
 	'''
-	# def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
-	# 	'''returns all tools that can produce a gizmo recursively'''
-	# 	for vendor in self.gadgets(gizmo):
-	# 		yield from vendor.vendors(gizmo)
-
-
 	def package(self, val: Any, gizmo: Optional[str] = None) -> Any:
 		return val
 
 
+	def grab(self, gizmo: str, default: Any = unspecified_argument):
+		try:
+			return self.grab_from(None, gizmo)
+		except AbstractToolFailedError:
+			if default is unspecified_argument:
+				raise
+			return default
 
 
-class AbstractGang(AbstractContext, AbstractMultiTool):
-	def gizmoto(self) -> Iterator[str]:
+	def __getitem__(self, item):
+		return self.grab(item)
+
+
+
+class AbstractGang(AbstractContext):
+	def _gizmos(self) -> Iterator[str]:
+		'''lists gizmos produced by self (using internal names)'''
 		yield from super().gizmos()
 
 
 	def gizmos(self) -> Iterator[str]:
-		for gizmo in self.gizmoto():
+		'''lists gizmos produced by self (using external names)'''
+		for gizmo in self._gizmos():
 			yield self.gizmo_to(gizmo)
 
 
-	def gizmo_from(self, gizmo: str) -> str:
+	def gizmo_from(self, gizmo: str) -> str: # external -> internal
+		'''converts external -> internal gizmo names'''
 		raise NotImplementedError
 
 
-	def gizmo_to(self, external: str) -> str:
+	def gizmo_to(self, gizmo: str) -> str: # internal -> external
+		'''converts internal -> external gizmo names'''
 		raise NotImplementedError
 
 

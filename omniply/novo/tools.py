@@ -5,27 +5,27 @@ from .errors import *
 
 
 
-class MyAbstractTool(AbstractTool):
+class ToolBase(AbstractTool):
 	_ToolFailedError = ToolFailedError
 	_MissingGizmoError = MissingGizmoError
 
 
-	def _get_from(self, ctx: AbstractContext, gizmo: str) -> Any:
-		raise NotImplementedError
+	# def _grab_from(self, ctx: AbstractContext, gizmo: str) -> Any:
+	# 	raise NotImplementedError
 
 
-	def get_from(self, ctx: Optional[AbstractContext], gizmo: str,
-	             default: Optional[Any] = unspecified_argument) -> Any:
-		try:
-			return self._get_from(ctx, gizmo)
-		except self._ToolFailedError:
-			if default is unspecified_argument:
-				raise
-			return default
+	# def grab_from(self, ctx: Optional[AbstractContext], gizmo: str,
+	#               default: Optional[Any] = unspecified_argument) -> Any:
+	# 	try:
+	# 		return self._grab_from(ctx, gizmo)
+	# 	except self._ToolFailedError:
+	# 		if default is unspecified_argument:
+	# 			raise
+	# 		return default
 
 
 
-class FunctionTool(MyAbstractTool):
+class FunctionTool(ToolBase):
 	def __init__(self, gizmo: str, fn: Callable, **kwargs):
 		super().__init__(**kwargs)
 		self._gizmo = gizmo
@@ -55,10 +55,10 @@ class FunctionTool(MyAbstractTool):
 	def _extract_gizmo_args(fn: Callable, ctx: AbstractContext,
 	                        args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None) \
 			-> Tuple[Tuple, Dict[str, Any]]:
-		return extract_function_signature(fn, default_fn=lambda gizmo, default: ctx.get_from(ctx, gizmo))
+		return extract_function_signature(fn, default_fn=lambda gizmo, default: ctx.grab_from(ctx, gizmo))
 
 
-	def _get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
 		if gizmo != self._gizmo:
 			raise self._MissingGizmoError(gizmo)
 
@@ -70,35 +70,8 @@ class FunctionTool(MyAbstractTool):
 		yield self._gizmo
 
 
-	def produces_gizmo(self, gizmo: str) -> bool:
+	def gives(self, gizmo: str) -> bool:
 		return gizmo == self._gizmo
-
-
-
-class ToolDecorator(MyAbstractTool):
-	def __init__(self, gizmo: str, **kwargs):
-		super().__init__(**kwargs)
-		self._gizmo = gizmo
-
-
-	def gizmos(self) -> Iterator[str]:
-		yield self._gizmo
-
-
-	def produces_gizmo(self, gizmo: str) -> bool:
-		return gizmo == self._gizmo
-
-
-	def _get_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-		raise self._ToolFailedError(gizmo)
-
-
-	def _actualize_tool(self, fn: Callable, **kwargs):
-		return ToolCraft(self._gizmo, fn, **kwargs)
-
-
-	def __call__(self, fn):
-		return self._actualize_tool(fn)
 
 
 
@@ -137,6 +110,33 @@ class ToolCraft(FunctionTool, NestableCraft):
 			fn = getattr(owner, fn_name) # get most recent version of method
 		return self._ToolSkill(self._gizmo, fn=fn, unbound_fn=unbound_fn, base=self)
 
+
+
+class ToolDecorator(ToolBase):
+	def __init__(self, gizmo: str, **kwargs):
+		super().__init__(**kwargs)
+		self._gizmo = gizmo
+
+
+	def gizmos(self) -> Iterator[str]:
+		yield self._gizmo
+
+
+	def gives(self, gizmo: str) -> bool:
+		return gizmo == self._gizmo
+
+
+	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		raise self._ToolFailedError(gizmo)
+
+
+	_ToolCraft = ToolCraft
+	def _actualize_tool(self, fn: Callable, **kwargs):
+		return self._ToolCraft(self._gizmo, fn, **kwargs)
+
+
+	def __call__(self, fn):
+		return self._actualize_tool(fn)
 
 
 

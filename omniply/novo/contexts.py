@@ -5,31 +5,22 @@ from .kits import *
 
 
 class Context(AbstractContext):
-	def get(self, gizmo: str, default: Any = unspecified_argument):
+	def _grab_from_fallback(self, error: ToolFailedError, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		if ctx is None or ctx is self:
+			raise AssemblyFailedError(gizmo, error)
+			# raise error from error
+		return ctx.grab(gizmo)
+
+
+	def _grab(self, gizmo: str) -> Any:
+		return super().grab_from(self, gizmo)
+
+
+	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
 		try:
-			return self.get_from(None, gizmo)
-		except ToolFailedError:
-			if default is unspecified_argument:
-				raise
-			return default
-
-
-	def __getitem__(self, item):
-		return self.get(item)
-
-
-	def _get_from_fallback(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-		return ctx.get_from(self, gizmo)
-
-
-	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str,
-	             default: Optional[Any] = unspecified_argument) -> Any:
-		try:
-			out = super().get_from(self, gizmo)
-		except ToolFailedError:
-			if ctx is None or ctx is self:
-				raise
-			out = self._get_from_fallback(ctx, gizmo)
+			out = self._grab(gizmo)
+		except ToolFailedError as error:
+			out = self._grab_from_fallback(error, ctx, gizmo)
 		return self.package(out, gizmo=gizmo)
 
 
@@ -56,15 +47,17 @@ class Cached(AbstractContext, UserDict):
 		self.data.clear()
 
 
-	def _find_from(self, ctx: AbstractContext, gizmo: str) -> Any:
-		val = super().get_from(ctx, gizmo)
+	# def _find_from(self, ctx: AbstractContext, gizmo: str) -> Any:
+	# 	val = super().grab_from(ctx, gizmo)
+	# 	self.data[gizmo] = val  # cache loaded val
+	# 	return val
+
+
+	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		if self.is_cached(gizmo):
+			return self.data[gizmo]
+		val = super().grab_from(ctx, gizmo)
 		self.data[gizmo] = val  # cache loaded val
-		return val
-
-
-	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str,
-	             default: Optional[Any] = unspecified_argument) -> Any:
-		val = self.data[gizmo] if self.is_cached(gizmo) else self._find_from(ctx, gizmo)
 		return val
 
 
@@ -72,7 +65,9 @@ class Cached(AbstractContext, UserDict):
 ########################################################################################################################
 
 
-class SimpleGang(AbstractGang):
+class SimpleGang(Context, AbstractGang):
+	_current_context: Optional[AbstractContext]
+
 	def __init__(self, *, apply: Optional[Dict[str, str]] = None, **kwargs):
 		if apply is None:
 			apply = {}
@@ -93,9 +88,9 @@ class SimpleGang(AbstractGang):
 
 	@property
 	def external2internal(self) -> Dict[str, str]:
-		return self._infer_external2internal(self._raw_apply, self.gizmoto())
+		# return self._infer_external2internal(self._raw_apply, self.gizmoto())
 		if self._raw_reverse_apply is None:
-			self._raw_reverse_apply = self._infer_external2internal(self._raw_apply, self.gizmoto())
+			self._raw_reverse_apply = self._infer_external2internal(self._raw_apply, self._gizmos())
 		return self._raw_reverse_apply
 
 
@@ -118,31 +113,19 @@ class SimpleGang(AbstractGang):
 		return self.external2internal.get(gizmo, gizmo)
 
 
-	def gizmo_to(self, external: str) -> str:
-		return self.internal2external.get(external, external)
+	def gizmo_to(self, gizmo: str) -> str:
+		return self.internal2external.get(gizmo, gizmo)
 
 
-	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str,
-	             default: Optional[Any] = unspecified_argument) -> Any:
-		if ctx is None or ctx is self:
-			try:
-				out = super().get_from(self, gizmo)
-			except ToolFailedError:
-				if self._current_context is None:
-					raise
-				try:
-					return self._current_context.get_from(self, self.gizmo_to(gizmo))
-				except ToolFailedError as e:
-					raise AssemblyFailedError(gizmo, (self._current_context, e)) from e
-			else:
-				if self._current_context is None:
-					return out
-				return self._current_context.package(out)
+	def _grab_from_fallback(self, error: ToolFailedError, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		return super()._grab_from_fallback(error, self._current_context, self.gizmo_to(gizmo))
 
-		self._current_context = ctx
-		internal = self.gizmo_from(gizmo)
-		out = super().get_from(self, internal)
-		self._current_context = None
-		return out
+
+	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		if ctx is not None and ctx is not self:
+			assert self._current_context is None, f'Context already set to {self._current_context}'
+			self._current_context = ctx
+			gizmo = self.gizmo_from(gizmo) # convert to internal gizmo
+		return super().grab_from(self, gizmo)
 
 

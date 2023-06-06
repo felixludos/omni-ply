@@ -39,7 +39,7 @@ class IgnoreResetFlag(Exception):
 
 
 
-class ToolFailedError(Exception):
+class ToolFailedError(AbstractToolFailedError):
 	def __init__(self, gizmo: str, *, message: Optional[str] = None):
 		if message is None:
 			message = f'{gizmo!r}'
@@ -53,7 +53,7 @@ class ToolFailedError(Exception):
 
 
 class AssemblyFailedError(ToolFailedError):
-	def __init__(self, gizmo: str, failures: List[Tuple[AbstractTool, ToolFailedError]], *,
+	def __init__(self, gizmo: str, *failures: ToolFailedError,
 	             message: Optional[str] = None):
 		if message is None:
 			message = self.verbalize_failures(gizmo, failures)
@@ -67,9 +67,9 @@ class AssemblyFailedError(ToolFailedError):
 
 
 	@staticmethod
-	def verbalize_failures(gizmo: str, failures: List[Tuple[AbstractTool, ToolFailedError]]):
+	def verbalize_failures(gizmo: str, failures: Sequence[ToolFailedError]):
 		path = [e.gizmo for tool, e in failures]
-		terminal = failures[-1][1].reason()
+		terminal = failures[-1].reason()
 		return f'Failed to assemble {gizmo!r} due to {" -> ".join(path)} ({terminal!r})'
 
 

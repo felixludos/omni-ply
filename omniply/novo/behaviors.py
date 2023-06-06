@@ -126,10 +126,9 @@ class TraitTool(AbstractTool): # TODO: should this be an AbstractMultiTool?
 		return self._resolve_tool().gizmos()
 
 
-	def get_from(self, ctx: Optional['AbstractContext'], gizmo: str,
-	             default: Optional[Any] = unspecified_argument) -> Any:
+	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
 		tool = self._resolve_tool()
-		return tool.get_from(ctx, gizmo, default=default)
+		return tool.grab_from(ctx, gizmo)
 
 
 	def __repr__(self):
@@ -138,9 +137,8 @@ class TraitTool(AbstractTool): # TODO: should this be an AbstractMultiTool?
 
 
 class ScopeTraitKit(TraitTool):
-	def get_from(self, ctx: 'AbstractScopedContext', gizmo: str,
-	             default: Optional[Any] = unspecified_argument) -> Any:
-		return self._resolve_tool().get_from(ctx.scope_for(self), gizmo, default=default)
+	def grab_from(self, ctx: 'AbstractScopedContext', gizmo: str) -> Any:
+		return self._resolve_tool().grab_from(ctx.scope_for(self), gizmo)
 
 
 
