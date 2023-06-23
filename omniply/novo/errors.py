@@ -69,7 +69,7 @@ class AssemblyFailedError(ToolFailedError):
 
 	@staticmethod
 	def verbalize_failures(gizmo: str, failures: Sequence[ToolFailedError]):
-		path = [e.gizmo for tool, e in failures]
+		path = [e.gizmo for e in failures]
 		terminal = failures[-1].reason()
 		return f'Failed to assemble {gizmo!r} due to {" -> ".join(path)} ({terminal!r})'
 
