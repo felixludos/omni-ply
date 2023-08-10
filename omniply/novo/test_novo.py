@@ -239,6 +239,12 @@ class SuperModule(TestCraftyKitBase, Capable):
 		return (y - y_true) ** 2
 
 
+# class SuperModule2(SuperModule):
+# 	augmentation = trait(apply={'input': 'original', 'output': 'augmented'})
+# 	interpolator = trait(apply={'input1': 'original', 'input2': 'augmented', 'output': 'x'})
+# 	model = trait(apply={'input': 'augmented', 'output': 'y'})
+
+
 
 def test_trait():
 
