@@ -4,18 +4,105 @@ from .contexts import *
 from .kits import *
 
 
-class AbstractDecision(AbstractTool):
-	def choices(self) -> Iterator[Any]:
-		raise NotImplementedError
+class AbstractCrawler(AbstractContext):
+	def __init__(self, source = None):
+		super().__init__()
+		self._source = source
+		self._crawl_stack = []
+		self._decisions = []
+		self._base = {}
+		self._current = None
+
+	_StackEntry = namedtuple('_StackEntry', 'decision gizmo remaining')
+
+
+	def sub(self, base) -> Iterator[Any]:
+		return self._SubCrawler(self, base=base)
+
+
+	class _SubCrawler(Cached):
+		def __init__(self, owner, base=None):
+			if base is None:
+				base = {}
+			super().__init__()
+			self.owner = owner
+			self.update(base)
+
+		def select(self, decision: 'AbstractDecision', gizmo: str) -> Any:
+			return self.owner.select(decision, gizmo)
+
+		def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+			try:
+				return super().grab_from(ctx, gizmo)
+			except ToolFailedError:
+				return self.owner.grab_from(ctx, gizmo)
+
+
+	def __iter__(self):
+		return self
+
+
+	def __next__(self):
+		if not len(self._crawl_stack):
+			raise StopIteration
+
+		self._current = None
+
+		frame = self._crawl_stack.pop()
+
+		try:
+			value = next(frame.remaining)
+		except StopIteration:
+			if frame.gizmo in self._base:
+				del self._base[frame.gizmo]
+			return self.__next__()
+		else:
+			self._base[frame.gizmo] = value
+			self._current = self._SubCrawler(self._base)
+			return self._current
+
+
+	def select(self, decision: 'AbstractDecision', gizmo: str) -> Any:
+		if len(self._crawl_stack) > 0:
+			assert all(entry.gizmo != gizmo for entry in self._crawl_stack), 'recursive crawl detected'
+
+		generator = decision.choices(gizmo)
+		pick = next(generator)
+		self._crawl_stack.append(self._StackEntry(decision, gizmo, generator))
+		return pick
 
 
 	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-		raise NotImplementedError
+		if self._current is not None and ctx is not self._current:
+			return self._current.grab_from(self._current, gizmo) # traceless delegation to current
+		return self._source.grab_from(ctx, gizmo) # traceless delegation to owner
+
+	# def crawl(self, decision: 'AbstractDecision', gizmo: str) -> Iterator[Any]:
+	# 	return self._CrawlMonitor(self, decision, gizmo)
 
 
-	def sample(self, ctx):
-		raise NotImplementedError
+class SimpleCrawler(AbstractCrawler):
+
+
+
 	pass
+
+
+
+class AbstractDecision(AbstractTool):
+	def choices(self, gizmo: str) -> Iterator[Any]:
+		raise NotImplementedError
+
+
+	def choose(self, ctx, gizmo: str):
+		return ctx.select(self, gizmo)
+
+
+	def grab_from(self, ctx: Optional['AbstractCrawler'], gizmo: str) -> Any:
+		return ctx.select(self, gizmo)
+
+
+
 
 
 
@@ -96,7 +183,7 @@ class DynamicProduct:
 		pass
 
 
-class TestDecider(Cached, Context, TestKit, AbsractDecider):
+class TestDecider(Cached, Context, TestKit, AbstractCrawler):
 	def tools(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
 		if gizmo is None:
 			yield from filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values())))
@@ -106,8 +193,8 @@ class TestDecider(Cached, Context, TestKit, AbsractDecider):
 			yield from reversed(self._tools_table[gizmo])
 
 
-	class _Recorder(Cached, Context):
-		def __init__(self, parent: AbstractContext, target: str,
+	class _Crawler(Cached, Context):
+		def __init__(self, parent: Cached, target: str,
 					 sources: Optional[Dict[str, AbstractDecision]] = None):
 			if sources is None:
 				sources = {}
@@ -120,23 +207,42 @@ class TestDecider(Cached, Context, TestKit, AbsractDecider):
 			self._follower = None
 
 
-		# def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-		# 	if self._snapshot is not None and ctx is not self._snapshot:
-		# 		return self._snapshot.grab_from(ctx, gizmo)
-		# 	return super().grab_from(ctx, gizmo)
+		def cached(self) -> Iterator[str]:
+			yield from self._parent.cached()
+			yield from super().cached()
 
 
 		def __iter__(self):
 			return self
 
 
+		def _take_snapshot(self, old: AbstractContext, gizmo: str):
+			return type(self)(self, gizmo)
+
+
 		def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-			if not self._recording and self._follower is not None:
-				return self._follower.grab_from(ctx, gizmo)
+			if not self._recording:
+				if self._follower is None:
+					if not self.is_cached(gizmo):
+						return super().grab_from(self._take_snapshot(ctx, gizmo), gizmo)
+				elif ctx is not self._follower:
+					return self._follower.grab_from(ctx, gizmo)
 
-			out = super().grab_from(self, gizmo)
-
+			out = self._parent.grab_from(self, gizmo)
+			if gizmo == self._target:
+				self._recording = False
 			return out
+
+
+		def generate_target(self):
+			if len(self.options):
+				decision = self.options.pop()
+
+
+
+
+			pass
+
 
 
 		def __next__(self):
@@ -155,12 +261,13 @@ class TestDecider(Cached, Context, TestKit, AbsractDecider):
 			return self[self._target]
 
 
-
 	def spawn(self, target: str) -> Iterable[Any]:
-		return self._Recorder(self, target, self._tools_table[target])
+		return self._Crawler(self, target)
+
 
 	def spawn_gizmo(self, target: str) -> Iterable[Any]:
-		return self._Recorder(self, target, self._tools_table[target])
+		for ctx in self.spawn(target):
+			yield ctx[target]
 
 
 def test_decisions():

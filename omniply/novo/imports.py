@@ -4,7 +4,8 @@ from typing import Callable, Union, Optional, Any, Iterator, Iterable, Hashable,
 import inspect
 import logging
 from functools import lru_cache
-from collections import OrderedDict, UserDict
+from collections import OrderedDict, UserDict, namedtuple
+
 from itertools import chain, product
 
 from omnibelt import agnostic, unspecified_argument, filter_duplicates, \
