@@ -21,31 +21,35 @@ class AbstractCrawler(AbstractMogul):
 		raise NotImplementedError
 
 
-class SimpleFrame(Cached, Context, MutableKit):
+class SimpleFrame(Cached, Context, MutableKit, AbstractMogul):
 	def __init__(self, owner, base=None):
 		if base is None:
 			base = {}
 		super().__init__()
-		self.owner = owner
+		self._owner = owner
 		self.update(base)
 
+	@property
+	def current(self):
+		return self._owner.current
+
 	def __next__(self):
-		return next(self.owner)
+		return next(self._owner)
 
 	def __iter__(self):
-		return self.owner
+		return self._owner
 
 	def gizmos(self) -> Iterator[str]:
-		yield from filter_duplicates(super().gizmos(), self.owner.gizmos())
+		yield from filter_duplicates(super().gizmos(), self._owner.gizmos())
 
 	def select(self, decision: 'AbstractDecision', gizmo: str) -> Any:
-		return self.owner.select(decision, gizmo)
+		return self._owner.select(decision, gizmo)
 
 	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
 		try:
 			return super().grab_from(ctx, gizmo)
 		except ToolFailedError:
-			return self.owner.grab_from(ctx, gizmo)
+			return self._owner.grab_from(ctx, gizmo)
 
 
 class SimpleCrawler(AbstractMogul):
