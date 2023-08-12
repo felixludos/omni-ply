@@ -6,6 +6,7 @@ from .behaviors import *
 from .contexts import *
 from .quirks import *
 from .quirky import *
+from .spawning import *
 from .tools import ToolDecorator as tool
 
 # added by codespaces
@@ -271,9 +272,60 @@ def test_trait():
 
 
 
-# def test_end():
-# 	print('done')
+class TestCrawler(SimpleCrawler, MutableKit):
+	def spawn(self, gizmo: Optional[str] = None) -> Iterator[Any]:
+		if gizmo is not None:
+			self.current.grab(gizmo)
+		yield self.current
+		yield from self
 
+	def spawn_gizmo(self, gizmo: str) -> Iterator[str]:
+		yield self[gizmo]
+		for element in self:
+			yield element[gizmo]
+
+
+
+def test_decisions():
+
+	dec = SimpleDecision('simple', choices=[1, 2, 3])
+
+	gz = list(dec.gizmos())
+	assert gz == ['simple']
+
+	ctx = TestCrawler().include(dec)
+
+	gz = list(ctx.gizmos())
+	assert gz == ['simple']
+
+	x = ctx['simple']
+	assert x == 1
+
+	second = next(ctx)
+	assert second['simple'] == 2
+
+	rest = list(ctx)
+	assert len(rest) == 1
+	assert rest[0]['simple'] == 3
+
+
+
+def test_multi_decision():
+	@tool('c')
+	def c(a, b):
+		return a + b
+
+	a = SimpleDecision('a', choices=[10, 20, 30])
+	b = SimpleDecision('b', choices=[1, 2, 3])
+
+	ctx = TestCrawler().include(a, b, c)
+
+	assert list(ctx.gizmos()) == ['a', 'b', 'c']
+
+	itr = ctx.spawn('c')
+
+	results = list(itr)
+	assert results == [11, 12, 13, 21, 22, 23, 31, 32, 33]
 
 
 
