@@ -113,11 +113,12 @@ class AbstractDecision(AbstractTool):
 	def choices(self, gizmo: str) -> Iterator[Any]:
 		raise NotImplementedError
 
-	def choose(self, ctx: AbstractCrawler, gizmo: str) -> Any:
+	def choose(self, ctx: AbstractContext, gizmo: str) -> Any:
 		raise NotImplementedError
 
-	def grab_from(self, ctx: AbstractCrawler, gizmo: str) -> Any:
+	def grab_from(self, ctx: AbstractContext, gizmo: str) -> Any:
 		return self.choose(ctx, gizmo)
+
 
 
 class SimpleDecision(AbstractDecision):
