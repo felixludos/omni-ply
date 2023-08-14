@@ -52,63 +52,6 @@ class SimpleFrame(Cached, Context, MutableKit, AbstractMogul):
 			return self._owner.grab_from(ctx, gizmo)
 
 
-class SimpleCrawler(AbstractMogul):
-	def __init__(self, source = None, **kwargs):
-		super().__init__(**kwargs)
-		self._current = None
-		self._source = source
-		self._crawl_stack = []
-		self._base = {}
-
-	_StackEntry = namedtuple('_StackEntry', 'decision gizmo remaining')
-	_SubCrawler = SimpleFrame
-
-	def sub(self, base: Dict[str, Any] = None) -> Iterator[Any]:
-		return self._SubCrawler(self, base=base)
-
-	def __next__(self):
-		if not len(self._crawl_stack):
-			raise StopIteration
-
-		self._current = None
-		frame = self._crawl_stack.pop()
-
-		try:
-			value = next(frame.remaining)
-		except StopIteration:
-			if frame.gizmo in self._base:
-				del self._base[frame.gizmo]
-			return self.__next__()
-		else:
-			self._base[frame.gizmo] = value
-			self._current = self.sub(self._base)
-			self._crawl_stack.append(frame)
-			return self._current
-
-	def select(self, decision: 'AbstractDecision', gizmo: str) -> Any:
-		if len(self._crawl_stack) > 0:
-			assert all(entry.gizmo != gizmo for entry in self._crawl_stack), 'recursive crawl detected'
-
-		generator = decision.choices(gizmo)
-		pick = next(generator)
-		self._base[gizmo] = pick
-		self._crawl_stack.append(self._StackEntry(decision, gizmo, generator))
-		return pick
-
-	@property
-	def current(self):
-		if self._current is None:
-			self._current = self.sub(self._base)
-		return self._current
-
-	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-		if ctx is not self.current:
-			return self.current.grab_from(self.current, gizmo) # traceless delegation to current
-		if self._source is None:
-			return super().grab_from(ctx, gizmo)
-		return self._source.grab_from(ctx, gizmo) # traceless delegation to owner
-
-
 class AbstractDecision(AbstractTool):
 	def choices(self, gizmo: str) -> Iterator[Any]:
 		raise NotImplementedError
@@ -118,6 +61,89 @@ class AbstractDecision(AbstractTool):
 
 	def grab_from(self, ctx: AbstractContext, gizmo: str) -> Any:
 		return self.choose(ctx, gizmo)
+
+
+class SimpleCrawler(AbstractMogul): # TODO: include all options if there are multiple vendors!
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
+		self._current = None
+		self._crawl_stack = OrderedDict()
+		self._base = {}
+
+	_StackEntry = namedtuple('_StackEntry', 'gizmo decision remaining')
+	_SubCrawler = SimpleFrame
+	_SubDecision = AbstractDecision
+
+	def sub(self, base: Dict[str, Any] = None) -> Iterator[Any]:
+		return self._SubCrawler(self, base=base)
+
+
+	def _crawler(self, ctx, gizmo):
+		for vendor in self._vendors(gizmo):
+			try:
+				if isinstance(vendor, self._SubDecision):
+					yield from vendor.choices(gizmo)
+				else:
+					yield super().grab_from(ctx, gizmo)
+					return
+			except ToolFailedError:
+				pass
+
+
+	def _crawl(self):
+		gizmo, remaining = self._crawl_stack.popitem()
+
+		try:
+			value = next(remaining)
+		except StopIteration:
+			if gizmo in self._base:
+				del self._base[gizmo]
+			return self.__next__()
+		else:
+			self._base[gizmo] = value
+			self._current = self.sub(self._base)
+			self._crawl_stack[gizmo] = remaining
+			return self._current
+		pass
+
+	def __next__(self):
+		if not len(self._crawl_stack):
+			raise StopIteration
+
+		self._current = None
+		gizmo, remaining = self._crawl_stack.popitem()
+
+		try:
+			value = next(remaining)
+		except StopIteration:
+			if gizmo in self._base:
+				del self._base[gizmo]
+			return self.__next__()
+		else:
+			self._base[gizmo] = value
+			self._current = self.sub(self._base)
+			self._crawl_stack[gizmo] = remaining
+			return self._current
+
+	@property
+	def current(self):
+		if self._current is None:
+			self._current = self.sub(self._base)
+		return self._current
+
+	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		if not isinstance(ctx, self._SubCrawler):
+			return self.current.grab_from(self.current, gizmo) # traceless delegation to current
+
+		return self._crawl()
+
+		return self._crawl(ctx, gizmo)
+
+
+
+		if self._source is None:
+			return super().grab_from(ctx, gizmo)
+		return self._source.grab_from(ctx, gizmo) # traceless delegation to owner
 
 
 
