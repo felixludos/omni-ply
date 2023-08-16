@@ -21,13 +21,14 @@ class AbstractCrawler(AbstractMogul):
 		raise NotImplementedError
 
 
-class SimpleFrame(Cached, Context, MutableKit, AbstractMogul):
+class SimpleFrame(Cached, Context, MutableKit, AbstractCrawler):
 	def __init__(self, owner, base=None):
 		if base is None:
 			base = {}
 		super().__init__()
 		self._owner = owner
-		self.update(base)
+		# self.update(base)
+		self._frame = base # choices that were made
 
 	@property
 	def current(self):
@@ -43,13 +44,20 @@ class SimpleFrame(Cached, Context, MutableKit, AbstractMogul):
 		yield from filter_duplicates(super().gizmos(), self._owner.gizmos())
 
 	def select(self, decision: 'AbstractDecision', gizmo: str) -> Any:
-		return self._owner.select(decision, gizmo)
+		if gizmo in self._frame:
+			return self._frame[gizmo]
+		value = self._owner.select(decision, gizmo)
+		self._frame[gizmo] = value
+		return value
 
 	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		# if ctx is self._owner: # for non-traceless delegation
+		# 	return self._owner.grab_from(self, gizmo)
 		try:
 			return super().grab_from(ctx, gizmo)
 		except ToolFailedError:
-			return self._owner.grab_from(ctx, gizmo)
+			return self._owner.grab_from(self, gizmo)
+
 
 
 class AbstractDecision(AbstractTool):
@@ -58,69 +66,51 @@ class AbstractDecision(AbstractTool):
 
 
 
-class SimpleCrawler(AbstractMogul): # TODO: include all options if there are multiple vendors!
-	def __init__(self, **kwargs):
-		super().__init__(**kwargs)
+class SimpleCrawler(AbstractCrawler): # TODO: include all options if there are multiple vendors!
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
 		self._current = None
 		self._crawl_stack = OrderedDict()
-		self._crawl_vendors = {}
-		self._base = {}
+		self._current_base = {}
 
-	_StackEntry = namedtuple('_StackEntry', 'gizmo decision remaining')
+	# _StackEntry = namedtuple('_StackEntry', 'gizmo decision remaining')
 	_SubCrawler = SimpleFrame
 	_SubDecision = AbstractDecision
 
-	def _create_frame(self) -> Iterator[Any]:
-		return self._SubCrawler(self, base=self._base)
+	def select(self, decision: 'AbstractDecision', gizmo: str) -> Any:
+		assert isinstance(decision, self._SubDecision), f'Expected {self._SubDecision}, got {decision}'
+		if gizmo in self._current_base: # (past) frames lazily get missing base values from current -> can be tricky
+			return self._current_base[gizmo]
+		assert gizmo not in self._crawl_stack, f'Gizmo {gizmo} already selected'
+		options = decision.choices(gizmo)
+		self._crawl_stack[gizmo] = options
+		return self._crawl_step()
 
+	def _crawl_step(self):
+		assert len(self._crawl_stack) > 0, 'Nothing to crawl'
 
-	def _crawler(self, ctx, gizmo):
-		for vendor in self._vendors(gizmo):
-			try:
-				if isinstance(vendor, self._SubDecision):
-					yield from vendor.choices(gizmo)
-				else:
-					yield vendor.grab_from(ctx, gizmo)
-			except ToolFailedError:
-				pass
-			else:
-				return # after the first success, we're done
-
-	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-		if not isinstance(ctx, self._SubCrawler):
-			return super().grab_from(ctx, gizmo)
-
-		
-
-		for vendor in self._vendors(gizmo):
-			try:
-				return vendor.grab_from(ctx, gizmo)
-			except ToolFailedError:
-				pass
-
-
-		return ctx[gizmo]
-
-
-	def _crawl(self):
 		gizmo, remaining = self._crawl_stack.popitem()
+		if gizmo in self._current_base: # removed previous value from cache
+			del self._current_base[gizmo]
 
-		try:
-			value = next(remaining)
-		except StopIteration:
-			if gizmo in self._base:
-				del self._base[gizmo]
-			return self.__next__()
-		else:
-			self._base[gizmo] = value
-			self._current = self._create_frame()
-			self._crawl_stack[gizmo] = remaining
-			return self._current
+		value = next(remaining)
+		self._current_base[gizmo] = value
+		self._crawl_stack[gizmo] = remaining
+		return value
 
 	def __next__(self):
-		if not len(self._crawl_stack):
-			raise StopIteration
-		return self._crawl()
+		while len(self._crawl_stack) > 0:
+			try:
+				self._crawl_step()
+			except StopIteration:
+				pass
+			else:
+				self._current = self._create_frame()
+				return self._current
+		raise StopIteration
+
+	def _create_frame(self) -> Iterator[Any]:
+		return self._SubCrawler(self, base=self._current_base.copy())
 
 	@property
 	def current(self):
@@ -129,43 +119,10 @@ class SimpleCrawler(AbstractMogul): # TODO: include all options if there are mul
 		return self._current
 
 	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-		if not isinstance(ctx, self._SubCrawler):
+		if not isinstance(ctx, self._SubCrawler):# and self._current is not None:
 			return self.current.grab_from(self.current, gizmo) # traceless delegation to current
-
 		# current frame has not yet loaded this gizmo - it must be grabbed for real
-
-		if gizmo in self._crawl_stack: # can only happen if gizmo is loopy
-			return self._base[gizmo]
-
-
-		if gizmo not in self._crawl_stack:
-			self._crawl_stack[gizmo] = self._crawler(ctx, gizmo)
-		return self._crawl()[gizmo]
-
-
-
-		if self._source is None:
-			return super().grab_from(ctx, gizmo)
-		return self._source.grab_from(ctx, gizmo) # traceless delegation to owner
-
-
-
-class SimpleDecision(AbstractDecision):
-	def __init__(self, gizmo: str, choices: Iterable[Any] = ()):
-		if not isinstance(choices, (list, tuple)):
-			choices = list(choices)
-		super().__init__()
-		self._choices = choices
-		self._gizmo = gizmo
-
-	def gizmos(self) -> Iterator[str]:
-		yield self._gizmo
-
-	def __len__(self):
-		return len(self._choices)
-
-	def choices(self, gizmo: str = None):
-		yield from self._choices
+		return super().grab_from(ctx, gizmo)
 
 
 

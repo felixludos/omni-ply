@@ -272,10 +272,7 @@ def test_trait():
 
 
 
-class TestCrawler(SimpleCrawler, MutableKit):
-	def random_select(self, options: Iterator[Any]) -> Any:
-		return next(options)
-
+class TestCrawler(SimpleCrawler, LoopyKit, MutableKit):
 	def spawn(self, gizmo: Optional[str] = None) -> Iterator[Any]:
 		if gizmo is not None:
 			self.current.grab(gizmo)
@@ -289,11 +286,27 @@ class TestCrawler(SimpleCrawler, MutableKit):
 
 
 
-class TestDecision(SimpleDecision):
-	def grab_from(self, ctx: TestCrawler, gizmo: str) -> Any:
-		assert gizmo == self._gizmo, f'Expected {self._gizmo}, got {gizmo}'
-		return ctx.random_select(self.choices())
+class TestDecision(AbstractDecision):
+	def __init__(self, gizmo: str, choices: Iterable[Any] = (), **kwargs):
+		if not isinstance(choices, (list, tuple)):
+			choices = list(choices)
+		super().__init__(**kwargs)
+		self._choices = choices
+		self._gizmo = gizmo
 
+	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		if isinstance(ctx, AbstractCrawler):
+			return ctx.select(self, gizmo)
+		return super().grab_from(ctx, gizmo)
+
+	def gizmos(self) -> Iterator[str]:
+		yield self._gizmo
+
+	def __len__(self):
+		return len(self._choices)
+
+	def choices(self, gizmo: str = None):
+		yield from self._choices
 
 
 def test_decisions():
@@ -327,13 +340,16 @@ def test_tooled_decision():
 	def negative(chain):
 		return -chain
 
-	ctx = TestCrawler().include(dec, negative)
+	ctx = TestCrawler().include(negative, dec)
 
 	assert list(ctx.gizmos()) == ['chain']
 
 	itr = ctx.spawn('chain')
 
-	results = list(itr)
+	frames = list(itr)
+	results = []
+	for f in frames:
+		results.append(f['chain'])
 	assert results == [-1, -2, -3]
 
 
@@ -350,7 +366,7 @@ def test_multi_decision():
 
 	assert list(ctx.gizmos()) == ['a', 'b', 'c']
 
-	itr = ctx.spawn('c')
+	itr = ctx.spawn_gizmo('c')
 
 	results = list(itr)
 	assert results == [11, 12, 13, 21, 22, 23, 31, 32, 33]
