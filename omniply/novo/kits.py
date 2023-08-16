@@ -60,12 +60,12 @@ class Kit(AbstractToolKit, ToolBase):
 class LoopyKit(Kit):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self._get_from_status: Optional[Dict[str, Iterator[AbstractTool]]] = {}
+		self._grabber_stack: Optional[Dict[str, Iterator[AbstractTool]]] = {}
 
 
 	def grab_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
 		failures = []
-		itr = self._get_from_status.setdefault(gizmo, self._vendors(gizmo))
+		itr = self._grabber_stack.setdefault(gizmo, self._vendors(gizmo))
 		# should be the same as Kit, except the iterators are cached until the gizmo is produced
 		for tool in itr:
 			try:
@@ -76,8 +76,8 @@ class LoopyKit(Kit):
 				prt.debug(f'{tool!r} failed while trying to produce: {gizmo!r}')
 				raise
 			else:
-				if gizmo in self._get_from_status:
-					self._get_from_status.pop(gizmo)
+				if gizmo in self._grabber_stack:
+					self._grabber_stack.pop(gizmo)
 				return out
 		if failures:
 			raise self._AssemblyFailedError(gizmo, failures)
