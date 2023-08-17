@@ -47,7 +47,8 @@ class Kit(AbstractToolKit, ToolBase):
 			try:
 				return tool.grab_from(ctx, gizmo)
 			except ToolFailedError as e:
-				failures.append((tool, e))
+				e.tool = tool
+				failures.append(e)
 			except:
 				prt.debug(f'{tool!r} failed while trying to produce: {gizmo!r}')
 				raise
@@ -71,7 +72,8 @@ class LoopyKit(Kit):
 			try:
 				out = tool.grab_from(ctx, gizmo)
 			except ToolFailedError as e:
-				failures.append((tool, e))
+				e.tool = tool
+				failures.append(e)
 			except:
 				prt.debug(f'{tool!r} failed while trying to produce: {gizmo!r}')
 				raise
@@ -80,13 +82,13 @@ class LoopyKit(Kit):
 					self._grabber_stack.pop(gizmo)
 				return out
 		if failures:
-			raise self._AssemblyFailedError(gizmo, failures)
+			raise self._AssemblyFailedError(gizmo, *failures)
 		raise self._ToolFailedError(gizmo)
 
 
 
 class MutableKit(Kit):
-	def include(self, *tools: AbstractTool) -> 'MutableKit': # TODO: return Self
+	def include(self, *tools: Union[AbstractTool, Callable]) -> 'MutableKit': # TODO: return Self
 		'''adds given tools in reverse order'''
 		return self.extend(tools)
 		

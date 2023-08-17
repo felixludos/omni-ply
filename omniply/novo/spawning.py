@@ -50,13 +50,8 @@ class SimpleFrame(Cached, Context, MutableKit, AbstractCrawler):
 		self._frame[gizmo] = value
 		return value
 
-	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
-		# if ctx is self._owner: # for non-traceless delegation
-		# 	return self._owner.grab_from(self, gizmo)
-		try:
-			return super().grab_from(ctx, gizmo)
-		except ToolFailedError:
-			return self._owner.grab_from(self, gizmo)
+	def _grab_from_fallback(self, error: ToolFailedError, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+		return self._owner.grab_from(self, gizmo)
 
 
 

@@ -49,7 +49,7 @@ class ToolFailedError(AbstractToolFailedError):
 
 
 	def reason(self):
-		return 'failed'
+		return f'{self.gizmo!r} {self.__class__.__name__}'
 
 
 
@@ -64,14 +64,15 @@ class AssemblyFailedError(ToolFailedError):
 
 
 	def reason(self):
-		return f'tried {len(self.failures)} tool/s'
+		return f'{self.gizmo} [{", ".join(f.reason() if isinstance(f, ToolFailedError) else repr(f) for f in self.failures)}]'
 
 
 	@staticmethod
 	def verbalize_failures(gizmo: str, failures: Sequence[ToolFailedError]):
-		path = [e.gizmo for e in failures]
-		terminal = failures[-1].reason()
-		return f'Failed to assemble {gizmo!r} due to {" -> ".join(path)} ({terminal!r})'
+		# path = [repr(e.gizmo) for e in failures]
+		# terminal = failures[-1].reason()
+		reason = f'[{", ".join(f.reason() if isinstance(f, ToolFailedError) else repr(f) for f in failures)}]'
+		return f'{gizmo!r} due to {reason}'
 
 
 
@@ -83,7 +84,7 @@ class MissingGizmoError(ToolFailedError, KeyError):
 
 
 	def reason(self):
-		return 'missing'
+		return f'missing {self.gizmo!r}'
 
 
 
