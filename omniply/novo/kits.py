@@ -81,6 +81,8 @@ class LoopyKit(Kit):
 				if gizmo in self._grabber_stack:
 					self._grabber_stack.pop(gizmo)
 				return out
+		if gizmo in self._grabber_stack:
+			self._grabber_stack.pop(gizmo)
 		if failures:
 			raise self._AssemblyFailedError(gizmo, *failures)
 		raise self._ToolFailedError(gizmo)

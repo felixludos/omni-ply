@@ -50,7 +50,7 @@ class SimpleFrame(Cached, Context, MutableKit, AbstractCrawler):
 		self._frame[gizmo] = value
 		return value
 
-	def _grab_from_fallback(self, error: ToolFailedError, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+	def _grab(self, gizmo: str) -> Any:
 		return self._owner.grab_from(self, gizmo)
 
 

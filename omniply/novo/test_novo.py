@@ -7,9 +7,14 @@ from .contexts import *
 from .quirks import *
 from .quirky import *
 from .spawning import *
-from .tools import ToolDecorator as tool
+from .tools import ToolDecorator, AutoToolDecorator
 
 # added by codespaces
+
+
+class tool(AutoToolDecorator):
+	from_context = ToolDecorator
+
 
 
 class TestKit(LoopyKit, MutableKit):
