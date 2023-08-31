@@ -1,10 +1,8 @@
-from .imports import *
-from .abstract import *
 from .contexts import *
 from .kits import *
 
 
-class AbstractMogul(AbstractContext):
+class AbstractMogul(AbstractGig):
 	def __iter__(self):
 		return self
 
@@ -21,7 +19,7 @@ class AbstractCrawler(AbstractMogul):
 		raise NotImplementedError
 
 
-class SimpleFrame(Cached, Context, MutableKit, AbstractCrawler):
+class SimpleFrame(Cached, Gig, MutableKit, AbstractCrawler):
 	def __init__(self, owner, base=None):
 		if base is None:
 			base = {}
@@ -55,7 +53,7 @@ class SimpleFrame(Cached, Context, MutableKit, AbstractCrawler):
 
 
 
-class AbstractDecision(AbstractTool):
+class AbstractDecision(AbstractGadget):
 	def choices(self, gizmo: str) -> Iterator[Any]:
 		raise NotImplementedError
 
@@ -113,7 +111,7 @@ class SimpleCrawler(AbstractCrawler): # TODO: include all options if there are m
 			self._current = self._create_frame()
 		return self._current
 
-	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
 		if not isinstance(ctx, self._SubCrawler):# and self._current is not None:
 			return self.current.grab_from(self.current, gizmo) # traceless delegation to current
 		# current frame has not yet loaded this gizmo - it must be grabbed for real

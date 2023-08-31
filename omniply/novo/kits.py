@@ -1,7 +1,3 @@
-from .imports import *
-
-from .abstract import *
-from .errors import *
 from .tools import *
 
 
@@ -12,7 +8,7 @@ from .tools import *
 
 
 class Kit(AbstractToolKit, ToolBase):
-	_tools_table: Dict[str, List[AbstractTool]] # tools are kept in O-N order (reversed) for easy updates
+	_tools_table: Dict[str, List[AbstractGadget]] # tools are kept in O-N order (reversed) for easy updates
 
 	def __init__(self, *args, tools_table: Optional[Mapping] = None, **kwargs):
 		if tools_table is None:
@@ -29,7 +25,7 @@ class Kit(AbstractToolKit, ToolBase):
 		return gizmo in self._tools_table
 
 
-	def _vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+	def _vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
 		if gizmo is None:
 			for tool in filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values()))):
 				yield from tool.vendors(gizmo)
@@ -41,12 +37,12 @@ class Kit(AbstractToolKit, ToolBase):
 
 
 	_AssemblyFailedError = AssemblyFailedError
-	def grab_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
 		failures = []
 		for tool in self._vendors(gizmo):
 			try:
 				return tool.grab_from(ctx, gizmo)
-			except ToolFailedError as e:
+			except GadgetFailedError as e:
 				e.tool = tool
 				failures.append(e)
 			except:
@@ -61,17 +57,17 @@ class Kit(AbstractToolKit, ToolBase):
 class LoopyKit(Kit):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self._grabber_stack: Optional[Dict[str, Iterator[AbstractTool]]] = {}
+		self._grabber_stack: Optional[Dict[str, Iterator[AbstractGadget]]] = {}
 
 
-	def grab_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
 		failures = []
 		itr = self._grabber_stack.setdefault(gizmo, self._vendors(gizmo))
 		# should be the same as Kit, except the iterators are cached until the gizmo is produced
 		for tool in itr:
 			try:
 				out = tool.grab_from(ctx, gizmo)
-			except ToolFailedError as e:
+			except GadgetFailedError as e:
 				e.tool = tool
 				failures.append(e)
 			except:
@@ -90,12 +86,12 @@ class LoopyKit(Kit):
 
 
 class MutableKit(Kit):
-	def include(self, *tools: Union[AbstractTool, Callable]) -> 'MutableKit': # TODO: return Self
+	def include(self, *tools: Union[AbstractGadget, Callable]) -> 'MutableKit': # TODO: return Self
 		'''adds given tools in reverse order'''
 		return self.extend(tools)
 		
 		
-	def extend(self, tools: Iterable[AbstractTool]) -> 'MutableKit':
+	def extend(self, tools: Iterable[AbstractGadget]) -> 'MutableKit':
 		new = {}
 		for tool in tools:
 			for gizmo in tool.gizmos():
@@ -109,7 +105,7 @@ class MutableKit(Kit):
 		return self
 
 
-	def exclude(self, *tools: AbstractTool) -> 'MutableKit':
+	def exclude(self, *tools: AbstractGadget) -> 'MutableKit':
 		'''removes the given tools, if they are found'''
 		for tool in tools:
 			for gizmo in tool.gizmos():

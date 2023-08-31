@@ -1,11 +1,9 @@
-from .imports import *
-from .abstract import *
 from .kits import *
 
 
 
-class Context(AbstractContext):
-	def _grab_from_fallback(self, error: ToolFailedError, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+class Gig(AbstractGig):
+	def _grab_from_fallback(self, error: GadgetFailedError, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
 		if ctx is None or ctx is self:
 			raise AssemblyFailedError(gizmo, error)
 			# raise error from error
@@ -16,16 +14,16 @@ class Context(AbstractContext):
 		return super().grab_from(self, gizmo)
 
 
-	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
 		try:
 			out = self._grab(gizmo)
-		except ToolFailedError as error:
+		except GadgetFailedError as error:
 			out = self._grab_from_fallback(error, ctx, gizmo)
 		return self.package(out, gizmo=gizmo)
 
 
 
-class Cached(AbstractContext, UserDict):
+class Cached(AbstractGig, UserDict):
 	def __repr__(self):
 		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + gizmo + '}') for gizmo in self.gizmos()]
 		return f'{self.__class__.__name__}({", ".join(gizmos)})'
@@ -53,7 +51,7 @@ class Cached(AbstractContext, UserDict):
 	# 	return val
 
 
-	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
 		if self.is_cached(gizmo):
 			return self.data[gizmo]
 		val = super().grab_from(ctx, gizmo)
@@ -65,8 +63,8 @@ class Cached(AbstractContext, UserDict):
 ########################################################################################################################
 
 
-class SimpleGang(Context, AbstractGang):
-	_current_context: Optional[AbstractContext]
+class SimpleGang(Gig, AbstractGang):
+	_current_context: Optional[AbstractGig]
 
 	def __init__(self, *, apply: Optional[Dict[str, str]] = None, **kwargs):
 		if apply is None:
@@ -117,11 +115,11 @@ class SimpleGang(Context, AbstractGang):
 		return self.internal2external.get(gizmo, gizmo)
 
 
-	def _grab_from_fallback(self, error: ToolFailedError, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+	def _grab_from_fallback(self, error: GadgetFailedError, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
 		return super()._grab_from_fallback(error, self._current_context, self.gizmo_to(gizmo))
 
 
-	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
 		if ctx is not None and ctx is not self:
 			assert self._current_context is None, f'Context already set to {self._current_context}'
 			self._current_context = ctx

@@ -18,7 +18,7 @@ class tool(AutoToolDecorator):
 
 
 class TestKit(LoopyKit, MutableKit):
-	def __init__(self, *tools: AbstractTool, **kwargs):
+	def __init__(self, *tools: AbstractGadget, **kwargs):
 		super().__init__(**kwargs)
 		self.include(*tools)
 
@@ -31,8 +31,8 @@ class TestCraftyKitBase(CraftyKit):
 
 
 
-class TestContext(Cached, Context, TestKit):#, Kit, AbstractContext):
-	def tools(self, gizmo: Optional[str] = None) -> Iterator[AbstractTool]:
+class TestContext(Cached, Gig, TestKit):#, Kit, AbstractContext):
+	def tools(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
 		if gizmo is None:
 			yield from filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values())))
 		else:
@@ -187,7 +187,7 @@ def test_crafty_kit_inheritance():
 
 
 
-class LambdaTool(AbstractTool):
+class LambdaTool(AbstractGadget):
 	def __init__(self, fn, inp='input', out='output', **kwargs):
 		if isinstance(inp, str):
 			inp = [inp]
@@ -205,9 +205,9 @@ class LambdaTool(AbstractTool):
 		yield self.output_key
 
 
-	def grab_from(self, ctx: Optional[AbstractContext], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		if gizmo != self.output_key:
-			raise ToolFailedError(gizmo)
+			raise GadgetFailedError(gizmo)
 		# inputs = [ctx[g] for g in self.input_keys]
 		inputs = [ctx.grab_from(ctx, g) for g in self.input_keys]
 		return self.fn(*inputs)
@@ -299,7 +299,7 @@ class TestDecision(AbstractDecision):
 		self._choices = choices
 		self._gizmo = gizmo
 
-	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
 		if isinstance(ctx, AbstractCrawler):
 			return ctx.select(self, gizmo)
 		return super().grab_from(ctx, gizmo)

@@ -107,7 +107,7 @@ class CachedArtQuality(ArtQuality):
 
 
 
-class TraitTool(AbstractTool): # TODO: should this be an AbstractMultiTool?
+class TraitTool(AbstractGadget): # TODO: should this be an AbstractMultiTool?
 	'''
 	delegates work to submodule by accessing it with `getattr(self.owner, self.attrname)`
 	(thereby building lazily)
@@ -126,7 +126,7 @@ class TraitTool(AbstractTool): # TODO: should this be an AbstractMultiTool?
 		return self._resolve_tool().gizmos()
 
 
-	def grab_from(self, ctx: Optional['AbstractContext'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
 		tool = self._resolve_tool()
 		return tool.grab_from(ctx, gizmo)
 

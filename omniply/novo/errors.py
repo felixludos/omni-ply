@@ -1,6 +1,4 @@
-from .imports import *
-from .patterns import *
-from .abstract import *
+from omniply.core.abstract import *
 
 
 class ApplicationAmbiguityError(ValueError):
@@ -40,7 +38,7 @@ class IgnoreResetFlag(Exception):
 
 
 
-class ToolFailedError(AbstractToolFailedError):
+class GadgetFailedError(AbstractGadgetFailedError):
 	def __init__(self, gizmo: str, *, message: Optional[str] = None):
 		if message is None:
 			message = f'{gizmo!r}'
@@ -53,9 +51,9 @@ class ToolFailedError(AbstractToolFailedError):
 
 
 
-class AssemblyFailedError(ToolFailedError):
-	def __init__(self, gizmo: str, *failures: ToolFailedError,
-	             message: Optional[str] = None):
+class AssemblyFailedError(GadgetFailedError):
+	def __init__(self, gizmo: str, *failures: GadgetFailedError,
+                 message: Optional[str] = None):
 		if message is None:
 			message = self.verbalize_failures(gizmo, failures)
 		super().__init__(gizmo, message=message)
@@ -64,19 +62,19 @@ class AssemblyFailedError(ToolFailedError):
 
 
 	def reason(self):
-		return f'{self.gizmo} [{", ".join(f.reason() if isinstance(f, ToolFailedError) else repr(f) for f in self.failures)}]'
+		return f'{self.gizmo} [{", ".join(f.reason() if isinstance(f, GadgetFailedError) else repr(f) for f in self.failures)}]'
 
 
 	@staticmethod
-	def verbalize_failures(gizmo: str, failures: Sequence[ToolFailedError]):
+	def verbalize_failures(gizmo: str, failures: Sequence[GadgetFailedError]):
 		# path = [repr(e.gizmo) for e in failures]
 		# terminal = failures[-1].reason()
-		reason = f'[{", ".join(f.reason() if isinstance(f, ToolFailedError) else repr(f) for f in failures)}]'
+		reason = f'[{", ".join(f.reason() if isinstance(f, GadgetFailedError) else repr(f) for f in failures)}]'
 		return f'{gizmo!r} due to {reason}'
 
 
 
-class MissingGizmoError(ToolFailedError, KeyError):
+class MissingGizmoError(GadgetFailedError, KeyError):
 	def __init__(self, gizmo: str, *, message: Optional[str] = None):
 		if message is None:
 			message = gizmo

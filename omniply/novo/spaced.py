@@ -1,10 +1,9 @@
-from .imports import *
-from .abstract import *
+from omniply.core.abstract import *
 
 
 
-class AbstractSpaced(AbstractTool):
-	def space_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
+class AbstractSpaced(AbstractGadget):
+	def space_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
 		raise NotImplementedError
 
 
@@ -12,7 +11,7 @@ class AbstractSpaced(AbstractTool):
 		raise NotImplementedError
 
 
-	def space_from(self, ctx: 'AbstractContext', gizmo: str) -> Any:
+	def space_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
 		raise NotImplementedError
 
 
