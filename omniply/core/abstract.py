@@ -2,6 +2,7 @@ from typing import Iterator, Iterable, Optional, Any
 from omnibelt import unspecified_argument
 
 
+
 class AbstractGadget:
 	def gizmos(self) -> Iterator[str]:
 		'''lists known products of this tool'''
@@ -72,14 +73,14 @@ class AbstractGadgetFailedError(Exception):
 
 
 class AbstractGang(AbstractGig):
-	def _gizmos(self) -> Iterator[str]:
-		'''lists gizmos produced by self (using internal names)'''
-		yield from super().gizmos()
-
-	def gizmos(self) -> Iterator[str]:
-		'''lists gizmos produced by self (using external names)'''
-		for gizmo in self._gizmos():
-			yield self.gizmo_to(gizmo)
+	# def _gizmos(self) -> Iterator[str]:
+	# 	'''lists gizmos produced by self (using internal names)'''
+	# 	yield from super().gizmos()
+	#
+	# def gizmos(self) -> Iterator[str]:
+	# 	'''lists gizmos produced by self (using external names)'''
+	# 	for gizmo in self._gizmos():
+	# 		yield self.gizmo_to(gizmo)
 
 	def gizmo_from(self, gizmo: str) -> str: # external -> internal
 		'''converts external -> internal gizmo names'''
