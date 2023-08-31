@@ -5,3 +5,6 @@
 Tools and structures for stellar research code without compromises.
 
 This project is currently under development - lots of cool things coming soon.
+
+This branch contains a checkpoint during development with lots of both old and new features.
+Preparation for MVP (no init).
