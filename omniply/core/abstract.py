@@ -1,4 +1,4 @@
-from typing import Iterator, Iterable, Optional, Any
+from typing import Iterator, Optional, Any
 from omnibelt import unspecified_argument
 
 
@@ -37,9 +37,11 @@ class AbstractGaggle(AbstractGadget):
 class AbstractMultiGadget(AbstractGaggle):
 	'''a special kind of gaggle that doesn't allow subtools to be accessed directly through vendors()'''
 	def gadgets(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
+		'''yields self, since this is a multi-gadget so it doesn't delegate to subgadgets'''
 		yield self
 
 	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
+		'''yields self, since this is a multi-gadget so it doesn't delegate to subgadgets'''
 		yield self
 
 
@@ -54,6 +56,10 @@ class AbstractGig(AbstractMultiGadget):
 	Also, generally gigs are the top-level interface for users.
 	'''
 	def grab(self, gizmo: str, default: Any = unspecified_argument):
+		'''
+		convenience function for grab_from to match dict.get api
+		returns the given gizmo from this gadget, or raises ToolFailedError
+		'''
 		try:
 			return self.grab_from(None, gizmo)
 		except AbstractGadgetFailedError:
@@ -66,6 +72,7 @@ class AbstractGig(AbstractMultiGadget):
 
 
 class AbstractGadgetFailedError(Exception):
+	'''base class for all errors raised by gadgets'''
 	pass
 
 
@@ -73,6 +80,10 @@ class AbstractGadgetFailedError(Exception):
 
 
 class AbstractGang(AbstractGig):
+	'''
+	a special kind of gig that relabels gizmos (behaves a bit like a local/internal scope for sub gadgets,
+	and defaults to the global/external scope)
+	'''
 	# def _gizmos(self) -> Iterator[str]:
 	# 	'''lists gizmos produced by self (using internal names)'''
 	# 	yield from super().gizmos()
