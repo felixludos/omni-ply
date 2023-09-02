@@ -1,8 +1,6 @@
 from typing import Iterator, Optional, Any, Iterable, Callable
-from omnibelt import extract_function_signature
 from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, NestableCraft
 
-from .errors import GadgetFailed, MissingGizmo
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
 from .gadgets import GadgetBase, SingleGadgetBase, FunctionGadget, AutoFunctionGadget
 
@@ -13,6 +11,7 @@ class ToolSkill(AbstractSkill):
 		super().__init__(**kwargs)
 		self._unbound_fn = unbound_fn
 		self._base = base
+
 
 	def __get__(self, instance, owner):
 		if instance is None:
@@ -28,9 +27,11 @@ class ToolCraft(FunctionGadget, NestableCraft):
 		'''calling a craft directly results in the wrapped function being called'''
 		return self._wrapped_content_leaf()
 
+
 	def __get__(self, instance, owner):
 		'''when accessing crafts directly, they behave as regular methods, applying __get__ to the wrapped function'''
 		return self._wrapped_content_leaf().__get__(instance, owner)
+
 
 	def _wrapped_content(self): # wrapped method
 		'''
@@ -39,6 +40,7 @@ class ToolCraft(FunctionGadget, NestableCraft):
 		If you want the actual function, use _wrapped_content_leaf
 		'''
 		return self._fn
+
 
 	class _ToolSkill(FunctionGadget, ToolSkill):
 		pass

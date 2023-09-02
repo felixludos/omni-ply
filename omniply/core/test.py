@@ -146,16 +146,3 @@ def test_crafty_kit_inheritance():
 	assert ctx['w'] == 1002
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
