@@ -1,7 +1,3 @@
-from typing import Optional, Iterator
-from itertools import chain
-from omnibelt import filter_duplicates
-
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
 from .errors import GadgetFailed, MissingGizmo
 from .tools import ToolCraft, AutoToolCraft, ToolDecorator, AutoToolDecorator
@@ -26,14 +22,5 @@ class Context(CacheGig, LoopyGaggle, MutableGaggle, AbstractGig):
 	def __init__(self, *gadgets: AbstractGadget, **kwargs):
 		super().__init__(**kwargs)
 		self.include(*gadgets)
-
-
-
-
-
-
-
-
-
 
 
