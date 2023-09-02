@@ -8,16 +8,20 @@ class AbstractGadget:
 		'''lists known products of this tool'''
 		raise NotImplementedError
 
+
 	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
 		'''returns the given gizmo from this gadget, or raises ToolFailedError'''
 		raise NotImplementedError
+
 
 	def grabable(self, gizmo: str) -> bool:
 		'''returns True if this tool can produce the given gizmo'''
 		return gizmo in self.gizmos()
 
+
 	def __repr__(self):
 		return f'{self.__class__.__name__}({", ".join(map(str, self.gizmos()))})'
+
 
 
 class AbstractGaggle(AbstractGadget):
@@ -29,9 +33,11 @@ class AbstractGaggle(AbstractGadget):
 			else:
 				yield gadget
 
+
 	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
 		'''returns all known gadgets that can produce the given gizmo (iterates over local branches)'''
 		raise NotImplementedError
+
 
 
 class AbstractMultiGadget(AbstractGaggle):
@@ -40,9 +46,11 @@ class AbstractMultiGadget(AbstractGaggle):
 		'''yields self, since this is a multi-gadget so it doesn't delegate to subgadgets'''
 		yield self
 
+
 	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
 		'''yields self, since this is a multi-gadget so it doesn't delegate to subgadgets'''
 		yield self
+
 
 
 class AbstractGig(AbstractMultiGadget):
@@ -67,8 +75,10 @@ class AbstractGig(AbstractMultiGadget):
 				raise
 			return default
 
+
 	def __getitem__(self, item):
 		return self.grab(item)
+
 
 
 class AbstractGadgetFailedError(Exception):
@@ -76,7 +86,9 @@ class AbstractGadgetFailedError(Exception):
 	pass
 
 
+
 ###########################################################################################
+
 
 
 class AbstractGang(AbstractGig):
@@ -93,9 +105,11 @@ class AbstractGang(AbstractGig):
 	# 	for gizmo in self._gizmos():
 	# 		yield self.gizmo_to(gizmo)
 
+
 	def gizmo_from(self, gizmo: str) -> str: # external -> internal
 		'''converts external -> internal gizmo names'''
 		raise NotImplementedError
+
 
 	def gizmo_to(self, gizmo: str) -> str: # internal -> external
 		'''converts internal -> external gizmo names'''

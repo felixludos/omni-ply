@@ -55,7 +55,7 @@ class ToolCraft(FunctionGadget, NestableCraft):
 
 
 
-class AutoToolCraft(AutoFunctionGadget, NestableCraft):
+class AutoToolCraft(AutoFunctionGadget, ToolCraft):
 	class _ToolSkill(AutoFunctionGadget, ToolSkill):
 		pass
 

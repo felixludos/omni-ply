@@ -8,8 +8,8 @@ from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
 
 
 class GadgetBase(AbstractGadget):
-	_GadgetFailed = GadgetFailed
-	_MissingGizmo = MissingGizmo
+	_GadgetFailedError = GadgetFailed
+	_MissingGizmoError = MissingGizmo
 
 
 
@@ -49,7 +49,7 @@ class FunctionGadget(SingleGadgetBase):
 
 	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		if gizmo != self._gizmo:
-			raise self._MissingGizmo(gizmo)
+			raise self._MissingGizmoError(gizmo)
 		return self._fn(ctx)
 
 
@@ -68,7 +68,7 @@ class AutoFunctionGadget(FunctionGadget):
 
 	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		if gizmo != self._gizmo:
-			raise self._MissingGizmo(gizmo)
+			raise self._MissingGizmoError(gizmo)
 
 		args, kwargs = self._extract_gizmo_args(self._fn, ctx)
 		return self._fn(*args, **kwargs)
