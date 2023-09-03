@@ -133,19 +133,20 @@ class MutableGaggle(GaggleBase):
 class CraftyGaggle(GaggleBase, InheritableCrafty):
 	def _process_crafts(self):
 		# avoid duplicate keys (if you overwrite a method, only the last one will be used)
-		items = OrderedDict()
-		for src, key, craft in self._emit_all_craft_items(): # N-O
-			if key not in items:
-				items[key] = craft
+		history = OrderedDict() # src<N-O> : craft<N-O>
+		for src, key, craft in self._emit_all_craft_items(): # craft<N-O>
+			history.setdefault(src, []).append(craft)
 
-		# convert crafts to skills and add in O-N order
-		table = {}
-		for key, craft in reversed(items.items()): # N-O
-			skill = craft.as_skill(self)
-			for gizmo in skill.gizmos():
-				table.setdefault(gizmo, []).append(skill)
+		# convert crafts to skills and add in N-O (O-N) order
+		table = {} # gizmo<N-O> : skill<source N-O (within source O-N)>
+		for crafts in history.values(): # N-O
+			skills = [craft.as_skill(self) for craft in reversed(crafts)] # O-N
+			# skill = craft.as_skill(self)
+			for skill in skills:
+				for gizmo in skill.gizmos():
+					table.setdefault(gizmo, []).append(skill)
 
-		# add N-O skills in reverse order for O-N _tools_table
+		# add O-N skills in reverse order for O-N _tools_table
 		for gizmo, gadgets in table.items(): # tools is N-O
 			self._gadgets_table.setdefault(gizmo, []).extend(gadgets) # added in O-N order
 
