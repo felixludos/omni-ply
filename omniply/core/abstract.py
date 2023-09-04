@@ -87,25 +87,11 @@ class AbstractGadgetFailedError(Exception):
 
 
 
-###########################################################################################
-
-
-
 class AbstractGang(AbstractGig):
 	'''
 	a special kind of gig that relabels gizmos (behaves a bit like a local/internal scope for sub gadgets,
 	and defaults to the global/external scope)
 	'''
-	# def _gizmos(self) -> Iterator[str]:
-	# 	'''lists gizmos produced by self (using internal names)'''
-	# 	yield from super().gizmos()
-	#
-	# def gizmos(self) -> Iterator[str]:
-	# 	'''lists gizmos produced by self (using external names)'''
-	# 	for gizmo in self._gizmos():
-	# 		yield self.gizmo_to(gizmo)
-
-
 	def gizmo_from(self, gizmo: str) -> str: # external -> internal
 		'''converts external -> internal gizmo names'''
 		raise NotImplementedError
