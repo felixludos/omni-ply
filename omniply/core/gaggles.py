@@ -137,13 +137,15 @@ class CraftyGaggle(GaggleBase, InheritableCrafty):
 		for src, key, craft in self._emit_all_craft_items(): # craft<N-O>
 			history.setdefault(src, []).append(craft)
 
-		# convert crafts to skills and add in N-O (O-N) order to table
+		# convert crafts to skills and add in O-N (N-O) order to table
 		for crafts in reversed(history.values()): # O-N
-			for craft in crafts: # N-O (in order of appearance)
+			gizmos = {}
+			for craft in reversed(crafts): # N-O (in order of presidence)
 				skill = craft.as_skill(self)
 				for gizmo in skill.gizmos():
-					self._gadgets_table.setdefault(gizmo, []).append(skill)
-
+					gizmos.setdefault(gizmo, []).append(skill)
+			for gizmo, skills in gizmos.items():
+				self._gadgets_table.setdefault(gizmo, []).extend(reversed(skills)) # O-N (in order of appearance)
 
 
 

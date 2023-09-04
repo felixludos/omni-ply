@@ -146,3 +146,34 @@ def test_crafty_kit_inheritance():
 	assert ctx['w'] == 1002
 
 
+class _Kit3(ToolKit):
+	@tool('b')
+	@tool('a')
+	def f(self):
+		return 1
+
+	@tool('c')
+	@tool('b')
+	def g(self):
+		return 2
+
+	@tool('d')
+	@tool('c')
+	def h(self, b):
+		return b + 10
+
+
+def test_nested_tools():
+
+	kit = _Kit3()
+
+	assert list(kit.gizmos()) == ['a', 'b', 'c', 'd']
+
+	ctx = Context(kit)
+
+	assert ctx['d'] == 11
+	assert ctx['c'] == 2
+	assert ctx['b'] == 1
+	assert ctx['a'] == 1
+
+
