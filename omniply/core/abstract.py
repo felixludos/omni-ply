@@ -87,7 +87,7 @@ class AbstractGadgetFailedError(Exception):
 
 
 
-class AbstractGang(AbstractGig):
+class AbstractGroup(AbstractGig):
 	'''
 	a special kind of gig that relabels gizmos (behaves a bit like a local/internal scope for sub gadgets,
 	and defaults to the global/external scope)

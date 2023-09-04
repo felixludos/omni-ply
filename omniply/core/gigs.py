@@ -2,7 +2,7 @@ from typing import Any, Optional, Iterator
 from collections import UserDict
 from omnibelt import filter_duplicates
 
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGroup
 from .errors import GadgetError, MissingGizmo, AssemblyError, GigError
 from .gadgets import GadgetBase
 
@@ -10,10 +10,12 @@ from .gadgets import GadgetBase
 
 class GigBase(GadgetBase, AbstractGig):
 	_GigFailedError = GigError
-	def _grab_from_fallback(self, error: GadgetError, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-		if ctx is None or ctx is self:
-			raise self._GigFailedError(gizmo, error) from error
-		return ctx.grab(gizmo)
+	def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+		if isinstance(error, self._GadgetFailedError):
+			if ctx is None or ctx is self:
+				raise self._GigFailedError(gizmo, error) from error
+			return ctx.grab(gizmo)
+		raise error
 
 
 	def _grab(self, gizmo: str) -> Any:
@@ -23,7 +25,7 @@ class GigBase(GadgetBase, AbstractGig):
 	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		try:
 			out = self._grab(gizmo)
-		except self._GadgetFailedError as error:
+		except Exception as error:
 			out = self._grab_from_fallback(error, ctx, gizmo)
 		return self.package(out, gizmo=gizmo)
 
@@ -63,6 +65,24 @@ class CacheGig(GigBase, UserDict):
 		return val
 
 
+class GroupCache(CacheGig):
+	def __init__(self, *args, group_cache=None, **kwargs):
+		if group_cache is None:
+			group_cache = {}
+		super().__init__(*args, **kwargs)
+		self._group_cache = group_cache
+
+
+	def check_group_cache(self, group: AbstractGroup, gizmo: str):
+		return self._group_cache[group][gizmo]
+	def update_group_cache(self, group: AbstractGroup, gizmo: str, val: Any):
+		self._group_cache.setdefault(group, {})[gizmo] = val
+
+
+	def clear_cache(self, *, clear_group_caches=True) -> None:
+		super().clear_cache()
+		if clear_group_caches:
+			self._group_cache.clear()
 
 
 

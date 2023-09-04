@@ -49,6 +49,7 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 				else:
 					yield gadget
 
+
 	_AssemblyFailedError = AssemblyError
 	def grab_from(self, ctx: AbstractGig, gizmo: str) -> Any:
 		failures = OrderedDict()
@@ -95,7 +96,7 @@ class LoopyGaggle(GaggleBase):
 		if gizmo in self._grabber_stack:
 			self._grabber_stack.pop(gizmo)
 		if failures:
-			raise self._AssemblyFailedError(gizmo, *failures)
+			raise self._AssemblyFailedError(gizmo, failures)
 		raise self._GadgetFailedError(gizmo)
 
 

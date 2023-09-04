@@ -178,7 +178,7 @@ def test_nested_tools():
 
 
 
-def test_gang():
+def test_scope():
 
 	kit = _Kit1()
 
@@ -203,6 +203,7 @@ def test_gang():
 	assert ctx['z'] == 3
 
 
+# TODO: test group cache
 
 
 
