@@ -1,4 +1,4 @@
-from .top import tool, ToolKit, Context
+from .top import tool, ToolKit, Context, Scope
 
 
 
@@ -175,5 +175,38 @@ def test_nested_tools():
 	assert ctx['c'] == 2
 	assert ctx['b'] == 1
 	assert ctx['a'] == 1
+
+
+
+def test_scope():
+
+	kit = _Kit1()
+
+	scope = Scope(kit,
+				  apply={'y': 'a'})
+
+	assert list(scope.gizmos()) == ['a', 'z', 'w']
+
+	ctx = Context(scope)
+
+	assert list(ctx.gizmos()) == ['a', 'z', 'w']
+
+	ctx['x'] = 1
+	assert ctx['a'] == 2
+
+	ctx = Context(Scope(kit, apply={'y': 'a', 'x': 'b'}))
+
+	assert list(ctx.gizmos()) == ['a', 'z', 'w']
+
+	ctx['b'] = 1
+	assert ctx['a'] == 2
+	assert ctx['z'] == 3
+
+
+# TODO: test group cache
+
+
+
+
 
 

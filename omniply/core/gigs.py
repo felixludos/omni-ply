@@ -2,7 +2,7 @@ from typing import Any, Optional, Iterator
 from collections import UserDict
 from omnibelt import filter_duplicates
 
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGroup
 from .errors import GadgetError, MissingGizmo, AssemblyError, GigError
 from .gadgets import GadgetBase
 
@@ -10,10 +10,12 @@ from .gadgets import GadgetBase
 
 class GigBase(GadgetBase, AbstractGig):
 	_GigFailedError = GigError
-	def _grab_from_fallback(self, error: GadgetError, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-		if ctx is None or ctx is self:
-			raise self._GigFailedError(gizmo, error) from error
-		return ctx.grab(gizmo)
+	def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+		if isinstance(error, self._GadgetFailedError):
+			if ctx is None or ctx is self:
+				raise self._GigFailedError(gizmo, error) from error
+			return ctx.grab(gizmo)
+		raise error
 
 
 	def _grab(self, gizmo: str) -> Any:
@@ -23,7 +25,7 @@ class GigBase(GadgetBase, AbstractGig):
 	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		try:
 			out = self._grab(gizmo)
-		except self._GadgetFailedError as error:
+		except Exception as error:
 			out = self._grab_from_fallback(error, ctx, gizmo)
 		return self.package(out, gizmo=gizmo)
 
@@ -63,72 +65,25 @@ class CacheGig(GigBase, UserDict):
 		return val
 
 
+class GroupCache(CacheGig):
+	def __init__(self, *args, group_cache=None, **kwargs):
+		if group_cache is None:
+			group_cache = {}
+		super().__init__(*args, **kwargs)
+		self._group_cache = group_cache
 
-########################################################################################################################
+
+	def check_group_cache(self, group: AbstractGroup, gizmo: str):
+		return self._group_cache[group][gizmo]
+	def update_group_cache(self, group: AbstractGroup, gizmo: str, val: Any):
+		self._group_cache.setdefault(group, {})[gizmo] = val
 
 
-# class SimpleGang(Gig, AbstractGang):
-# 	_current_context: Optional[AbstractGig]
-#
-# 	def __init__(self, *, apply: Optional[Dict[str, str]] = None, **kwargs):
-# 		if apply is None:
-# 			apply = {}
-# 		super().__init__(**kwargs)
-# 		self._raw_apply = apply
-# 		self._raw_reverse_apply = None
-# 		self._current_context = None
-#
-#
-# 	@property
-# 	def internal2external(self) -> Dict[str, str]:
-# 		return self._raw_apply
-# 	@internal2external.setter
-# 	def internal2external(self, value: Dict[str, str]):
-# 		self._raw_apply = value
-# 		self._raw_reverse_apply = None
-#
-#
-# 	@property
-# 	def external2internal(self) -> Dict[str, str]:
-# 		# return self._infer_external2internal(self._raw_apply, self.gizmoto())
-# 		if self._raw_reverse_apply is None:
-# 			self._raw_reverse_apply = self._infer_external2internal(self._raw_apply, self._gizmos())
-# 		return self._raw_reverse_apply
-#
-#
-# 	@staticmethod
-# 	# @lru_cache(maxsize=None)
-# 	def _infer_external2internal(raw: Dict[str, str], products: Iterator[str]) -> Dict[str, str]:
-# 		reverse = {}
-#
-# 		for product in products:
-# 			if product in raw:
-# 				external = raw[product]
-# 				if external in reverse:
-# 					raise ApplicationAmbiguityError(product, [reverse[external], product])
-# 				reverse[external] = product
-#
-# 		return reverse
-#
-#
-# 	def gizmo_from(self, gizmo: str) -> str:
-# 		return self.external2internal.get(gizmo, gizmo)
-#
-#
-# 	def gizmo_to(self, gizmo: str) -> str:
-# 		return self.internal2external.get(gizmo, gizmo)
-#
-#
-# 	def _grab_from_fallback(self, error: GadgetFailedError, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
-# 		return super()._grab_from_fallback(error, self._current_context, self.gizmo_to(gizmo))
-#
-#
-# 	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
-# 		if ctx is not None and ctx is not self:
-# 			assert self._current_context is None, f'Context already set to {self._current_context}'
-# 			self._current_context = ctx
-# 			gizmo = self.gizmo_from(gizmo) # convert to internal gizmo
-# 		return super().grab_from(self, gizmo)
+	def clear_cache(self, *, clear_group_caches=True) -> None:
+		super().clear_cache()
+		if clear_group_caches:
+			self._group_cache.clear()
+
 
 
 

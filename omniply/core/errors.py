@@ -61,3 +61,13 @@ class GigError(GadgetError):
 
 
 
+class ApplicationAmbiguityError(ValueError):
+	def __init__(self, gizmo: str, options: list[str], *, message: Optional[str] = None):
+		if message is None:
+			message = f'{gizmo!r} cant choose between: {options}'
+		super().__init__(message)
+		self.gizmo = gizmo
+		self.options = options
+
+
+

@@ -149,7 +149,7 @@ class SimpleTrait(DescriptorQuirk, AbstractTrait):
 
 
 
-class AppliedTraitTool(SimpleGang, TraitTool, AbstractMultiTool): # TODO: should this be an AbstractMultiTool?
+class AppliedTraitTool(SimpleGroup, TraitTool, AbstractMultiTool): # TODO: should this be an AbstractMultiTool?
 	'''
 	delegates work to submodule by accessing it with `getattr(self.owner, self.attrname)`
 	(thereby building lazily)

@@ -63,7 +63,7 @@ class Cached(AbstractGig, UserDict):
 ########################################################################################################################
 
 
-class SimpleGang(Gig, AbstractGang):
+class SimpleGroup(Gig, AbstractGroup):
 	_current_context: Optional[AbstractGig]
 
 	def __init__(self, *, apply: Optional[Dict[str, str]] = None, **kwargs):

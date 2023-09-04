@@ -1,9 +1,9 @@
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGroup
 from .errors import GadgetError, MissingGizmo
 from .tools import ToolCraft, AutoToolCraft, ToolDecorator, AutoToolDecorator
 from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle
 from .gigs import CacheGig
-
+from .groups import GroupBase
 
 
 class tool(AutoToolDecorator):
@@ -19,6 +19,13 @@ class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle):
 
 
 class Context(CacheGig, LoopyGaggle, MutableGaggle, AbstractGig):
+	def __init__(self, *gadgets: AbstractGadget, **kwargs):
+		super().__init__(**kwargs)
+		self.include(*gadgets)
+
+
+
+class Scope(GroupBase, LoopyGaggle, MutableGaggle, AbstractGroup):
 	def __init__(self, *gadgets: AbstractGadget, **kwargs):
 		super().__init__(**kwargs)
 		self.include(*gadgets)
