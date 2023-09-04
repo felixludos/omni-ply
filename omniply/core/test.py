@@ -125,7 +125,7 @@ def test_crafty_kit_inheritance():
 
 	ctx = Context(kit)
 
-	assert list(ctx.gizmos()) == ['y', 'w', 'x', 'z']
+	assert list(ctx.gizmos()) == ['y', 'z', 'w', 'x']
 
 	assert ctx['x'] == 100
 	assert ctx['y'] == 111

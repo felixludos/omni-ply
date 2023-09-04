@@ -5,7 +5,7 @@ from omnibelt import filter_duplicates
 from omnibelt.crafts import InheritableCrafty
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
-from .errors import logger, GadgetFailed, MissingGizmo, AssemblyFailed
+from .errors import logger, GadgetError, MissingGizmo, AssemblyError
 from .gadgets import GadgetBase, SingleGadgetBase, FunctionGadget, AutoFunctionGadget
 
 
@@ -49,7 +49,7 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 				else:
 					yield gadget
 
-	_AssemblyFailedError = AssemblyFailed
+	_AssemblyFailedError = AssemblyError
 	def grab_from(self, ctx: AbstractGig, gizmo: str) -> Any:
 		failures = OrderedDict()
 		for gadget in self._vendors(gizmo):
@@ -132,24 +132,17 @@ class MutableGaggle(GaggleBase):
 
 class CraftyGaggle(GaggleBase, InheritableCrafty):
 	def _process_crafts(self):
-		# avoid duplicate keys (if you overwrite a method, only the last one will be used)
+		# group by where the craft is defined
 		history = OrderedDict() # src<N-O> : craft<N-O>
 		for src, key, craft in self._emit_all_craft_items(): # craft<N-O>
 			history.setdefault(src, []).append(craft)
 
-		# convert crafts to skills and add in N-O (O-N) order
-		table = {} # gizmo<N-O> : skill<source N-O (within source O-N)>
-		for crafts in history.values(): # N-O
-			skills = [craft.as_skill(self) for craft in reversed(crafts)] # O-N
-			# skill = craft.as_skill(self)
-			for skill in skills:
+		# convert crafts to skills and add in N-O (O-N) order to table
+		for crafts in reversed(history.values()): # O-N
+			for craft in crafts: # N-O (in order of appearance)
+				skill = craft.as_skill(self)
 				for gizmo in skill.gizmos():
-					table.setdefault(gizmo, []).append(skill)
-
-		# add O-N skills in reverse order for O-N _tools_table
-		for gizmo, gadgets in table.items(): # tools is N-O
-			self._gadgets_table.setdefault(gizmo, []).extend(gadgets) # added in O-N order
-
+					self._gadgets_table.setdefault(gizmo, []).append(skill)
 
 
 

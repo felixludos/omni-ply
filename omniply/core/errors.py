@@ -7,7 +7,7 @@ logger = logging.getLogger('omniply')
 
 
 
-class GadgetFailed(AbstractGadgetFailedError):
+class GadgetError(AbstractGadgetFailedError):
 	'''General error for when a gadget fails to grab a gizmo'''
 	def __init__(self, gizmo: str, *, message: Optional[str] = None):
 		if message is None:
@@ -25,7 +25,14 @@ class GadgetFailed(AbstractGadgetFailedError):
 
 
 
-class MissingGizmo(GadgetFailed, KeyError):
+class GadgetFailure(GadgetError):
+	'''Error for when a gadget fails to grab a gizmo'''
+	def __init__(self, message: str, gizmo: Optional[str] = None):
+		super().__init__(gizmo, message=message)
+
+
+
+class MissingGizmo(GadgetError, KeyError):
 	'''Error for when a gadget fails to grab a gizmo because the gadget can't find it'''
 	def __init__(self, gizmo: str, *, message: Optional[str] = None):
 		if message is None:
@@ -34,9 +41,9 @@ class MissingGizmo(GadgetFailed, KeyError):
 
 
 
-class AssemblyFailed(GadgetFailed):
+class AssemblyError(GadgetError):
 	'''Error for when a gadget fails to grab a gizmo because the gizmo can't be assembled from the gadgets available'''
-	def __init__(self, gizmo: str, failures: OrderedDict[GadgetFailed, AbstractGadget], *,
+	def __init__(self, gizmo: str, failures: OrderedDict[GadgetError, AbstractGadget], *,
 				 message: Optional[str] = None):
 		if message is None:
 			message = f'{gizmo!r} due to {failures}'
@@ -45,8 +52,8 @@ class AssemblyFailed(GadgetFailed):
 
 
 
-class GigFailed(GadgetFailed):
-	def __init__(self, gizmo: str, error: GadgetFailed, *, message: Optional[str] = None):
+class GigError(GadgetError):
+	def __init__(self, gizmo: str, error: GadgetError, *, message: Optional[str] = None):
 		if message is None:
 			message = f'{gizmo!r} due to {error!r}'
 		super().__init__(gizmo, message=message)
