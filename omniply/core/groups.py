@@ -93,28 +93,13 @@ class GroupBase(GaggleBase, AbstractGroup):
 
 		return out
 
-	# def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-	# 	assert ctx is self, f'{ctx} != {self}'
-	# 	if len(self._gig_stack):
-	# 		return super()._grab_from_fallback(error, self._gig_stack[-1], self.gizmo_to(gizmo))
-	# 	raise error from error
-	#
-	#
-	# def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-	# 	if ctx is not None and ctx is not self:
-	# 		self._gig_stack.append(ctx)
-	# 		gizmo = self.gizmo_from(gizmo) # convert to internal gizmo
-	# 	out = super().grab_from(self, gizmo)
-	# 	if len(self._gig_stack) and ctx is self._gig_stack[-1]:
-	# 		self._gig_stack.pop()
-	# 	return out
 
 
 class CachableGroup(GroupBase):
 	_GroupCacheMiss = KeyError
 	def _grab(self, gizmo: str) -> Any:
-		# check cache (if one exists)
 		if len(self._gig_stack):
+			# check cache (if one exists)
 			for parent in reversed(self._gig_stack):
 				if isinstance(parent, GroupCache):
 					try:
@@ -122,13 +107,22 @@ class CachableGroup(GroupBase):
 					except self._GroupCacheMiss:
 						pass
 
+			# if it cant be found in my cache, check the cache using the external gizmo name
+			ext = self.gizmo_to(gizmo)
+			for parent in reversed(self._gig_stack):
+				if isinstance(parent, GroupCache) and parent.is_cached(ext):
+					return parent.grab(ext)
+
+		# if it cant be found in any cache, grab it from my gadgets
 		out = super()._grab(gizmo)
-		# update cache
+
+		# update my cache
 		if len(self._gig_stack):
 			for parent in reversed(self._gig_stack):
 				if isinstance(parent, GroupCache):
 					parent.update_group_cache(self, gizmo, out)
 					break
+
 		return out
 
 
