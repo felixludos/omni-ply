@@ -56,14 +56,14 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 		for gadget in self._vendors(gizmo):
 			try:
 				return gadget.grab_from(ctx, gizmo)
-			except self._GadgetFailedError as e:
+			except self._GadgetError as e:
 				failures[e] = gadget
 			except:
 				logger.debug(f'{gadget!r} failed while trying to produce {gizmo!r}')
 				raise
 		if failures:
 			raise self._AssemblyFailedError(gizmo, failures)
-		raise self._GadgetFailedError(gizmo)
+		raise self._GadgetError(gizmo)
 
 
 
@@ -84,7 +84,7 @@ class LoopyGaggle(GaggleBase):
 		for gadget in itr:
 			try:
 				out = gadget.grab_from(ctx, gizmo)
-			except self._GadgetFailedError as e:
+			except self._GadgetError as e:
 				failures[e] = gadget
 			except:
 				logger.debug(f'{gadget!r} failed while trying to produce {gizmo!r}')
@@ -97,7 +97,7 @@ class LoopyGaggle(GaggleBase):
 			self._grabber_stack.pop(gizmo)
 		if failures:
 			raise self._AssemblyFailedError(gizmo, failures)
-		raise self._GadgetFailedError(gizmo)
+		raise self._GadgetError(gizmo)
 
 
 

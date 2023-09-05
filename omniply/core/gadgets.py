@@ -8,7 +8,7 @@ from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
 
 
 class GadgetBase(AbstractGadget):
-	_GadgetFailedError = GadgetError
+	_GadgetError = GadgetError
 	_MissingGizmoError = MissingGizmo
 
 

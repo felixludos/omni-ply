@@ -9,13 +9,11 @@ from .gadgets import GadgetBase
 
 
 class GigBase(GadgetBase, AbstractGig):
-	_GigFailedError = GigError
+	# _GigFailedError = GigError
 	def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-		if isinstance(error, self._GadgetFailedError):
-			if ctx is None or ctx is self:
-				raise self._GigFailedError(gizmo, error) from error
+		if isinstance(error, self._GadgetError) and ctx is not None and ctx is not self: # default to parent
 			return ctx.grab(gizmo)
-		raise error
+		raise error from error
 
 
 	def _grab(self, gizmo: str) -> Any:
@@ -58,10 +56,10 @@ class CacheGig(GigBase, UserDict):
 
 
 	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-		if self.is_cached(gizmo):
+		if gizmo in self.data:
 			return self.data[gizmo]
 		val = super().grab_from(ctx, gizmo)
-		self.data[gizmo] = val  # cache loaded val
+		self.data[gizmo] = val  # cache packaged val
 		return val
 
 
