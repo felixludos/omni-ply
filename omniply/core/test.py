@@ -2,6 +2,7 @@ from .top import tool, ToolKit, Context, Scope, Selection
 
 
 
+
 def test_tool():
 	@tool('a')
 	def f(x):
@@ -40,6 +41,22 @@ def test_context():
 
 	ctx['x'] = 1
 	assert ctx['y'] == -2
+
+
+
+def test_gizmo_dashes():
+	@tool('a-1')
+	def f():
+		return 1
+
+	assert list(f.gizmos()) == ['a_1']
+
+	ctx = Context(f)
+
+	assert ctx['a-1'] == 1
+	assert ctx.is_cached('a-1')
+	assert ctx.is_cached('a_1')
+	assert ctx['a_1'] == 1
 
 
 
@@ -271,6 +288,10 @@ def test_group_cache():
 	assert 'x' in ctx.data
 	assert 'b' not in ctx.data
 	assert 'a' not in ctx.data
+
+	assert ctx.is_cached('x')
+	assert ctx.is_cached('b')
+
 	assert ctx['b'] == 1
 	assert counter == 4 # cached from grabbing x
 

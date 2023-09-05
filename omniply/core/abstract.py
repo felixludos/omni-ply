@@ -1,5 +1,21 @@
-from typing import Iterator, Optional, Any
+from typing import Iterator, Optional, Any, Union
 from omnibelt import unspecified_argument
+
+
+
+class AbstractGizmo:
+	def __new__(cls, label: Union[str, 'AbstractGizmo']):
+		if isinstance(label, AbstractGizmo):
+			return label
+		return super().__new__(cls)
+
+
+	def __eq__(self, other):
+		return str(self) == str(other)
+
+
+	def __hash__(self):
+		return hash(str(self))
 
 
 
