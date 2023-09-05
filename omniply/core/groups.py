@@ -12,12 +12,12 @@ from .gigs import GigBase, GroupCache
 class GroupBase(GigBase, AbstractGroup):
 	_current_context: Optional[AbstractGig]
 
-	def __init__(self, *, apply: Optional[dict[str, str]] = None, **kwargs):
-		if apply is None:
-			apply = {}
-		super().__init__(**kwargs)
-		self._raw_apply = apply
-		self._raw_reverse_apply = None
+	def __init__(self, *args, gap: Optional[dict[str, str]] = None, **kwargs):
+		if gap is None:
+			gap = {}
+		super().__init__(*args, **kwargs)
+		self._raw_gap = gap
+		self._raw_reverse_gap = None
 		self._gig_stack = []
 		# self._current_context = None
 
@@ -35,19 +35,19 @@ class GroupBase(GigBase, AbstractGroup):
 
 	@property
 	def internal2external(self) -> dict[str, str]:
-		return self._raw_apply
+		return self._raw_gap
 	@internal2external.setter
 	def internal2external(self, value: dict[str, str]):
-		self._raw_apply = value
-		self._raw_reverse_apply = None
+		self._raw_gap = value
+		self._raw_reverse_gap = None
 
 
 	@property
 	def external2internal(self) -> dict[str, str]:
 		# return self._infer_external2internal(self._raw_apply, self.gizmoto())
-		if self._raw_reverse_apply is None:
-			self._raw_reverse_apply = self._infer_external2internal(self._raw_apply, self._gizmos())
-		return self._raw_reverse_apply
+		if self._raw_reverse_gap is None:
+			self._raw_reverse_gap = self._infer_external2internal(self._raw_gap, self._gizmos())
+		return self._raw_reverse_gap
 
 
 	@staticmethod
@@ -107,6 +107,23 @@ class CachableGroup(GroupBase):
 					parent.update_group_cache(self, gizmo, out)
 					break
 		return out
+
+
+
+class SelectiveGroup(GroupBase):
+	def __init__(self, *args, gap: dict[str, str] | list[str] | None = None, **kwargs):
+		if isinstance(gap, list):
+			gap = {gizmo: gizmo for gizmo in gap}
+		if isinstance(gap, dict):
+			gap = {gizmo: gizmo if ext is None else ext for gizmo, ext in gap.items()}
+		super().__init__(*args, gap=gap, **kwargs)
+
+
+	def gizmos(self) -> Iterator[str]:
+		'''lists gizmos produced by self (using external names)'''
+		for gizmo in self._gizmos():
+			if gizmo in self.internal2external:
+				yield self.gizmo_to(gizmo)
 
 
 

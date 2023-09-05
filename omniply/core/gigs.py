@@ -73,6 +73,24 @@ class GroupCache(CacheGig):
 		self._group_cache = group_cache
 
 
+	def is_cached(self, gizmo: str) -> bool:
+		if super().is_cached(gizmo):
+			return True
+		for group, cache in self._group_cache.items():
+			for key in cache:
+				if group.gizmo_to(key) == gizmo:
+					return True
+		return False
+
+
+	def cached(self) -> Iterator[str]:
+		def _group_cached():
+			for group, cache in self._group_cache.items():
+				for key in cache:
+					yield group.gizmo_to(key)
+		yield from filter_duplicates(super().cached(), _group_cached())
+
+
 	def check_group_cache(self, group: AbstractGroup, gizmo: str):
 		return self._group_cache[group][gizmo]
 	def update_group_cache(self, group: AbstractGroup, gizmo: str, val: Any):

@@ -183,7 +183,7 @@ def test_scope():
 	kit = _Kit1()
 
 	scope = Scope(kit,
-				  apply={'y': 'a'})
+				  gap={'y': 'a'})
 
 	assert list(scope.gizmos()) == ['a', 'z', 'w']
 
@@ -194,7 +194,7 @@ def test_scope():
 	ctx['x'] = 1
 	assert ctx['a'] == 2
 
-	ctx = Context(Scope(kit, apply={'y': 'a', 'x': 'b'}))
+	ctx = Context(Scope(kit, gap={'y': 'a', 'x': 'b'}))
 
 	assert list(ctx.gizmos()) == ['a', 'z', 'w']
 
@@ -203,7 +203,10 @@ def test_scope():
 	assert ctx['z'] == 3
 
 
+
 # TODO: test group cache
+
+# TODO: test selection
 
 
 
