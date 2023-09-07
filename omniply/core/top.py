@@ -9,7 +9,7 @@ from .groups import GroupBase, CachableGroup, SelectiveGroup
 
 
 class tool(AutoToolDecorator):
-	_gizmo_type = DashGizmo
+	# _gizmo_type = DashGizmo
 	class from_context(ToolDecorator):
 		_gizmo_type = DashGizmo
 
