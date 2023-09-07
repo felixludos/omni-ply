@@ -110,11 +110,12 @@ class GroupBase(GaggleBase, AbstractGroup):
 	# 	return out
 
 
+
 class CachableGroup(GroupBase):
 	_GroupCacheMiss = KeyError
 	def _grab(self, gizmo: str) -> Any:
-		# check cache (if one exists)
 		if len(self._gig_stack):
+			# check cache (if one exists)
 			for parent in reversed(self._gig_stack):
 				if isinstance(parent, GroupCache):
 					try:
@@ -122,13 +123,22 @@ class CachableGroup(GroupBase):
 					except self._GroupCacheMiss:
 						pass
 
+			# if it cant be found in my cache, check the cache using the external gizmo name
+			ext = self.gizmo_to(gizmo)
+			for parent in reversed(self._gig_stack):
+				if isinstance(parent, GroupCache) and parent.is_cached(ext):
+					return parent.grab(ext)
+
+		# if it cant be found in any cache, grab it from my gadgets
 		out = super()._grab(gizmo)
-		# update cache
+
+		# update my cache
 		if len(self._gig_stack):
 			for parent in reversed(self._gig_stack):
 				if isinstance(parent, GroupCache):
 					parent.update_group_cache(self, gizmo, out)
 					break
+
 		return out
 
 

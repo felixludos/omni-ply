@@ -34,6 +34,13 @@ class GigBase(GadgetBase, AbstractGig):
 
 
 class CacheGig(GigBase, UserDict):
+	_gizmo_type = None
+	def __setitem__(self, key, value):
+		if self._gizmo_type is not None:
+			key = self._gizmo_type(key)
+		super().__setitem__(key, value)
+
+
 	def __repr__(self):
 		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + gizmo + '}') for gizmo in self.gizmos()]
 		return f'{self.__class__.__name__}({", ".join(gizmos)})'
@@ -92,6 +99,8 @@ class GroupCache(CacheGig):
 	def check_group_cache(self, group: AbstractGroup, gizmo: str):
 		return self._group_cache[group][gizmo]
 	def update_group_cache(self, group: AbstractGroup, gizmo: str, val: Any):
+		if self._gizmo_type is not None:
+			gizmo = self._gizmo_type(gizmo)
 		self._group_cache.setdefault(group, {})[gizmo] = val
 
 

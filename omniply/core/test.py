@@ -1,4 +1,5 @@
-from .top import tool, ToolKit, Context, Scope
+from .top import tool, ToolKit, Context, Scope, Selection
+
 
 
 
@@ -40,6 +41,22 @@ def test_context():
 
 	ctx['x'] = 1
 	assert ctx['y'] == -2
+
+
+
+def test_gizmo_dashes():
+	@tool('a-1')
+	def f():
+		return 1
+
+	assert list(f.gizmos()) == ['a_1']
+
+	ctx = Context(f)
+
+	assert ctx['a-1'] == 1
+	assert ctx.is_cached('a-1')
+	assert ctx.is_cached('a_1')
+	assert ctx['a_1'] == 1
 
 
 
@@ -204,9 +221,115 @@ def test_scope():
 
 
 
-# TODO: test group cache
+def test_selection():
 
-# TODO: test selection
+	kit = _Kit1()
+
+	scope = Selection(kit,
+				  gap=['y'])
+
+	assert list(scope.gizmos()) == ['y']
+
+	ctx = Context(scope)
+
+	assert list(ctx.gizmos()) == ['y']
+
+	ctx['x'] = 1
+
+	assert list(ctx.gizmos()) == ['x', 'y']
+
+	assert ctx['y'] == 2
+
+
+
+def test_group_cache():
+
+	counter = 0
+
+	@tool('a')
+	def f():
+		nonlocal counter
+		counter += 1
+		return 1
+
+	ctx = Context(f)
+
+	assert ctx['a'] == 1
+	assert counter == 1
+	assert 'a' in ctx.data
+	assert ctx['a'] == 1
+	assert counter == 1
+
+	ctx = Context(Scope(f, gap={'a': 'b'}))
+
+	assert not ctx.grabable('a')
+	assert ctx.grabable('b')
+	assert ctx['b'] == 1
+	assert counter == 2
+	assert 'b' in ctx.data
+	assert ctx['b'] == 1
+	assert counter == 2
+
+	ctx.clear_cache()
+
+	assert ctx['b'] == 1
+	assert counter == 3
+
+	@tool('x')
+	def g(a):
+		return 10 * a
+
+	ctx = Context(Scope(f, g, gap={'a': 'b'}))
+
+	assert list(ctx.gizmos()) == ['b', 'x']
+
+	assert ctx['x'] == 10
+	assert counter == 4
+	assert 'x' in ctx.data
+	assert 'b' not in ctx.data
+	assert 'a' not in ctx.data
+
+	assert ctx.is_cached('x')
+	assert ctx.is_cached('b')
+
+	assert ctx['b'] == 1
+	assert counter == 4 # cached from grabbing x
+
+	ctx.clear_cache()
+
+	assert ctx['b'] == 1
+	assert counter == 5
+
+	ctx.clear_cache()
+
+	ctx['b'] = 2
+	assert ctx['x'] == 20
+	assert counter == 5
+
+	ctx = Context(Scope(f, g))
+
+	assert list(ctx.gizmos()) == ['a', 'x']
+
+	assert ctx['x'] == 10
+	assert counter == 6
+	assert 'x' in ctx.data
+	assert 'a' not in ctx.data
+	assert ctx['a'] == 1
+	assert counter == 6 # cached from grabbing x
+
+	ctx.clear_cache()
+
+	assert ctx['a'] == 1
+	assert counter == 7
+
+	ctx.clear_cache()
+
+	ctx['a'] = 2
+	assert ctx['x'] == 20
+	assert counter == 7
+
+
+
 
 
 

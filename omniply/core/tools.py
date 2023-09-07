@@ -64,7 +64,10 @@ class AutoToolCraft(AutoFunctionGadget, ToolCraft):
 
 
 class ToolDecorator(GadgetBase):
+	_gizmo_type = None
 	def __init__(self, gizmo: str, **kwargs):
+		if isinstance(gizmo, str) and self._gizmo_type is not None:
+			gizmo = self._gizmo_type(gizmo)
 		super().__init__(**kwargs)
 		self._gizmo = gizmo
 
