@@ -1,4 +1,5 @@
 import logging
+import yaml
 from typing import Optional
 from collections import OrderedDict
 from .abstract import AbstractGadgetFailedError, AbstractGadget
@@ -46,7 +47,9 @@ class AssemblyError(GadgetError):
 	def __init__(self, gizmo: str, failures: OrderedDict[GadgetError, AbstractGadget], *,
 				 message: Optional[str] = None):
 		if message is None:
-			message = f'{gizmo!r} due to {failures}'
+			errors = [str(error) for error in failures]
+			message = f'{gizmo!r} due to {len(errors)} failures: {", ".join(errors)}'
+			# message = f'{gizmo!r} due to {failures}'
 		super().__init__(gizmo, message=message)
 		self.failures = failures
 

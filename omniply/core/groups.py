@@ -9,7 +9,7 @@ from .gigs import GigBase, GroupCache
 
 
 
-class GroupBase(GigBase, AbstractGroup):
+class GroupBase(GaggleBase, AbstractGroup):
 	_current_context: Optional[AbstractGig]
 
 	def __init__(self, *args, gap: Optional[dict[str, str]] = None, **kwargs):
@@ -71,20 +71,43 @@ class GroupBase(GigBase, AbstractGroup):
 		return self.internal2external.get(gizmo, gizmo)
 
 
-	def _grab_from_fallback(self, error: GadgetError, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-		if not len(self._gig_stack):
-			raise NotImplementedError
-		return super()._grab_from_fallback(error, self._gig_stack[-1], self.gizmo_to(gizmo))
+	def _grab(self, gizmo: str):
+		return super().grab_from(self, gizmo)
 
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def grab_from(self, ctx: AbstractGig, gizmo: str) -> Any:
 		if ctx is not None and ctx is not self:
 			self._gig_stack.append(ctx)
 			gizmo = self.gizmo_from(gizmo) # convert to internal gizmo
-		out = super().grab_from(self, gizmo)
+
+		try:
+			out = self._grab(gizmo)
+		except self._GadgetError:
+			if len(self._gig_stack) == 0 or ctx is self._gig_stack[-1]:
+				raise
+			# default to parent/s
+			out = self._gig_stack[-1].grab(self.gizmo_to(gizmo))
+
 		if len(self._gig_stack) and ctx is self._gig_stack[-1]:
 			self._gig_stack.pop()
+
 		return out
+
+	# def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	# 	assert ctx is self, f'{ctx} != {self}'
+	# 	if len(self._gig_stack):
+	# 		return super()._grab_from_fallback(error, self._gig_stack[-1], self.gizmo_to(gizmo))
+	# 	raise error from error
+	#
+	#
+	# def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	# 	if ctx is not None and ctx is not self:
+	# 		self._gig_stack.append(ctx)
+	# 		gizmo = self.gizmo_from(gizmo) # convert to internal gizmo
+	# 	out = super().grab_from(self, gizmo)
+	# 	if len(self._gig_stack) and ctx is self._gig_stack[-1]:
+	# 		self._gig_stack.pop()
+	# 	return out
 
 
 class CachableGroup(GroupBase):
