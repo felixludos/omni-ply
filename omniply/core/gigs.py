@@ -3,16 +3,19 @@ from collections import UserDict
 from omnibelt import filter_duplicates
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGroup
-from .errors import GadgetError, MissingGizmo, AssemblyError, GigError
+from .errors import GadgetError, MissingGadget, AssemblyError, GigError
 from .gadgets import GadgetBase
 
 
 
 class GigBase(GadgetBase, AbstractGig):
-	# _GigFailedError = GigError
+	_GigFailedError = GigError
 	def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-		if isinstance(error, self._GadgetError) and ctx is not None and ctx is not self: # default to parent
-			return ctx.grab(gizmo)
+		if isinstance(error, GadgetError):
+			if ctx is None or ctx is self:
+				raise self._GigFailedError(gizmo, error) from error
+			else:
+				return ctx.grab(gizmo)
 		raise error from error
 
 

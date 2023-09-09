@@ -1,5 +1,5 @@
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGroup
-from .errors import GadgetError, MissingGizmo
+from .errors import GadgetError, MissingGadget
 from .tools import ToolCraft, AutoToolCraft, ToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
 from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle

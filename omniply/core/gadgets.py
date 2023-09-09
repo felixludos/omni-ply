@@ -2,14 +2,14 @@ from typing import Iterator, Optional, Any, Iterable, Callable
 from omnibelt import extract_function_signature
 from omnibelt.crafts import AbstractSkill, NestableCraft
 
-from .errors import GadgetError, MissingGizmo
+from .errors import GadgetError, MissingGadget
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
 
 
 
 class GadgetBase(AbstractGadget):
 	_GadgetError = GadgetError
-	_MissingGizmoError = MissingGizmo
+	_MissingGadgetError = MissingGadget
 
 
 
@@ -49,7 +49,7 @@ class FunctionGadget(SingleGadgetBase):
 
 	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		if gizmo != self._gizmo:
-			raise self._MissingGizmoError(gizmo)
+			raise self._MissingGadgetError(gizmo)
 		return self._fn(ctx)
 
 
@@ -68,7 +68,7 @@ class AutoFunctionGadget(FunctionGadget):
 
 	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		if gizmo != self._gizmo:
-			raise self._MissingGizmoError(gizmo)
+			raise self._MissingGadgetError(gizmo)
 
 		args, kwargs = self._extract_gizmo_args(self._fn, ctx)
 		return self._fn(*args, **kwargs)
