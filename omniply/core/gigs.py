@@ -2,18 +2,18 @@ from typing import Any, Optional, Iterator
 from collections import UserDict
 from omnibelt import filter_duplicates
 
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGroup
-from .errors import GadgetError, MissingGadget, AssemblyError, GigError
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGroup, AbstractGadgetError
+from .errors import GadgetFailure, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
 
 
 
 class GigBase(GadgetBase, AbstractGig):
-	_GigFailedError = GigError
+	_GrabError = GrabError
 	def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-		if isinstance(error, GadgetError):
-			if ctx is None or ctx is self:
-				raise self._GigFailedError(gizmo, error) from error
+		if isinstance(error, AbstractGadgetError):
+			if isinstance(error, GrabError) or ctx is None or ctx is self:
+				raise self._GrabError(gizmo, error) from error
 			else:
 				return ctx.grab(gizmo)
 		raise error from error

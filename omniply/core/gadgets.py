@@ -2,13 +2,13 @@ from typing import Iterator, Optional, Any, Iterable, Callable
 from omnibelt import extract_function_signature
 from omnibelt.crafts import AbstractSkill, NestableCraft
 
-from .errors import GadgetError, MissingGadget
+from .errors import GadgetFailure, MissingGadget
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
 
 
 
 class GadgetBase(AbstractGadget):
-	_GadgetError = GadgetError
+	_GadgetFailure = GadgetFailure
 	_MissingGadgetError = MissingGadget
 
 

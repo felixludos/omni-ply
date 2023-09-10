@@ -3,7 +3,7 @@ from collections import UserDict
 from omnibelt import filter_duplicates
 
 from .abstract import AbstractGroup, AbstractGig
-from .errors import GadgetError, ApplicationAmbiguityError
+from .errors import GadgetFailure, ApplicationAmbiguityError
 from .gaggles import GaggleBase
 from .gigs import GigBase, GroupCache
 
@@ -82,7 +82,7 @@ class GroupBase(GaggleBase, AbstractGroup):
 
 		try:
 			out = self._grab(gizmo)
-		except self._GadgetError:
+		except self._GadgetFailure:
 			if len(self._gig_stack) == 0 or ctx is self._gig_stack[-1]:
 				raise
 			# default to parent/s

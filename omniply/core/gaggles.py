@@ -5,7 +5,7 @@ from omnibelt import filter_duplicates
 from omnibelt.crafts import InheritableCrafty
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
-from .errors import logger, GadgetError, MissingGadget, AssemblyError
+from .errors import logger, GadgetFailure, MissingGadget, AssemblyError
 from .gadgets import GadgetBase, SingleGadgetBase, FunctionGadget, AutoFunctionGadget
 
 
@@ -56,7 +56,7 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 		for gadget in self._vendors(gizmo):
 			try:
 				return gadget.grab_from(ctx, gizmo)
-			except self._GadgetError as e:
+			except self._GadgetFailure as e:
 				failures[e] = gadget
 			except:
 				logger.debug(f'{gadget!r} failed while trying to produce {gizmo!r}')
@@ -84,7 +84,7 @@ class LoopyGaggle(GaggleBase):
 		for gadget in itr:
 			try:
 				out = gadget.grab_from(ctx, gizmo)
-			except self._GadgetError as e:
+			except self._GadgetFailure as e:
 				failures[e] = gadget
 			except:
 				logger.debug(f'{gadget!r} failed while trying to produce {gizmo!r}')
