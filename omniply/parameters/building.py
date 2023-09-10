@@ -114,7 +114,7 @@ class ConfigBuilder(BuilderBase, AbstractArgumentBuilder, fig.Configurable):
 	def build(self, *args, **kwargs):
 		product = self.product(*args, **kwargs)
 		kwargs = self._build_kwargs(product, *args, **kwargs)
-		config = self.my_config
+		config = self._my_config
 		if config is not None and issubclass(product, fig.Configurable):
 			return product.init_from_config(config, kwargs=kwargs)
 		return product(**kwargs)
