@@ -42,7 +42,7 @@ class CacheGig(GigBase, UserDict):
 
 
 	def __repr__(self):
-		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + gizmo + '}') for gizmo in self.gizmos()]
+		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + str(gizmo) + '}') for gizmo in self.gizmos()]
 		return f'{self.__class__.__name__}({", ".join(gizmos)})'
 
 
