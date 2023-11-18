@@ -3,7 +3,7 @@ from collections import UserDict
 from omnibelt import filter_duplicates
 
 from .abstract import AbstractGang, AbstractGig
-from .errors import GadgetError, ApplicationAmbiguityError
+from .errors import GadgetFailure, ApplicationAmbiguityError
 from .gigs import GigBase
 
 
@@ -69,7 +69,7 @@ class GangBase(GigBase, AbstractGang):
 		return self.internal2external.get(gizmo, gizmo)
 
 
-	def _grab_from_fallback(self, error: GadgetError, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def _grab_from_fallback(self, error: GadgetFailure, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		return super()._grab_from_fallback(error, self._current_context, self.gizmo_to(gizmo))
 
 

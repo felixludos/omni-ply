@@ -99,7 +99,10 @@ class AbstractGig(AbstractMultiGadget):
 
 class AbstractGadgetFailedError(Exception):
 	'''base class for all errors raised by gadgets'''
-	pass
+
+	@property
+	def description(self) -> str:
+		raise NotImplementedError
 
 
 

@@ -38,7 +38,7 @@ class IgnoreResetFlag(Exception):
 
 
 
-class GadgetFailedError(AbstractGadgetFailedError):
+class GadgetFailedError(AbstractGadgetError):
 	def __init__(self, gizmo: str, *, message: Optional[str] = None):
 		if message is None:
 			message = f'{gizmo!r}'

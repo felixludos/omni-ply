@@ -3,7 +3,7 @@ from collections import UserDict
 from omnibelt import filter_duplicates
 
 from .abstract import AbstractGroup, AbstractGig
-from .errors import GadgetError, ApplicationAmbiguityError
+from .errors import GadgetFailure, ApplicationAmbiguityError
 from .gaggles import GaggleBase
 from .gigs import GigBase, GroupCache
 
@@ -82,7 +82,7 @@ class GroupBase(GaggleBase, AbstractGroup):
 
 		try:
 			out = self._grab(gizmo)
-		except self._GadgetError:
+		except self._GadgetFailure:
 			if len(self._gig_stack) == 0 or ctx is self._gig_stack[-1]:
 				raise
 			# default to parent/s
@@ -92,6 +92,22 @@ class GroupBase(GaggleBase, AbstractGroup):
 			self._gig_stack.pop()
 
 		return out
+
+	# def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	# 	assert ctx is self, f'{ctx} != {self}'
+	# 	if len(self._gig_stack):
+	# 		return super()._grab_from_fallback(error, self._gig_stack[-1], self.gizmo_to(gizmo))
+	# 	raise error from error
+	#
+	#
+	# def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	# 	if ctx is not None and ctx is not self:
+	# 		self._gig_stack.append(ctx)
+	# 		gizmo = self.gizmo_from(gizmo) # convert to internal gizmo
+	# 	out = super().grab_from(self, gizmo)
+	# 	if len(self._gig_stack) and ctx is self._gig_stack[-1]:
+	# 		self._gig_stack.pop()
+	# 	return out
 
 
 
