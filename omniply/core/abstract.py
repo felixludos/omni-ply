@@ -86,7 +86,7 @@ class AbstractGig(AbstractMultiGadget):
 		'''
 		try:
 			return self.grab_from(None, gizmo)
-		except AbstractGadgetFailedError:
+		except AbstractGadgetError:
 			if default is unspecified_argument:
 				raise
 			return default
@@ -97,7 +97,7 @@ class AbstractGig(AbstractMultiGadget):
 
 
 
-class AbstractGadgetFailedError(Exception):
+class AbstractGadgetError(Exception):
 	'''base class for all errors raised by gadgets'''
 
 	@property
