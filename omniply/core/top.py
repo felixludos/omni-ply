@@ -28,6 +28,9 @@ class Context(GroupCache, LoopyGaggle, MutableGaggle, AbstractGig):
 		super().__init__(**kwargs)
 		self.include(*gadgets)
 
+	def __getitem__(self, item):
+		return self.grab(item)
+
 
 
 class Scope(CachableGroup, LoopyGaggle, MutableGaggle, AbstractGroup):
