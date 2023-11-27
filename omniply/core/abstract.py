@@ -12,7 +12,7 @@ class AbstractGizmo:
 	to use a custom type of label, you can subclass AbstractGizmo and use that instead.
 	"""
 
-	def __new__(cls, label: str | 'AbstractGizmo'):
+	def __new__(cls, label: Union[str, 'AbstractGizmo']):
 		"""
 		Constructor method for the AbstractGizmo class. It checks if the label is an instance of
 		AbstractGizmo. If it is, it returns the label itself. Otherwise, it creates a new instance of the class.
