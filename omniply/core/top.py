@@ -27,7 +27,8 @@ class tool(AutoToolDecorator):
 		Attributes:
 			_gizmo_type (DashGizmo): The type of the gizmo. Defaults to DashGizmo.
 		"""
-		_gizmo_type = DashGizmo
+		# _gizmo_type = DashGizmo
+		pass
 
 
 class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle):
