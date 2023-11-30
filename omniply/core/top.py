@@ -114,6 +114,17 @@ class Scope(CachableGroup, LoopyGaggle, MutableGaggle, AbstractGroup):
 		super().__init__(**kwargs)
 		self.include(*gadgets)
 
+	def __getitem__(self, item):
+		"""
+		Returns the grabbed item from the context.
+
+		Args:
+			item: The item to be grabbed from the context.
+
+		Returns:
+			Any: The grabbed item from the context.
+		"""
+		return self.grab(item)
 
 class Selection(SelectiveGroup, Scope):
 	"""
@@ -135,3 +146,15 @@ class Selection(SelectiveGroup, Scope):
 			kwargs: Arbitrary keyword arguments.
 		"""
 		super().__init__(*gadgets, **kwargs)
+
+	def __getitem__(self, item):
+		"""
+		Returns the grabbed item from the context.
+
+		Args:
+			item: The item to be grabbed from the context.
+
+		Returns:
+			Any: The grabbed item from the context.
+		"""
+		return self.grab(item)

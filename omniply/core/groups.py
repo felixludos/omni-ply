@@ -30,7 +30,7 @@ class GroupBase(GaggleBase, AbstractGroup):
 		if gap is None:
 			gap = {}
 		super().__init__(*args, **kwargs)
-		self._raw_gap = gap
+		self._raw_gap = gap # internal gizmos -> external gizmos
 		self._raw_reverse_gap = None
 		self._gig_stack = []
 
