@@ -9,40 +9,29 @@ from .errors import logger, GadgetFailure, MissingGadget, AssemblyError
 from .gadgets import GadgetBase, SingleGadgetBase, FunctionGadget, AutoFunctionGadget
 
 
+
 class GaggleBase(GadgetBase, AbstractGaggle):
 	"""
 	The GaggleBase class is a base class for creating custom gaggles. It uses a protected _gadgets_table dictionary to
 	keep track of all the subgadgets, and consequently implements the expected API for gaggles.
 
-	The gadgets should be in reverse order of presidence (so the last gadget for a given gizmo is tried first).
+	The gadgets in the table should be in O-N order (reverse order of presidence, so the last gadget in the list for
+	a gizmo is tried first).
 
 	Attributes:
 		_gadgets_table (dict[str, list[AbstractGadget]]): A dictionary where keys are gadget names and values are lists
-		of gadgets.
+		of subgadgets.
 	"""
 
-	_gadgets_table: dict[str, list[AbstractGadget]]  # A dictionary where keys are gadget names and values are lists of gadgets. The gadgets are kept in O-N order (reversed) for easy updates.
-class GaggleBase(GadgetBase, AbstractGaggle):
-	"""
-	The GaggleBase class is a base class for creating custom gaggles. It uses a protected _gadgets_table dictionary to
-	keep track of all the subgadgets, and consequently implements the expected API for gaggles.
-
-	The gadgets should be in reverse order of presidence (so the last gadget for a given gizmo is tried first).
-
-	Attributes:
-	 _gadgets_table (dict[str, list[AbstractGadget]]): A dictionary where keys are gadget names and values are lists
-  of gadgets.
-	"""
-
-	_gadgets_table: dict[str, list[AbstractGadget]]  # A dictionary where keys are gadget names and values are lists of gadgets. The gadgets are kept in O-N order (reversed) for easy updates.
+	_gadgets_table: dict[str, list[AbstractGadget]]
 
 	def __init__(self, *args, gadgets_table: Optional[Mapping] = None, **kwargs):
 		"""
 		Initializes a new instance of the GaggleBase class.
 
 		Args:
-			args: Variable length argument list.
-			gadgets_table (Optional[Mapping]): A dictionary of gadgets. If not provided, an empty dictionary will be used.
+			args: unused
+			gadgets_table (Optional[Mapping]): A dictionary of gadgets. If not provided, defauls to an empty dictionary.
 			kwargs: Arbitrary keyword arguments.
 		"""
 		if gadgets_table is None:
@@ -52,28 +41,26 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 
 	def gizmos(self) -> Iterator[str]:
 		"""
-		Returns an iterator over the keys of the _gadgets_table dictionary.
-
-		Returns:
-			An iterator over the keys of the _gadgets_table dictionary.
+		Iterates over all known gizmos that this gaggle can produce in order of oldest to newest.
 		"""
 		yield from self._gadgets_table.keys()
 
 	def grabable(self, gizmo: str) -> bool:
 		"""
-		Checks if a gizmo is in the _gadgets_table dictionary.
+		Checks if a gizmo is can be produced by this gaggle.
 
 		Args:
 			gizmo (str): The name of the gizmo to check.
 
 		Returns:
-			bool: True if the gizmo is in the _gadgets_table dictionary, False otherwise.
+			bool: True if the gizmo can be produced, False otherwise.
 		"""
 		return gizmo in self._gadgets_table
 
 	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
 		"""
-		Returns all known gadgets that can produce the given gizmo. It iterates over local branches.
+		Returns all known subgadgets that are used by this gaggle wihtout repeats, that produces the specified gizmo,
+		if provided, otherwise, iterates over all subgadgets. The iteration starts with the most recently added gadgets.
 
 		Args:
 			gizmo (Optional[str]): The name of the gizmo to check. If not provided, all gadgets are returned.
@@ -85,7 +72,7 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 
 	def _vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
 		"""
-		Private method that returns all known gadgets that can produce the given gizmo.
+		Private method that returns all known subgadgets that can produce the given gizmo.
 
 		Args:
 			gizmo (Optional[str]): The name of the gizmo to check. If not provided, all gadgets are returned.
@@ -111,18 +98,18 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 	_AssemblyFailedError = AssemblyError
 	def grab_from(self, ctx: AbstractGig, gizmo: str) -> Any:
 		"""
-		Tries to grab a gizmo from the context using the gadgets in the _gadgets_table dictionary.
+		Tries to grab a gizmo using the subgadgets given the context.
 
 		Args:
-			ctx (AbstractGig): The context from which to grab the gizmo.
+			ctx (AbstractGig): The context with which to grab the gizmo.
 			gizmo (str): The name of the gizmo to grab.
 
 		Returns:
 			Any: The grabbed gizmo.
 
 		Raises:
-			_AssemblyFailedError: If all gadgets fail to produce the gizmo.
-			_MissingGadgetError: If no gadget can produce the gizmo.
+			AssemblyFailedError: If all subgadgets fail to produce the gizmo.
+			MissingGadgetError: If no gadget can produce the gizmo.
 		"""
 		failures = OrderedDict()
 		for gadget in self._vendors(gizmo):
@@ -139,50 +126,44 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 
 class LoopyGaggle(GaggleBase):
 	"""
-	The LoopyGaggle class is a subclass of GaggleBase. It uses a protected _grabber_stack dictionary to
-	keep track of all the subgadgets, and consequently implements the expected API for gaggles.
-
-	The gadgets should be in reverse order of presidence (so the last gadget for a given gizmo is tried first).
+	The LoopyGaggle class is mix-in for custom gaggles that allows multiple gadgets that produce the same gizmos to
+	recursively call each other. Specifically, if a subgadget requires the same gizmo as input as it produces, then the
+	next known subgadget of this gaggle is used after which the stack is resolved.
 
 	Attributes:
-	 _grabber_stack (dict[str, Iterator[AbstractGadget]]): A dictionary where keys are gadget names and values are lists
-  of gadgets.
+		_grabber_stack (dict[str, Iterator[AbstractGadget]]): A dictionary keeping track of which subgadgets are still
+		available to use for each gizmo.
 	"""
-
 	_grabber_stack: dict[str, Iterator[AbstractGadget]] = None
 
-	def __init__(self, *args, grabber_stack: Optional[Mapping] = None, **kwargs):
+	def __init__(self, *args, **kwargs):
 		"""
 		Initializes a new instance of the LoopyGaggle class.
 
 		Args:
-			args: Variable length argument list.
-			grabber_stack (Optional[Mapping]): A dictionary of gadgets. If not provided, an empty dictionary will be used.
-			kwargs: Arbitrary keyword arguments.
+			args: unused, passed to super.
+			kwargs: unused, passed to super.
 		"""
-		if grabber_stack is None:
-			grabber_stack = {}
 		super().__init__(*args, **kwargs)
-		self._grabber_stack = grabber_stack
+		self._grabber_stack = {}
 
 	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
 		"""
 		Tries to grab a gizmo from the context using the gadgets in the _grabber_stack dictionary.
 
 		Args:
-			ctx (AbstractGig): The context from which to grab the gizmo.
+			ctx (AbstractGig): The context with which to grab the gizmo.
 			gizmo (str): The name of the gizmo to grab.
 
 		Returns:
 			Any: The grabbed gizmo.
 
 		Raises:
-			_AssemblyFailedError: If all gadgets fail to produce the gizmo.
-			_MissingGadgetError: If no gadget can produce the gizmo.
+			AssemblyFailedError: If all gadgets fail to produce the gizmo.
+			MissingGadgetError: If no gadget can produce the gizmo.
 		"""
 		failures = OrderedDict()
 		itr = self._grabber_stack.setdefault(gizmo, self._vendors(gizmo))
-		# should be the same as Kit, except the iterators are cached until the gizmo is produced
 		for gadget in itr:
 			try:
 				out = gadget.grab_from(ctx, gizmo)
@@ -203,32 +184,32 @@ class LoopyGaggle(GaggleBase):
 
 class MutableGaggle(GaggleBase):
 	"""
-	The MutableGaggle class is a subclass of GaggleBase. It provides methods to include and exclude gadgets.
-
-	The gadgets should be in reverse order of presidence (so the last gadget for a given gizmo is tried first).
+	The MutableGaggle class is a mix-in for custom gaggles to dynamically add and remove subgadgets.
 	"""
 
 	def include(self, *gadgets: AbstractGadget) -> Self:
 		"""
-		Adds given tools in reverse order.
+		Adds given gadgets in the order that is given, which means subsequent `grab` would use the first provided
+		gadget before trying the next.
 
 		Args:
 			gadgets (AbstractGadget): The gadgets to be added.
 
 		Returns:
-			Self: The instance of the class with the added gadgets.
+			Self: this gaggle.
 		"""
 		return self.extend(gadgets)
 
 	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
 		"""
-		Extends the _gadgets_table with the provided gadgets.
+		Adds given gadgets in the iterator in the order that is given, which means subsequent `grab` would use the
+		first provided gadget before trying the next.
 
 		Args:
 			gadgets (Iterable[AbstractGadget]): The gadgets to be added.
 
 		Returns:
-			Self: The instance of the class with the extended gadgets.
+			Self: this gaggle.
 		"""
 		new = {}
 		for gadget in gadgets:
@@ -244,13 +225,13 @@ class MutableGaggle(GaggleBase):
 
 	def exclude(self, *gadgets: AbstractGadget) -> Self:
 		"""
-		Removes the given tools, if they are found.
+		Removes the given gadgets, if they are found.
 
 		Args:
 			gadgets (AbstractGadget): The gadgets to be removed.
 
 		Returns:
-			Self: The instance of the class with the removed gadgets.
+			Self: this gaggle.
 		"""
 		for gadget in gadgets:
 			for gizmo in gadget.gizmos():
@@ -260,15 +241,19 @@ class MutableGaggle(GaggleBase):
 
 class CraftyGaggle(GaggleBase, InheritableCrafty):
 	"""
-	The CraftyGaggle class is a subclass of GaggleBase and InheritableCrafty. It provides methods to process crafts.
+	The CraftyGaggle class is a mix-in for custom gaggles to handle crafts such as `tool`.
 
-	The gadgets should be in reverse order of presidence (so the last gadget for a given gizmo is tried first).
+	Note that in order to procuess and add all found crafts, a subclass must call `_process_crafts()`, which is not
+	done here.
 	"""
 
 	def _process_crafts(self):
 		"""
-		Processes the crafts. It groups the crafts by where the craft is defined and converts crafts to skills and adds
-		them in O-N (N-O) order to table.
+		Identifies all crafts contained in the class (including super classes) that are gadgets and adds those as
+		subgadgets, in the order in which they are defined.
+
+		Note that, in order to be processed correctly, the crafts should produce skills which are instances of
+		`AbstractGadget`.
 		"""
 		# group by where the craft is defined
 		history = OrderedDict() # src<N-O> : craft<N-O>
@@ -280,19 +265,10 @@ class CraftyGaggle(GaggleBase, InheritableCrafty):
 			gizmos = {}
 			for craft in reversed(crafts): # N-O (in order of presidence)
 				skill = craft.as_skill(self)
-				for gizmo in skill.gizmos():
-					gizmos.setdefault(gizmo, []).append(skill)
+				if isinstance(skill, AbstractGadget):
+					for gizmo in skill.gizmos():
+						gizmos.setdefault(gizmo, []).append(skill)
 			for gizmo, skills in gizmos.items():
 				self._gadgets_table.setdefault(gizmo, []).extend(reversed(skills)) # O-N (in order of appearance)
-
-
-
-
-
-
-
-
-
-
 
 

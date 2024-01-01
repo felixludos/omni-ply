@@ -252,12 +252,12 @@ class AbstractGig(AbstractMultiGadget):
 			return default
 
 
-class AbstractGroup(AbstractGig):
+class AbstractGang(AbstractGig):
 	"""
-	Groups are a special kind of gig that relabels gizmos. It behaves a bit like a local/internal scope
+	Gangs are a special kind of gig that relabels gizmos. It behaves a bit like a local/internal scope
 	for its sub-gadgets, and can default to the global/external scope if necessary.
 
-	This class must be typically subclassed to create a specific type of group.
+	This class must be typically subclassed to create a specific type of gang.
 	"""
 
 	def gizmo_from(self, gizmo: str) -> str:

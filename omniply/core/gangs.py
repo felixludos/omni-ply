@@ -9,11 +9,10 @@ from .gigs import GigBase
 
 class GangBase(GigBase, AbstractGang):
 	"""
-	The GangBase class is a subclass of GigBase and AbstractGang. It provides methods to handle gizmos and their
-	internal and external representations.
+	The GangBase class is a base for custom gangs to enable remapping the gizmo names.
 
 	Attributes:
-	 _current_context (Optional[AbstractGig]): The current context of the gang.
+		_current_context (Optional[AbstractGig]): The current context associated with this gang.
 	"""
 
 	_current_context: Optional[AbstractGig]
@@ -23,8 +22,8 @@ class GangBase(GigBase, AbstractGang):
 		Initializes a new instance of the GangBase class.
 
 		Args:
-			apply (Optional[dict[str, str]]): A dictionary of gizmo mappings. If not provided, an empty dictionary will be used.
-			kwargs: Arbitrary keyword arguments.
+			apply (Optional[dict[str, str]]): gizmo relabeling. If not provided, an empty dictionary will be used.
+			kwargs: unused, passed to super.
 		"""
 		if apply is None:
 			apply = {}
@@ -52,50 +51,19 @@ class GangBase(GigBase, AbstractGang):
 		for gizmo in self._gizmos():
 			yield self.gizmo_to(gizmo)
 
-	@property
-	def internal2external(self) -> dict[str, str]:
-		"""
-		Getter for the internal to external gizmo mapping.
-
-		Returns:
-			dict[str, str]: The internal to external gizmo mapping.
-		"""
-		return self._raw_apply
-
-	@internal2external.setter
-	def internal2external(self, value: dict[str, str]):
-		"""
-		Setter for the internal to external gizmo mapping.
-
-		Args:
-			value (dict[str, str]): The new internal to external gizmo mapping.
-		"""
-		self._raw_apply = value
-		self._raw_reverse_apply = None
-
-	@property
-	def external2internal(self) -> dict[str, str]:
-		"""
-		Getter for the external to internal gizmo mapping.
-
-		Returns:
-			dict[str, str]: The external to internal gizmo mapping.
-		"""
-		if self._raw_reverse_apply is None:
-			self._raw_reverse_apply = self._infer_external2internal(self._raw_apply, self._gizmos())
-		return self._raw_reverse_apply
-
 	@staticmethod
 	def _infer_external2internal(raw: dict[str, str], products: Iterator[str]) -> dict[str, str]:
 		"""
-		Infers the external to internal gizmo mapping from the provided raw mapping and products.
+		Infers the external to internal gizmo mapping (reverse) from the provided raw mapping and products.
+
+		Note, that this method generally shouldn't have to be called by subclasses.
 
 		Args:
-			raw (dict[str, str]): The raw gizmo mapping.
-			products (Iterator[str]): An iterator over the products.
+			raw (dict[str, str]): The gizmo mapping of internal to external names.
+			products (Iterator[str]): An iterator over the products (expected to be `_gizmos`)
 
 		Returns:
-			dict[str, str]: The inferred external to internal gizmo mapping.
+			dict[str, str]: The corresponding external to internal gizmo mapping.
 		"""
 		reverse = {}
 		for product in products:
@@ -106,29 +74,39 @@ class GangBase(GigBase, AbstractGang):
 				reverse[external] = product
 		return reverse
 
+	def _update_external2internal(self, raw: dict[str, str]):
+		self._raw_apply = raw
+		self._raw_reverse_apply = None
+
 	def gizmo_from(self, gizmo: str) -> str:
 		"""
-		Converts an external gizmo to its internal representation.
+		Converts an external gizmo to its internal names.
+
+		Used primarily when grabbing a gizmo using self as the context.
 
 		Args:
-			gizmo (str): The external gizmo.
+			gizmo (str): The external gizmo name.
 
 		Returns:
-			str: The internal representation of the gizmo.
+			str: The internal name of the gizmo.
 		"""
-		return self.external2internal.get(gizmo, gizmo)
+		if self._raw_reverse_apply is None:
+			self._raw_reverse_apply = self._infer_external2internal(self._raw_apply, self._gizmos())
+		return self._raw_reverse_apply.get(gizmo, gizmo)
 
 	def gizmo_to(self, gizmo: str) -> str:
 		"""
 		Converts an internal gizmo to its external representation.
 
+		Used primarily to grab a gizmo from an external context if self fails.
+
 		Args:
-			gizmo (str): The internal gizmo.
+			gizmo (str): The internal gizmo name.
 
 		Returns:
-			str: The external representation of the gizmo.
+			str: The external name of the gizmo.
 		"""
-		return self.internal2external.get(gizmo, gizmo)
+		return self._raw_apply.get(gizmo, gizmo)
 
 	def _grab_from_fallback(self, error: GadgetFailure, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		"""

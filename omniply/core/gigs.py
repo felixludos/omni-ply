@@ -2,7 +2,7 @@ from typing import Any, Optional, Iterator
 from collections import UserDict
 from omnibelt import filter_duplicates
 
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGroup, AbstractGadgetError
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGang, AbstractGadgetError
 from .errors import GadgetFailure, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
 
@@ -221,7 +221,7 @@ class GroupCache(CacheGig):
 					yield group.gizmo_to(key)
 		yield from filter_duplicates(super().cached(), _group_cached())
 
-	def check_group_cache(self, group: AbstractGroup, gizmo: str):
+	def check_group_cache(self, group: AbstractGang, gizmo: str):
 		"""
 		Checks a group cache for a gizmo.
 
@@ -234,7 +234,7 @@ class GroupCache(CacheGig):
 		"""
 		return self._group_cache[group][gizmo]
 
-	def update_group_cache(self, group: AbstractGroup, gizmo: str, val: Any):
+	def update_group_cache(self, group: AbstractGang, gizmo: str, val: Any):
 		"""
 		Updates a group cache with a gizmo and its value.
 
