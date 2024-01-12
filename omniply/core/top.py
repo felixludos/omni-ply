@@ -1,10 +1,10 @@
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGroup
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGang
 from .errors import GadgetFailure, MissingGadget
 from .tools import ToolCraft, AutoToolCraft, ToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
 from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle
 from .gigs import CacheGig, GroupCache
-from .groups import GroupBase, CachableGroup, SelectiveGroup
+from .gangs import GroupBase, CachableGroup, SelectiveGroup
 
 
 
@@ -92,7 +92,7 @@ class Context(GroupCache, LoopyGaggle, MutableGaggle, AbstractGig):
 		return self.grab(item)
 
 
-class Scope(CachableGroup, LoopyGaggle, MutableGaggle, AbstractGroup):
+class Scope(CachableGroup, LoopyGaggle, MutableGaggle, AbstractGang):
 	"""
 	The Scope class is a subclass of CachableGroup, LoopyGaggle, MutableGaggle, and AbstractGroup. It provides methods
 	to handle gadgets in a scope.
