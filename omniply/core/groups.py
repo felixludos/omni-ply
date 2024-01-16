@@ -2,13 +2,13 @@ from typing import Any, Optional, Iterator
 from collections import UserDict
 from omnibelt import filter_duplicates
 
-from .abstract import AbstractGroup, AbstractGig
+from .abstract import AbstractGang, AbstractGig
 from .errors import GadgetFailure, ApplicationAmbiguityError
 from .gaggles import GaggleBase
 from .gigs import GigBase, GroupCache
 
 
-class GroupBase(GaggleBase, AbstractGroup):
+class GroupBase(GaggleBase, AbstractGang):
 	"""
 	The GroupBase class is a subclass of GaggleBase and AbstractGroup. It provides methods to handle gizmo grabbing and packaging.
 
