@@ -94,7 +94,7 @@ class Context(GroupCache, LoopyGaggle, MutableGaggle, AbstractGig):
 
 class Scope(CachableGroup, LoopyGaggle, MutableGaggle, AbstractGang):
 	"""
-	The Scope class is a subclass of CachableGroup, LoopyGaggle, MutableGaggle, and AbstractGroup. It provides methods
+	The Scope class is a subclass of CachableGroup, LoopyGaggle, MutableGaggle, and AbstractGang. It provides methods
 	to handle gadgets in a scope.
 
 	Methods:
