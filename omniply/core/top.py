@@ -4,7 +4,7 @@ from .tools import ToolCraft, AutoToolCraft, ToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
 from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle
 from .gigs import CacheGig, GroupCache
-from .groups import GroupBase, CachableGroup, SelectiveGroup
+from .gangs import GroupBase, CachableGroup, SelectiveGroup
 
 
 
