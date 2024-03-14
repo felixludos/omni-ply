@@ -1,10 +1,11 @@
-from typing import Any, Optional, Iterator
+from typing import Any, Optional, Iterator, Self, Iterable
 from collections import UserDict
 from omnibelt import filter_duplicates
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGang, AbstractGadgetError
 from .errors import GadgetFailure, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
+from .gaggles import MutableGaggle
 
 
 class GigBase(GadgetBase, AbstractGig):
@@ -151,6 +152,20 @@ class CacheGig(GigBase, UserDict):
 		"""
 		self.data.clear()
 
+
+	def _cache_miss(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+		"""
+		Handles a cache miss.
+
+		Args:
+			gizmo (str): The name of the gizmo that was not found in the cache.
+
+		Raises:
+			AssemblyError: Always.
+		"""
+		return super().grab_from(ctx, gizmo)
+
+
 	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		"""
 		Tries to grab a gizmo from the context.
@@ -164,7 +179,7 @@ class CacheGig(GigBase, UserDict):
 		"""
 		if gizmo in self.data:
 			return self.data[gizmo]
-		val = super().grab_from(ctx, gizmo)
+		val = self._cache_miss(ctx, gizmo)
 		self.data[gizmo] = val  # cache packaged val
 		return val
 
@@ -257,4 +272,78 @@ class GroupCache(CacheGig):
 		super().clear_cache()
 		if clear_group_caches:
 			self._group_cache.clear()
+
+
+
+class TraceGig(CacheGig):
+	"""
+	The TraceGig class is a subclass of CacheGig. It provides methods to handle gizmo caching with trace support.
+	"""
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._history = {} # gizmo -> list of gizmos that were created as a result
+		self._products = {} # gizmo -> list of gizmos that used it
+		self._partial_grabs = []
+
+	def undo(self, gizmo: str):
+		'''removed any cached gizmos that were automatically grabbed during the creation of the given gizmo'''
+		for dep in self._history.pop(gizmo, []):
+			self.data.pop(dep, None)
+			self.undo(dep)
+		return self
+
+	def purge(self, gizmo: str):
+		'''remove any cached gizmo that depends on the given gizmo'''
+		for dep in self._products.pop(gizmo, []):
+			self.data.pop(dep, None)
+			self.purge(dep)
+		return self
+
+	def _cache_miss(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+		self._partial_grabs.append(gizmo)
+		try:
+			val = super()._cache_miss(ctx, gizmo)
+		finally:
+			self._partial_grabs.pop()
+
+		if len(self._partial_grabs):
+			self._history.setdefault(self._partial_grabs[-1], set()).add(gizmo)
+		return val
+
+	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+		val = super().grab_from(ctx, gizmo)
+		if len(self._partial_grabs):
+			self._products.setdefault(gizmo, set()).add(self._partial_grabs[-1])
+		return val
+
+
+
+class RollingGig(TraceGig, MutableGaggle):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._rolling_stock = {} # gizmo -> list of gadgets that were included during the gizmos creation
+
+
+	def rollback(self, gizmo: str):
+		'''remove any cached gizmo that depends on the given gizmo'''
+		self.exclude(*self._rolling_stock.pop(gizmo, []))
+		self.undo(gizmo)
+		return self
+
+
+	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
+		if len(self._partial_grabs):
+			self._rolling_stock.setdefault(self._partial_grabs[-1], []).extend(gadgets)
+		return super().extend(gadgets)
+
+
+	def exclude(self, *gadgets: AbstractGadget) -> Self:
+		for known in self._rolling_stock.values():
+			for gadget in gadgets:
+				if gadget in known:
+					known.remove(gadget)
+		return super().exclude(*gadgets)
+
+
+
 

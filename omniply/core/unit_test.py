@@ -1,4 +1,4 @@
-from .top import tool, ToolKit, Context, Scope, Selection
+from .op import tool, ToolKit, Context, Scope, Selection
 
 
 def test_tool():
