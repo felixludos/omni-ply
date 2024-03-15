@@ -48,6 +48,38 @@ class SingleGadgetBase(GadgetBase):
 		yield self._gizmo
 
 
+	def _grab_from(self, ctx: AbstractGig):
+		"""
+		Grabs the gizmo from the given context. This method is called by grab_from.
+
+		Args:
+			ctx (AbstractGig): The context from which to grab the gizmo.
+
+		Returns:
+			Any: The grabbed gizmo.
+		"""
+		raise NotImplementedError
+
+
+	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+		"""
+		Returns the given gizmo from this gadget, or raises MissingGadgetError if the gizmo cannot be grabbed.
+
+		Args:
+			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
+			gizmo (str): The gizmo to grab.
+
+		Returns:
+			Any: The grabbed gizmo.
+
+		Raises:
+			MissingGadgetError: If the wrong gizmo is requested.
+		"""
+		if gizmo != self._gizmo:
+			raise self._MissingGadgetError(gizmo)
+		return self._grab_from(ctx)
+
+
 class FunctionGadget(SingleGadgetBase):
 	"""
 	FunctionGadget is a subclass of SingleGadgetBase for gadgets that produce a single gizmo using a given function.
@@ -106,22 +138,17 @@ class FunctionGadget(SingleGadgetBase):
 		"""
 		return self._fn.__get__(instance, owner)
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+
+	def _grab_from(self, ctx: AbstractGig) -> Any:
 		"""
-		Returns the given gizmo from this gadget, or raises MissingGadgetError if the gizmo cannot be grabbed.
+		Grabs the gizmo from the given context. This method is called by grab_from.
 
 		Args:
-			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
-			gizmo (str): The gizmo to grab.
+			ctx (AbstractGig): The context from which to grab the gizmo.
 
 		Returns:
 			Any: The grabbed gizmo.
-
-		Raises:
-			MissingGadgetError: If the wrong gizmo is requested.
 		"""
-		if gizmo != self._gizmo:
-			raise self._MissingGadgetError(gizmo)
 		return self._fn(ctx)
 
 
@@ -136,6 +163,7 @@ class AutoFunctionGadget(FunctionGadget):
 		_gizmo (str): The gizmo that this gadget grabs.
 		_fn (Callable[tuple, Any]): The function that this gadget uses to grab the gizmo.
 	"""
+
 
 	@staticmethod
 	def _extract_gizmo_args(fn: Callable, ctx: AbstractGig, *, args: Optional[tuple] = None,
@@ -156,24 +184,17 @@ class AutoFunctionGadget(FunctionGadget):
 		"""
 		return extract_function_signature(fn, args=args, kwargs=kwargs, default_fn=ctx.grab)
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+
+	def _grab_from(self, ctx: AbstractGig) -> Any:
 		"""
-		Returns the given gizmo from this gadget, or raises MissingGadgetError if the gizmo cannot be grabbed.
-		The function that this gadget uses to grab the gizmo is called with the arguments extracted by _extract_gizmo_args.
+		Grabs the gizmo from the given context. This method is called by grab_from.
 
 		Args:
-			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
-			gizmo (str): The gizmo to grab.
+			ctx (AbstractGig): The context from which to grab the gizmo.
 
 		Returns:
 			Any: The grabbed gizmo.
-
-		Raises:
-			MissingGadgetError: If the wrong gizmo is requested.
 		"""
-		if gizmo != self._gizmo:
-			raise self._MissingGadgetError(gizmo)
-
 		args, kwargs = self._extract_gizmo_args(self._fn, ctx)
 		return self._fn(*args, **kwargs)
 
