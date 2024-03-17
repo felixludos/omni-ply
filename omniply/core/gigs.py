@@ -346,4 +346,23 @@ class RollingGig(TraceGig, MutableGaggle):
 
 
 
+class ConssitentGig(TraceGig):
+	'''can handle gadgets with multiple outputs (provided those gadgets are deterministic wrt their inputs)'''
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._gadget_precomputes: dict[AbstractGadget,dict[str,Any]] = {} # gadget -> outputs that were already computed (only relevant for gadgets with multiple outputs)
+
+
+	def is_unchanged(self, *gizmos: str):
+
+		pass
+
+
+
+
+
+
+
+
 

@@ -223,6 +223,22 @@ class AutoToolDecorator(ToolDecorator):
 
 
 
+class AbstractDeterministicGadget(AbstractGadget):
+	'''these gadgets are deterministic, and can be used to build up a deterministic context'''
+
+	pass
+
+
+
+class MultiToolCraft(GadgetBase, AbstractDeterministicGadget):
+
+
+
+	pass
+
+
+
+
 
 
 

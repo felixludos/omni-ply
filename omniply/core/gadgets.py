@@ -196,6 +196,6 @@ class AutoFunctionGadget(FunctionGadget):
 			Any: The grabbed gizmo.
 		"""
 		args, kwargs = self._extract_gizmo_args(self._fn, ctx)
-		return self._fn(*args, **kwargs)
+		self._fn(*args, **kwargs)
 
 
