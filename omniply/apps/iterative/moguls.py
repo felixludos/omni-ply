@@ -1,18 +1,6 @@
-from typing import Any, Iterable, Iterator
+from .imports import *
 
-from ..core.gaggles import AbstractGaggle, LoopyGaggle, MutableGaggle
-from ..core import Context, ToolKit
-
-
-
-class AbstractMogul(AbstractGaggle):
-	def announce(self, item: Any):
-		'''packages the item for consumption (which usually means converting it to a Gig e.g. Context)'''
-		raise NotImplementedError
-
-
-	def __iter__(self):
-		raise NotImplementedError
+from .abstract import AbstractMogul, AbstractInnovator
 
 
 
