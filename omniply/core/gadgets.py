@@ -1,7 +1,10 @@
+import inspect
+from functools import cache, cached_property
 from typing import Iterator, Optional, Any, Iterable, Callable
-from omnibelt import extract_function_signature
+from omnibelt import extract_function_signature, extract_missing_args
 from omnibelt.crafts import AbstractSkill, NestableCraft
 
+from .abstract import AbstractConsistentGig
 from .errors import GadgetFailure, MissingGadget
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
 
@@ -17,6 +20,22 @@ class GadgetBase(AbstractGadget):
 	"""
 	_GadgetFailure = GadgetFailure
 	_MissingGadgetError = MissingGadget
+
+
+
+class AbstractGeneticGadget(AbstractGadget):
+	def genes(self, gizmo: str) -> Iterator[str]:
+		"""
+		Returns all the gizmos that may be needed to produce the given gizmo.
+
+		Args:
+			gizmo (str): The gizmo to check.
+
+		Returns:
+			Iterator[str]: An iterator over the gizmos that are required to produce the given gizmo.
+		"""
+		raise NotImplementedError
+
 
 
 class SingleGadgetBase(GadgetBase):
@@ -75,12 +94,12 @@ class SingleGadgetBase(GadgetBase):
 		Raises:
 			MissingGadgetError: If the wrong gizmo is requested.
 		"""
-		if gizmo != self._gizmo:
-			raise self._MissingGadgetError(gizmo)
+		# if gizmo != self._gizmo: raise self._MissingGadgetError(gizmo) # would cause issues with MIMO gadgets
 		return self._grab_from(ctx)
 
 
-class FunctionGadget(SingleGadgetBase):
+
+class SingleFunctionGadget(SingleGadgetBase):
 	"""
 	FunctionGadget is a subclass of SingleGadgetBase for gadgets that produce a single gizmo using a given function.
 	The function should take a single argument, the context (gig), and return the output gizmo.
@@ -152,7 +171,7 @@ class FunctionGadget(SingleGadgetBase):
 		return self._fn(ctx)
 
 
-class AutoFunctionGadget(FunctionGadget):
+class AutoSingleFunctionGadget(SingleFunctionGadget):
 	"""
 	AutoFunctionGadget is a subclass of FunctionGadget that produces a single gizmo using a given function.
 	The function can take any number of arguments, and any arguments that are gizmos will be grabbed from
@@ -197,5 +216,138 @@ class AutoFunctionGadget(FunctionGadget):
 		"""
 		args, kwargs = self._extract_gizmo_args(self._fn, ctx)
 		return self._fn(*args, **kwargs)
+
+
+
+class FunctionGadget(SingleGadgetBase):
+	'''the function is expected to be MISO'''
+	def __init__(self, fn: Callable = None, **kwargs):
+		super().__init__(**kwargs)
+		self._fn = fn
+
+
+	def _grab_from(self, ctx: 'AbstractGig') -> Any:
+		return self._fn(ctx)
+
+
+	@property
+	def __call__(self):
+		return self._fn
+
+
+
+class AutoFunctionGadget(FunctionGadget, AbstractGeneticGadget):
+	def __init__(self, fn: Callable = None, gizmo: str = None, arg_map: dict[str, str] = None, **kwargs):
+		if arg_map is None:
+			arg_map = {}
+		super().__init__(gizmo=gizmo, fn=fn, **kwargs)
+		self._arg_map = arg_map
+
+	@cache
+	def _extract_missing_genes(self, fn=None, args=None, kwargs=None):
+		if fn is None:
+			fn = self.__call__
+		fn = fn.__func__ if isinstance(fn, (classmethod, staticmethod)) else fn
+		return extract_missing_args(fn, args=args, kwargs=kwargs, skip_first=isinstance(fn, classmethod))
+
+	def genes(self, gizmo: str) -> Iterator[str]:
+		for param in self._extract_missing_genes():
+			yield self._arg_map.get(param.name, param.name)
+
+	def _find_missing_gene(self, ctx: 'AbstractGig', param: inspect.Parameter) -> dict[str, Any]:
+		try:
+			return ctx.grab(self._arg_map.get(param.name, param.name))
+		except MissingGadget:
+			if param.default == param.empty:
+				raise
+
+	def _grab_from(self, ctx: 'AbstractGig') -> Any:
+		# conditions = {param.name: self._find_missing_gene(ctx, param) for param in self._extract_missing_genes()}
+		conditions = {}
+		genes = self._extract_missing_genes()
+		for param in genes:
+			conditions[param.name] = self._find_missing_gene(ctx, param)
+		return self._fn(**conditions)
+
+
+
+class MIMOGadgetBase(AbstractGeneticGadget):
+	'''if `gizmos` is specified then the function is expected to give multiple outputs
+	these must be returned as a dict (with the gizmos as keys) or a tuple (with the gizmos in the same order)'''
+
+	def __eq__(self, other):
+		raise NotImplementedError
+
+
+	def __hash__(self):
+		raise NotImplementedError
+
+
+	def _is_multi_output(self, gizmo: str):
+		raise NotImplementedError
+
+
+	# def _cache_miss(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	# 	raise NotImplementedError
+
+
+	def _grab_from_multi_output(self, ctx: Optional[AbstractGig], gizmo: str) -> dict[str, Any]:
+		if not isinstance(ctx, AbstractConsistentGig):
+			raise TypeError(f'Cannot use MIMOFunctionGadget with non-consistent gig')
+
+		reqs = list(self.genes(gizmo))
+
+		if all(ctx.is_unchanged(gene) for gene in reqs):
+			try:
+				return ctx.check_gadget_cache(self)[gizmo]
+			except KeyError:
+				pass
+
+		# out = self._cache_miss(ctx, gizmo)
+		out = super().grab_from(ctx, gizmo)
+
+		assert isinstance(out, (dict, tuple)), f'Expected MIMO function to return dict or tuple, got {type(out)}'
+		if isinstance(out, tuple):
+			assert len(out) == len(reqs), (f'Expected MIMO function to return tuple of length '
+												  f'{len(reqs)}, got {len(out)}')
+			return dict(zip(reqs, out))
+		assert all(g in out for g in reqs), (f'Expected MIMO function to return dict with keys '
+													f'{reqs}, got {out.keys()}')
+
+		ctx.update_gadget_cache(self, out)
+		return out[gizmo]
+
+
+	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+		if self._is_multi_output(gizmo):
+			return self._grab_from_multi_output(ctx, gizmo)
+		return super().grab_from(ctx, gizmo)
+
+
+
+class AutoMIMOFunctionGadget(MIMOGadgetBase, AutoFunctionGadget):
+	def __init__(self, fn: Callable = None, gizmos: Iterable[str] = None, gizmo: str = None, **kwargs):
+		assert gizmo is None != gizmos is None, f'Cannot specify both gizmo and gizmos: {gizmo}, {gizmos}'
+		super().__init__(fn=fn, gizmo=gizmos if gizmo is None else tuple(gizmos), **kwargs)
+
+
+	def __eq__(self, other):
+		return isinstance(other, AutoMIMOFunctionGadget) and self._fn == other._fn and self._gizmo == other._gizmo
+
+
+	def __hash__(self):
+		return hash((self._fn, self._gizmo))
+
+
+	# @cache # TODO: does this matter for performance?
+	def _is_multi_output(self, gizmo: str = None):
+		return isinstance(self._gizmo, tuple)
+
+
+	def gizmos(self) -> Iterator[str]:
+		if self._is_multi_output():
+			yield from self._gizmo
+		else:
+			yield self._gizmo
 
 

@@ -6,7 +6,7 @@ from omnibelt.crafts import InheritableCrafty
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
 from .errors import logger, GadgetFailure, MissingGadget, AssemblyError
-from .gadgets import GadgetBase, SingleGadgetBase, FunctionGadget, AutoFunctionGadget
+from .gadgets import GadgetBase, SingleGadgetBase, SingleFunctionGadget, AutoSingleFunctionGadget
 
 
 
@@ -45,7 +45,7 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 		"""
 		yield from self._gadgets_table.keys()
 
-	def grabable(self, gizmo: str) -> bool:
+	def gives(self, gizmo: str) -> bool:
 		"""
 		Checks if a gizmo is can be produced by this gaggle.
 

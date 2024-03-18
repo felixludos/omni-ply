@@ -2,7 +2,7 @@ from typing import Iterator, Optional, Any, Iterable, Callable
 from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, NestableCraft
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
-from .gadgets import GadgetBase, SingleGadgetBase, FunctionGadget, AutoFunctionGadget
+from .gadgets import GadgetBase, FunctionGadget, AutoFunctionGadget, AutoMIMOFunctionGadget
 
 
 class ToolSkill(AbstractSkill):
@@ -102,7 +102,7 @@ class ToolCraft(FunctionGadget, NestableCraft):
 		"""
 		unbound_fn = self._wrapped_content_leaf()
 		fn = unbound_fn.__get__(owner, type(owner))
-		return self._ToolSkill(self._gizmo, fn=fn, unbound_fn=unbound_fn, base=self)
+		return self._ToolSkill(fn=fn, gizmo=self._gizmo, unbound_fn=unbound_fn, base=self)
 
 
 class AutoToolCraft(AutoFunctionGadget, ToolCraft):
@@ -155,15 +155,15 @@ class ToolDecorator(GadgetBase):
 		"""
 		yield self._gizmo
 
-	def grabable(self, gizmo: str) -> bool:
+	def gives(self, gizmo: str) -> bool:
 		"""
-		Checks if a gizmo is grabable.
+		Checks if a gizmo is can be produced by this gadget.
 
 		Args:
 			gizmo (str): The name of the gizmo to check.
 
 		Returns:
-			bool: True if the gizmo is grabable, False otherwise.
+			bool: True if the gizmo can be grabbed, False otherwise.
 		"""
 		return gizmo == self._gizmo
 
@@ -181,7 +181,7 @@ class ToolDecorator(GadgetBase):
 		Raises:
 			_GadgetFailed: If the gizmo cannot be grabbed.
 		"""
-		raise self._GadgetFailed(gizmo)
+		raise self._GadgetFailure(gizmo)
 
 	_ToolCraft = ToolCraft
 
@@ -196,7 +196,7 @@ class ToolDecorator(GadgetBase):
 		Returns:
 			ToolCraft: The actualized tool.
 		"""
-		return self._ToolCraft(self._gizmo, fn=fn, **kwargs)
+		return self._ToolCraft(gizmo=self._gizmo, fn=fn, **kwargs)
 
 	def __call__(self, fn):
 		"""
@@ -222,19 +222,8 @@ class AutoToolDecorator(ToolDecorator):
 	_ToolCraft = AutoToolCraft
 
 
+# class MIMOTool
 
-class AbstractDeterministicGadget(AbstractGadget):
-	'''these gadgets are deterministic, and can be used to build up a deterministic context'''
-
-	pass
-
-
-
-class MultiToolCraft(GadgetBase, AbstractDeterministicGadget):
-
-
-
-	pass
 
 
 

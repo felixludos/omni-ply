@@ -557,8 +557,8 @@ def test_group_cache():
 
 	ctx = Context(Scope(f, gap={'a': 'b'}))  # The 'Scope' class is used to create a scope with the function 'f' and a gizmo mapping from 'a' to 'b'.
 
-	assert not ctx.grabable('a')  # Asserts that 'a' is not grabable from the context.
-	assert ctx.grabable('b')  # Asserts that 'b' is grabable from the context.
+	assert not ctx.gives('a')  # Asserts that 'a' is not grabable from the context.
+	assert ctx.gives('b')  # Asserts that 'b' is grabable from the context.
 	assert ctx['b'] == 1  # Asserts that the context correctly maps 'b' to 1.
 	assert counter == 2  # Asserts that the counter is correctly incremented.
 	assert 'b' in ctx.data  # Asserts that 'b' is in the context's data.
@@ -631,6 +631,10 @@ def test_group_cache():
 	ctx['a'] = 2  # The context maps 'a' to 2.
 	assert ctx['x'] == 20  # Asserts that the context correctly maps 'x' to 20.
 	assert counter == 7  # Asserts that the counter is not incremented.
+
+
+
+
 
 
 

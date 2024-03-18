@@ -108,7 +108,7 @@ class AbstractGadget:
 		"""
 		raise NotImplementedError
 
-	def grabable(self, gizmo: str) -> bool:
+	def gives(self, gizmo: str) -> bool:
 		"""
 		Checks if this tool can produce the given gizmo.
 
@@ -287,5 +287,23 @@ class AbstractGang(AbstractGig):
 			str: The external gizmo name.
 		"""
 		raise NotImplementedError
+
+
+### exotic animals
+
+
+class AbstractConsistentGig(AbstractGig):
+	def is_unchanged(self, gizmo: str):
+		raise NotImplementedError
+
+	def update_gadget_cache(self, gadget: AbstractGadget, cache: dict[str,Any] = None):
+		raise NotImplementedError
+
+	def check_gadget_cache(self, gadget: AbstractGadget):
+		raise NotImplementedError
+
+
+
+
 
 
