@@ -289,6 +289,3 @@ class AbstractGang(AbstractGig):
 		raise NotImplementedError
 
 
-
-# Moguls -> Guru
-

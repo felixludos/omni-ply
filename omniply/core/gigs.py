@@ -104,7 +104,18 @@ class CacheGig(GigBase, UserDict):
 		"""
 		if self._gizmo_type is not None:
 			key = self._gizmo_type(key)
-		super().__setitem__(key, value)
+		self.set_cache(key, value)
+
+	def set_cache(self, gizmo: str, val: Any):
+		"""
+		Adds a gizmo and its value to the cache.
+
+		Args:
+			gizmo (str): The name of the gizmo to add.
+			val (Any): The value of the gizmo to add.
+		"""
+		self.data[gizmo] = val
+		return self
 
 	def __repr__(self):
 		"""
@@ -124,6 +135,7 @@ class CacheGig(GigBase, UserDict):
 			Iterator[str]: An iterator over the gizmos.
 		"""
 		yield from filter_duplicates(self.cached(), super().gizmos())
+
 
 	def is_cached(self, gizmo: str) -> bool:
 		"""
@@ -152,7 +164,6 @@ class CacheGig(GigBase, UserDict):
 		"""
 		self.data.clear()
 
-
 	def _cache_miss(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		"""
 		Handles a cache miss.
@@ -164,7 +175,6 @@ class CacheGig(GigBase, UserDict):
 			AssemblyError: Always.
 		"""
 		return super().grab_from(ctx, gizmo)
-
 
 	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
 		"""
@@ -180,8 +190,9 @@ class CacheGig(GigBase, UserDict):
 		if gizmo in self.data:
 			return self.data[gizmo]
 		val = self._cache_miss(ctx, gizmo)
-		self.data[gizmo] = val  # cache packaged val
+		self[gizmo] = val  # cache packaged val
 		return val
+
 
 class GroupCache(CacheGig):
 	"""
@@ -346,17 +357,30 @@ class RollingGig(TraceGig, MutableGaggle):
 
 
 
-class ConssitentGig(TraceGig):
+class ConsistentGig(TraceGig):
 	'''can handle gadgets with multiple outputs (provided those gadgets are deterministic wrt their inputs)'''
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._gadget_precomputes: dict[AbstractGadget,dict[str,Any]] = {} # gadget -> outputs that were already computed (only relevant for gadgets with multiple outputs)
 
+	def set_cache(self, gizmo: str, val: Any):
+		if self.is_cached(gizmo) and val != self.data[gizmo]:
+			self.purge(gizmo)
+		return super().set_cache(gizmo, val)
 
 	def is_unchanged(self, *gizmos: str):
+		return all(self.is_cached(gizmo) and gizmo in self._products for gizmo in gizmos)
 
-		pass
+	def update_gadget_cache(self, gadget: AbstractGadget, cache: dict[str,Any] = None):
+		if cache is None:
+			self._gadget_precomputes.pop(gadget, None)
+		else:
+			self._gadget_precomputes.setdefault(gadget, {}).update(cache)
+		return self
+
+	def check_gadget_cache(self, gadget: AbstractGadget, gizmo: str):
+		return self._gadget_precomputes[gadget][gizmo]
 
 
 
