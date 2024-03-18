@@ -300,15 +300,17 @@ class TraceGig(CacheGig):
 
 	def undo(self, gizmo: str):
 		'''removed any cached gizmos that were automatically grabbed during the creation of the given gizmo'''
+		self.data.pop(gizmo, None)
 		for dep in self._history.pop(gizmo, []):
-			self.data.pop(dep, None)
+			# self.data.pop(dep, None)
 			self.undo(dep)
 		return self
 
 	def purge(self, gizmo: str):
 		'''remove any cached gizmo that depends on the given gizmo'''
+		self.data.pop(gizmo, None)
 		for dep in self._products.pop(gizmo, []):
-			self.data.pop(dep, None)
+			# self.data.pop(dep, None)
 			self.purge(dep)
 		return self
 
@@ -373,7 +375,7 @@ class ConsistentGig(TraceGig, AbstractConsistentGig):
 		return self
 
 	def set_cache(self, gizmo: str, val: Any):
-		if self.is_cached(gizmo) and val != self.data[gizmo]:
+		if gizmo in self.data and val != self.data[gizmo]:
 			self.purge(gizmo)
 		return super().set_cache(gizmo, val)
 

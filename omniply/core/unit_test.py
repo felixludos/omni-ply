@@ -634,6 +634,98 @@ def test_group_cache():
 
 
 
+def test_simple_mimo():
+
+	_fuel = 1
+
+	@tool('x', 'y')
+	def f(a, b):
+		nonlocal _fuel
+		if _fuel == 0:
+			raise Exception('No fuel')
+		_fuel -= 1
+		return a + b, a * b
+
+	ctx = Context(f)
+	ctx['a'] = 2
+	ctx['b'] = 3
+
+	assert ctx['x'] == 5
+	assert ctx.is_cached('x')
+	assert not ctx.is_cached('y')
+	assert ctx['y'] == 6
+	assert ctx.is_cached('x')
+	assert ctx.is_cached('y')
+	assert ctx['x'] == 5
+
+
+	@tool('x', 'y')
+	def g(a):
+		return {'x': a + 1, 'y': a + 2}
+
+	@tool('a')
+	def h():
+		return 1
+
+	ctx = Context(g, h)
+
+	assert ctx['x'] == 2
+	assert ctx.is_cached('x')
+	assert not ctx.is_cached('y')
+	assert ctx['y'] == 3
+	assert ctx.is_cached('x')
+	assert ctx.is_cached('y')
+
+
+def test_simple_purge():
+
+	@tool('x')
+	def g(a):
+		return a + 1
+
+	@tool('a')
+	def h():
+		return 1
+
+	ctx = Context(g, h)
+
+	assert ctx['x'] == 2
+	assert ctx.is_cached('a') and ctx.is_cached('x')
+	ctx.purge('a')
+	assert not ctx.is_cached('a') and not ctx.is_cached('x')
+
+	assert ctx['x'] == 2
+	assert ctx.is_cached('a') and ctx.is_cached('x')
+	ctx['a'] = 10
+	assert ctx.is_cached('a') and not ctx.is_cached('x')
+	assert ctx['x'] == 11
+	assert ctx.is_cached('x')
+
+	# mimo
+
+	@tool('x', 'y')
+	def f(a):
+		return a + 1, a + 2
+
+	ctx = Context(f, h)
+
+	assert ctx['x'] == 2
+	assert ctx.is_cached('a') and ctx.is_cached('x') and not ctx.is_cached('y')
+
+	ctx['a'] = 10
+	assert ctx.is_cached('a') and not ctx.is_cached('x') and not ctx.is_cached('y')
+	assert ctx['y'] == 12
+	assert ctx.is_cached('a') and not ctx.is_cached('x') and ctx.is_cached('y')
+
+
+
+
+
+
+
+
+
+
 
 
 

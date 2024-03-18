@@ -283,12 +283,8 @@ class MIMOGadgetBase(AbstractGeneticGadget):
 		raise NotImplementedError
 
 
-	def _is_multi_output(self, gizmo: str):
+	def _multi_output_order(self, gizmo: str):
 		raise NotImplementedError
-
-
-	# def _cache_miss(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-	# 	raise NotImplementedError
 
 
 	def _grab_from_multi_output(self, ctx: Optional[AbstractGig], gizmo: str) -> dict[str, Any]:
@@ -298,37 +294,38 @@ class MIMOGadgetBase(AbstractGeneticGadget):
 		reqs = list(self.genes(gizmo))
 
 		if all(ctx.is_unchanged(gene) for gene in reqs):
-			try:
-				return ctx.check_gadget_cache(self)[gizmo]
-			except KeyError:
-				pass
+			cache = ctx.check_gadget_cache(self)
+			if gizmo in cache:
+				return cache[gizmo]
+			elif len(cache):
+				raise NotImplementedError(f'Cache should either be empty or contain all gizmos, got {cache.keys()}')
 
-		# out = self._cache_miss(ctx, gizmo)
 		out = super().grab_from(ctx, gizmo)
+		order = self._multi_output_order(gizmo)
 
 		assert isinstance(out, (dict, tuple)), f'Expected MIMO function to return dict or tuple, got {type(out)}'
 		if isinstance(out, tuple):
-			assert len(out) == len(reqs), (f'Expected MIMO function to return tuple of length '
-												  f'{len(reqs)}, got {len(out)}')
-			return dict(zip(reqs, out))
-		assert all(g in out for g in reqs), (f'Expected MIMO function to return dict with keys '
-													f'{reqs}, got {out.keys()}')
+			assert len(out) == len(order), (f'Expected MIMO function to return tuple of length '
+												  f'{len(order)}, got {len(out)}')
+			out = dict(zip(order, out))
+		assert all(g in out for g in order), (f'Expected MIMO function to return dict with keys '
+													f'{order}, got {out.keys()}')
 
 		ctx.update_gadget_cache(self, out)
 		return out[gizmo]
 
 
 	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
-		if self._is_multi_output(gizmo):
-			return self._grab_from_multi_output(ctx, gizmo)
-		return super().grab_from(ctx, gizmo)
+		if self._multi_output_order(gizmo) is None:
+			return super().grab_from(ctx, gizmo)
+		return self._grab_from_multi_output(ctx, gizmo)
 
 
 
 class AutoMIMOFunctionGadget(MIMOGadgetBase, AutoFunctionGadget):
 	def __init__(self, fn: Callable = None, gizmos: Iterable[str] = None, gizmo: str = None, **kwargs):
-		assert gizmo is None != gizmos is None, f'Cannot specify both gizmo and gizmos: {gizmo}, {gizmos}'
-		super().__init__(fn=fn, gizmo=gizmos if gizmo is None else tuple(gizmos), **kwargs)
+		assert (gizmo is None) != (gizmos is None), f'Cannot specify both gizmo and gizmos: {gizmo}, {gizmos}'
+		super().__init__(fn=fn, gizmo=tuple(gizmos) if gizmo is None else gizmo, **kwargs)
 
 
 	def __eq__(self, other):
@@ -340,14 +337,15 @@ class AutoMIMOFunctionGadget(MIMOGadgetBase, AutoFunctionGadget):
 
 
 	# @cache # TODO: does this matter for performance?
-	def _is_multi_output(self, gizmo: str = None):
-		return isinstance(self._gizmo, tuple)
+	def _multi_output_order(self, gizmo: str = None):
+		if isinstance(self._gizmo, tuple):
+			return self._gizmo
 
 
 	def gizmos(self) -> Iterator[str]:
-		if self._is_multi_output():
-			yield from self._gizmo
-		else:
+		if self._multi_output_order() is None:
 			yield self._gizmo
+		else:
+			yield from self._gizmo
 
 

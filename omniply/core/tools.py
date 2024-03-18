@@ -105,21 +105,26 @@ class ToolCraft(FunctionGadget, NestableCraft):
 		return self._ToolSkill(fn=fn, gizmo=self._gizmo, unbound_fn=unbound_fn, base=self)
 
 
-class AutoToolCraft(AutoFunctionGadget, ToolCraft):
-	"""
-	The AutoToolCraft class is a subclass of AutoFunctionGadget and ToolCraft. It provides methods to handle automatic
-	function gadgets and tool crafts.
+# class AutoToolCraft(AutoFunctionGadget, ToolCraft):
+# 	"""
+# 	The AutoToolCraft class is a subclass of AutoFunctionGadget and ToolCraft. It provides methods to handle automatic
+# 	function gadgets and tool crafts.
+#
+# 	Attributes:
+# 		_ToolSkill (AutoFunctionGadget, ToolSkill): A nested class that inherits from AutoFunctionGadget and ToolSkill.
+# 	"""
+#
+# 	class _ToolSkill(AutoFunctionGadget, ToolSkill):
+# 		"""
+# 		The _ToolSkill class is a nested class that inherits from AutoFunctionGadget and ToolSkill. It provides methods
+# 		to handle automatic function gadgets and tool skills.
+# 		"""
+# 		pass
 
-	Attributes:
-		_ToolSkill (AutoFunctionGadget, ToolSkill): A nested class that inherits from AutoFunctionGadget and ToolSkill.
-	"""
-
-	class _ToolSkill(AutoFunctionGadget, ToolSkill):
-		"""
-		The _ToolSkill class is a nested class that inherits from AutoFunctionGadget and ToolSkill. It provides methods
-		to handle automatic function gadgets and tool skills.
-		"""
+class AutoToolCraft(AutoMIMOFunctionGadget, ToolCraft):
+	class _ToolSkill(AutoMIMOFunctionGadget, ToolSkill):
 		pass
+
 
 class ToolDecorator(GadgetBase):
 	"""
@@ -220,6 +225,31 @@ class AutoToolDecorator(ToolDecorator):
 		_ToolCraft (AutoToolCraft): A nested class that inherits from AutoToolCraft.
 	"""
 	_ToolCraft = AutoToolCraft
+
+
+	def __init__(self, *gizmos: str, **kwargs):
+		"""
+		Important: a single gizmo is always interpretted as a MISO (not MIMO).
+
+		To use a MIMO with a single output gizmo you must pass a 1-element tuple/list (why would you do that though?)
+
+		"""
+		gizmo = None
+		if len(gizmos) == 1:
+			if isinstance(gizmos[0], str):
+				gizmo = gizmos[0]
+				gizmos = None
+			else:
+				assert len(gizmos[0]) == 1, f'Cannot interpret {gizmos[0]} as a single gizmo'
+
+		if gizmos is not None:
+			gizmos = tuple(self._gizmo_type(gizmo) if isinstance(gizmo, str) and self._gizmo_type is not None
+						   else gizmo for gizmo in gizmos)
+		super().__init__(gizmo=gizmo, **kwargs)
+		self._gizmos = gizmos
+
+	def _actualize_tool(self, fn: Callable, **kwargs):
+		return super()._actualize_tool(fn, gizmos=self._gizmos, **kwargs)
 
 
 # class MIMOTool
