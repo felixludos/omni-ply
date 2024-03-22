@@ -5,7 +5,7 @@ from omnibelt import filter_duplicates
 # from collections import frozenset
 
 from ..core import AbstractGig
-from ..core.gadgets import GadgetBase
+from ..core.gadgets import GadgetBase, AbstractGeneticGadget
 
 
 
@@ -38,7 +38,7 @@ class DictGadget(GadgetBase):
 
 
 
-class Table(GadgetBase):
+class Table(GadgetBase, AbstractGeneticGadget):
 	_index_gizmo = 'index'
 	_index_attribute = None
 
@@ -88,6 +88,11 @@ class Table(GadgetBase):
 
 	def gizmos(self) -> Iterator[str]:
 		yield from self.columns
+
+
+	def genes(self, gizmo: str) -> Iterator[str]:
+		if self._index_attribute is None:
+			yield self._index_gizmo
 
 
 	def __len__(self):

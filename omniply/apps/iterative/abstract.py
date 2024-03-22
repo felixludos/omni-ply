@@ -3,7 +3,7 @@ from .imports import *
 
 
 class AbstractMogul(AbstractGaggle):
-	def resources(self) -> Iterator[AbstractGadget]:
+	def gadgetry(self) -> Iterator[AbstractGadget]:
 		raise NotImplementedError
 
 
@@ -17,16 +17,16 @@ class AbstractMogul(AbstractGaggle):
 
 
 
-class AbstractInnovator:
+class AbstractGuru:
 	'''source that can generate a stream of contexts given a base (mogul)'''
-	def innovate(self, base: AbstractMogul | Iterator[AbstractGadget] = None) -> Iterator[AbstractGig]:
+	def guide(self, base: AbstractMogul | Iterable[AbstractGadget] = None) -> Iterator[AbstractGig]:
 		raise NotImplementedError
 
 
 
 class AbstractEvaluator(AbstractMogul):
-	def evaluate(self, src: AbstractInnovator) -> Any:
-		for ctx in src.innovate(self):
+	def evaluate(self, guru: AbstractGuru) -> Any:
+		for ctx in guru.guide(self):
 			yield self.eval_step(ctx)
 
 
@@ -36,8 +36,8 @@ class AbstractEvaluator(AbstractMogul):
 
 
 class AbstractTrainer(AbstractEvaluator):
-	def fit(self, src: AbstractInnovator) -> Any:
-		for ctx in src.innovate(self):
+	def fit(self, src: AbstractGuru) -> Any:
+		for ctx in src.guide(self):
 			yield self.learn(ctx)
 
 
@@ -47,10 +47,10 @@ class AbstractTrainer(AbstractEvaluator):
 
 
 
-class AbstractProgressiveMogul(AbstractMogul, AbstractInnovator):
+class AbstractProgressiveMogul(AbstractMogul, AbstractGuru):
 	_Sprint = None
 
-	def innovate(self, base: AbstractMogul | Iterator[AbstractGadget] = None) -> Iterator[AbstractGig]:
+	def guide(self, base: AbstractMogul | Iterator[AbstractGadget] = None) -> Iterator[AbstractGig]:
 		sprint = self._Sprint(base)
 		for progress in sprint:
 			yield progress
