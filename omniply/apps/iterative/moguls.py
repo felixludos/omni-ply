@@ -41,7 +41,7 @@ from .abstract import AbstractMogul, AbstractGuru
 class MogulBase(AbstractMogul):
 	def __init__(self, source: AbstractGuru, **kwargs):
 		super().__init__(**kwargs)
-		self.source = source
+		self._source = source
 		self._content = []
 
 
@@ -63,11 +63,11 @@ class MogulBase(AbstractMogul):
 
 
 	def __iter__(self):
-		return self.source.guide(self)
+		return self._source.guide(self)
 
 
 	def __next__(self):
-		return next(self.source.guide(self))
+		return next(self._source.guide(self))
 
 
 
