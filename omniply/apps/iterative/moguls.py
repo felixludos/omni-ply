@@ -38,6 +38,36 @@ from .abstract import AbstractMogul, AbstractGuru
 
 
 
+class MogulBase(AbstractMogul):
+	def __init__(self, source: AbstractGuru, **kwargs):
+		super().__init__(**kwargs)
+		self.source = source
+		self._content = []
+
+
+	def extend(self, content: Iterable[AbstractGadget]):
+		self._content.extend(content)
+
+
+	def include(self, *gadgets: AbstractGadget):
+		self._content.extend(gadgets)
+
+
+	def exclude(self, *gadgets: AbstractGadget):
+		for gadget in gadgets:
+			self._content.remove(gadget)
+
+
+	def gadgetry(self) -> Iterator[AbstractGadget]:
+		yield from self._content
+
+
+	def __iter__(self):
+		return self.source.guide(self)
+
+
+	def __next__(self):
+		return next(self.source.guide(self))
 
 
 
