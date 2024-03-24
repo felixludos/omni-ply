@@ -289,15 +289,34 @@ class AbstractGang(AbstractGig):
 		raise NotImplementedError
 
 
+
 ### exotic animals
+
+
+
+class AbstractGenetic(AbstractGadget):
+	def genes(self, gizmo: str) -> Iterator[str]:
+		"""
+		Returns all the gizmos that may be needed to produce the given gizmo.
+
+		Args:
+			gizmo (str): The gizmo to check.
+
+		Returns:
+			Iterator[str]: An iterator over the gizmos that are required to produce the given gizmo.
+		"""
+		raise NotImplementedError
+
 
 
 class AbstractConsistentGig(AbstractGig):
 	def is_unchanged(self, gizmo: str):
 		raise NotImplementedError
 
+
 	def update_gadget_cache(self, gadget: AbstractGadget, cache: dict[str,Any] = None):
 		raise NotImplementedError
+
 
 	def check_gadget_cache(self, gadget: AbstractGadget):
 		raise NotImplementedError

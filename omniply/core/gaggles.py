@@ -81,7 +81,7 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 			Iterator[AbstractGadget]: An iterator over the gadgets that can produce the given gizmo.
 		"""
 		if gizmo is None:
-			for gadget in filter_duplicates(chain.from_iterable(map(reversed, self._gadgets_table.values()))):
+			for gadget in chain.from_iterable(map(reversed, self._gadgets_table.values())):
 				if isinstance(gadget, AbstractGaggle):
 					yield from gadget.gadgets(gizmo)
 				else:
@@ -89,7 +89,7 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 		else:
 			if gizmo not in self._gadgets_table:
 				raise self._MissingGadgetError(gizmo)
-			for gadget in filter_duplicates(reversed(self._gadgets_table[gizmo])):
+			for gadget in reversed(self._gadgets_table[gizmo]):
 				if isinstance(gadget, AbstractGaggle):
 					yield from gadget.gadgets(gizmo)
 				else:

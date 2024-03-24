@@ -6,7 +6,7 @@ from omnibelt.crafts import AbstractSkill, NestableCraft
 
 from .abstract import AbstractConsistentGig
 from .errors import GadgetFailure, MissingGadget
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGenetic
 
 
 class GadgetBase(AbstractGadget):
@@ -20,21 +20,6 @@ class GadgetBase(AbstractGadget):
 	"""
 	_GadgetFailure = GadgetFailure
 	_MissingGadgetError = MissingGadget
-
-
-
-class AbstractGeneticGadget(AbstractGadget):
-	def genes(self, gizmo: str) -> Iterator[str]:
-		"""
-		Returns all the gizmos that may be needed to produce the given gizmo.
-
-		Args:
-			gizmo (str): The gizmo to check.
-
-		Returns:
-			Iterator[str]: An iterator over the gizmos that are required to produce the given gizmo.
-		"""
-		raise NotImplementedError
 
 
 
@@ -235,8 +220,10 @@ class FunctionGadget(SingleGadgetBase):
 		return self._fn
 
 
+from .errors import GrabError
 
-class AutoFunctionGadget(FunctionGadget, AbstractGeneticGadget):
+
+class AutoFunctionGadget(FunctionGadget, AbstractGenetic):
 	def __init__(self, fn: Callable = None, gizmo: str = None, arg_map: dict[str, str] = None, **kwargs):
 		if arg_map is None:
 			arg_map = {}
@@ -257,9 +244,10 @@ class AutoFunctionGadget(FunctionGadget, AbstractGeneticGadget):
 	def _find_missing_gene(self, ctx: 'AbstractGig', param: inspect.Parameter) -> dict[str, Any]:
 		try:
 			return ctx.grab(self._arg_map.get(param.name, param.name))
-		except MissingGadget:
+		except GrabError:
 			if param.default == param.empty:
 				raise
+			return param.default
 
 	def _grab_from(self, ctx: 'AbstractGig') -> Any:
 		# conditions = {param.name: self._find_missing_gene(ctx, param) for param in self._extract_missing_genes()}
@@ -271,7 +259,7 @@ class AutoFunctionGadget(FunctionGadget, AbstractGeneticGadget):
 
 
 
-class MIMOGadgetBase(AbstractGeneticGadget):
+class MIMOGadgetBase(AbstractGenetic):
 	'''if `gizmos` is specified then the function is expected to give multiple outputs
 	these must be returned as a dict (with the gizmos as keys) or a tuple (with the gizmos in the same order)'''
 

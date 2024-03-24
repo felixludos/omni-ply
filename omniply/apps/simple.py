@@ -5,7 +5,7 @@ from omnibelt import filter_duplicates
 # from collections import frozenset
 
 from ..core import AbstractGig
-from ..core.gadgets import GadgetBase, AbstractGeneticGadget
+from ..core.gadgets import GadgetBase, AbstractGenetic
 
 
 
@@ -38,7 +38,7 @@ class DictGadget(GadgetBase):
 
 
 
-class Table(GadgetBase, AbstractGeneticGadget):
+class Table(GadgetBase, AbstractGenetic):
 	_index_gizmo = 'index'
 	_index_attribute = None
 

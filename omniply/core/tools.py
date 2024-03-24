@@ -252,8 +252,6 @@ class AutoToolDecorator(ToolDecorator):
 		return super()._actualize_tool(fn, gizmos=self._gizmos, **kwargs)
 
 
-# class MIMOTool
-
 
 
 
