@@ -6,10 +6,10 @@ from .abstract import (AbstractGadget, AbstractGaggle, AbstractGig, AbstractGang
 					   AbstractConsistentGig)
 from .errors import GadgetFailure, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
-from .gaggles import MutableGaggle
+from .gaggles import MutableGaggle, MultiGadgetBase
 
 
-class GigBase(GadgetBase, AbstractGig):
+class GigBase(MultiGadgetBase, GadgetBase, AbstractGig):
 	"""
 	The GigBase class is a subclass of GadgetBase and AbstractGig. It provides methods to handle gizmo grabbing and packaging.
 
