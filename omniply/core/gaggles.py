@@ -306,12 +306,17 @@ class CraftyGaggle(GaggleBase, InheritableCrafty):
 		# convert crafts to skills and add in O-N (N-O) order to table
 		for crafts in reversed(history.values()): # O-N
 			gizmos = {}
-			for craft in reversed(crafts): # N-O (in order of presidence)
-				skill = craft.as_skill(self)
+			for craft in reversed(crafts): # N-O (in order of precedence)
+				skill = craft.as_skill(self) # TODO: convert as_skill to a generator to enable multiple skills per craft
 				if isinstance(skill, AbstractGadget):
 					for gizmo in skill.gizmos():
 						gizmos.setdefault(gizmo, []).append(skill)
+				else:
+					self._process_auxiliary_skill(skill)
 			for gizmo, skills in gizmos.items():
 				self._gadgets_table.setdefault(gizmo, []).extend(reversed(skills)) # O-N (in order of appearance)
 
+
+	def _process_auxiliary_skill(self, skill):
+		pass
 

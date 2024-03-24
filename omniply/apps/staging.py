@@ -1,7 +1,7 @@
 
 
 from ..core import AbstractGadget, AbstractGig, AbstractGaggle
-from ..core.abstract import AbstractMultiGadget
+from ..core.gaggles import GaggleBase
 from ..core.gadgets import AbstractGenetic
 
 
@@ -35,16 +35,10 @@ class Staged:
 		pass
 
 
-class StagedGaggle(AbstractGaggle):
-	def _stage(self, plan: AbstractPlan):
-		for gadget in self.gadgets():
-			if isinstance(gadget, Staged):
-				gadget.stage(plan)
 
-
-class StagedMultiGadget(AbstractGenetic, Staged):
+class StagedGaggle(GaggleBase):
 	def _stage(self, plan: AbstractPlan):
-		for gadget in self.gadgets():
+		for gadget in self._vendors():
 			if isinstance(gadget, Staged):
 				gadget.stage(plan)
 

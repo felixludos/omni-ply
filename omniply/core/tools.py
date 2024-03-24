@@ -2,7 +2,9 @@ from typing import Iterator, Optional, Any, Iterable, Callable
 from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, NestableCraft
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
-from .gadgets import GadgetBase, FunctionGadget, AutoFunctionGadget, AutoMIMOFunctionGadget
+from .gadgets import GadgetBase, FunctionGadget
+from .genetics import AutoMIMOFunctionGadget
+
 
 
 class ToolSkill(AbstractSkill):
