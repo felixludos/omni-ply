@@ -2,7 +2,9 @@ from typing import Iterator, Optional, Any, Iterable, Callable
 from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, NestableCraft
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
-from .gadgets import GadgetBase, SingleGadgetBase, FunctionGadget, AutoFunctionGadget
+from .gadgets import GadgetBase, FunctionGadget
+from .genetics import AutoMIMOFunctionGadget
+
 
 
 class ToolSkill(AbstractSkill):
@@ -102,24 +104,29 @@ class ToolCraft(FunctionGadget, NestableCraft):
 		"""
 		unbound_fn = self._wrapped_content_leaf()
 		fn = unbound_fn.__get__(owner, type(owner))
-		return self._ToolSkill(self._gizmo, fn=fn, unbound_fn=unbound_fn, base=self)
+		return self._ToolSkill(fn=fn, gizmo=self._gizmo, unbound_fn=unbound_fn, base=self)
 
 
-class AutoToolCraft(AutoFunctionGadget, ToolCraft):
-	"""
-	The AutoToolCraft class is a subclass of AutoFunctionGadget and ToolCraft. It provides methods to handle automatic
-	function gadgets and tool crafts.
+# class AutoToolCraft(AutoFunctionGadget, ToolCraft):
+# 	"""
+# 	The AutoToolCraft class is a subclass of AutoFunctionGadget and ToolCraft. It provides methods to handle automatic
+# 	function gadgets and tool crafts.
+#
+# 	Attributes:
+# 		_ToolSkill (AutoFunctionGadget, ToolSkill): A nested class that inherits from AutoFunctionGadget and ToolSkill.
+# 	"""
+#
+# 	class _ToolSkill(AutoFunctionGadget, ToolSkill):
+# 		"""
+# 		The _ToolSkill class is a nested class that inherits from AutoFunctionGadget and ToolSkill. It provides methods
+# 		to handle automatic function gadgets and tool skills.
+# 		"""
+# 		pass
 
-	Attributes:
-		_ToolSkill (AutoFunctionGadget, ToolSkill): A nested class that inherits from AutoFunctionGadget and ToolSkill.
-	"""
-
-	class _ToolSkill(AutoFunctionGadget, ToolSkill):
-		"""
-		The _ToolSkill class is a nested class that inherits from AutoFunctionGadget and ToolSkill. It provides methods
-		to handle automatic function gadgets and tool skills.
-		"""
+class AutoToolCraft(AutoMIMOFunctionGadget, ToolCraft):
+	class _ToolSkill(AutoMIMOFunctionGadget, ToolSkill):
 		pass
+
 
 class ToolDecorator(GadgetBase):
 	"""
@@ -155,15 +162,15 @@ class ToolDecorator(GadgetBase):
 		"""
 		yield self._gizmo
 
-	def grabable(self, gizmo: str) -> bool:
+	def gives(self, gizmo: str) -> bool:
 		"""
-		Checks if a gizmo is grabable.
+		Checks if a gizmo is can be produced by this gadget.
 
 		Args:
 			gizmo (str): The name of the gizmo to check.
 
 		Returns:
-			bool: True if the gizmo is grabable, False otherwise.
+			bool: True if the gizmo can be grabbed, False otherwise.
 		"""
 		return gizmo == self._gizmo
 
@@ -181,7 +188,7 @@ class ToolDecorator(GadgetBase):
 		Raises:
 			_GadgetFailed: If the gizmo cannot be grabbed.
 		"""
-		raise self._GadgetFailed(gizmo)
+		raise self._GadgetFailure(gizmo)
 
 	_ToolCraft = ToolCraft
 
@@ -196,7 +203,7 @@ class ToolDecorator(GadgetBase):
 		Returns:
 			ToolCraft: The actualized tool.
 		"""
-		return self._ToolCraft(self._gizmo, fn=fn, **kwargs)
+		return self._ToolCraft(gizmo=self._gizmo, fn=fn, **kwargs)
 
 	def __call__(self, fn):
 		"""
@@ -220,6 +227,34 @@ class AutoToolDecorator(ToolDecorator):
 		_ToolCraft (AutoToolCraft): A nested class that inherits from AutoToolCraft.
 	"""
 	_ToolCraft = AutoToolCraft
+
+
+	def __init__(self, *gizmos: str, **kwargs):
+		"""
+		Important: a single gizmo is always interpretted as a MISO (not MIMO).
+
+		To use a MIMO with a single output gizmo you must pass a 1-element tuple/list (why would you do that though?)
+
+		"""
+		gizmo = None
+		if len(gizmos) == 1:
+			if isinstance(gizmos[0], str):
+				gizmo = gizmos[0]
+				gizmos = None
+			else:
+				assert len(gizmos[0]) == 1, f'Cannot interpret {gizmos[0]} as a single gizmo'
+
+		if gizmos is not None:
+			gizmos = tuple(self._gizmo_type(gizmo) if isinstance(gizmo, str) and self._gizmo_type is not None
+						   else gizmo for gizmo in gizmos)
+		super().__init__(gizmo=gizmo, **kwargs)
+		self._gizmos = gizmos
+
+	def _actualize_tool(self, fn: Callable, **kwargs):
+		return super()._actualize_tool(fn, gizmos=self._gizmos, **kwargs)
+
+
+
 
 
 

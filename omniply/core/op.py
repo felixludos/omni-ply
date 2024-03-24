@@ -3,7 +3,7 @@ from .errors import GadgetFailure, MissingGadget
 from .tools import ToolCraft, AutoToolCraft, ToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
 from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle
-from .gigs import CacheGig, GroupCache, TraceGig, RollingGig
+from .gigs import CacheGig, GroupCache, TraceGig, RollingGig, ConsistentGig
 from .gangs import GroupBase, CachableGroup, SelectiveGroup
 
 
@@ -54,7 +54,7 @@ class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle):
 		self._process_crafts()
 
 
-class Context(GroupCache, RollingGig, LoopyGaggle, MutableGaggle, AbstractGig):
+class Context(GroupCache, ConsistentGig, RollingGig, LoopyGaggle, MutableGaggle, AbstractGig):
 	"""
 	The Context class is a subclass of GroupCache, LoopyGaggle, MutableGaggle, and AbstractGig. It provides methods to handle
 	gadgets in a context.

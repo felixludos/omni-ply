@@ -1,5 +1,5 @@
 from typing import Iterator, Optional, Any, Iterable, Callable
-from omnibelt import extract_function_signature
+from omnibelt import extract_function_signature, extract_missing_args
 from omnibelt.crafts import AbstractSkill, NestableCraft
 
 from .errors import GadgetFailure, MissingGadget
@@ -17,6 +17,7 @@ class GadgetBase(AbstractGadget):
 	"""
 	_GadgetFailure = GadgetFailure
 	_MissingGadgetError = MissingGadget
+
 
 
 class SingleGadgetBase(GadgetBase):
@@ -48,7 +49,39 @@ class SingleGadgetBase(GadgetBase):
 		yield self._gizmo
 
 
-class FunctionGadget(SingleGadgetBase):
+	def _grab_from(self, ctx: AbstractGig):
+		"""
+		Grabs the gizmo from the given context. This method is called by grab_from.
+
+		Args:
+			ctx (AbstractGig): The context from which to grab the gizmo.
+
+		Returns:
+			Any: The grabbed gizmo.
+		"""
+		raise NotImplementedError
+
+
+	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+		"""
+		Returns the given gizmo from this gadget, or raises MissingGadgetError if the gizmo cannot be grabbed.
+
+		Args:
+			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
+			gizmo (str): The gizmo to grab.
+
+		Returns:
+			Any: The grabbed gizmo.
+
+		Raises:
+			MissingGadgetError: If the wrong gizmo is requested.
+		"""
+		# if gizmo != self._gizmo: raise self._MissingGadgetError(gizmo) # would cause issues with MIMO gadgets
+		return self._grab_from(ctx)
+
+
+
+class SingleFunctionGadget(SingleGadgetBase):
 	"""
 	FunctionGadget is a subclass of SingleGadgetBase for gadgets that produce a single gizmo using a given function.
 	The function should take a single argument, the context (gig), and return the output gizmo.
@@ -106,26 +139,21 @@ class FunctionGadget(SingleGadgetBase):
 		"""
 		return self._fn.__get__(instance, owner)
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+
+	def _grab_from(self, ctx: AbstractGig) -> Any:
 		"""
-		Returns the given gizmo from this gadget, or raises MissingGadgetError if the gizmo cannot be grabbed.
+		Grabs the gizmo from the given context. This method is called by grab_from.
 
 		Args:
-			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
-			gizmo (str): The gizmo to grab.
+			ctx (AbstractGig): The context from which to grab the gizmo.
 
 		Returns:
 			Any: The grabbed gizmo.
-
-		Raises:
-			MissingGadgetError: If the wrong gizmo is requested.
 		"""
-		if gizmo != self._gizmo:
-			raise self._MissingGadgetError(gizmo)
 		return self._fn(ctx)
 
 
-class AutoFunctionGadget(FunctionGadget):
+class AutoSingleFunctionGadget(SingleFunctionGadget):
 	"""
 	AutoFunctionGadget is a subclass of FunctionGadget that produces a single gizmo using a given function.
 	The function can take any number of arguments, and any arguments that are gizmos will be grabbed from
@@ -136,6 +164,7 @@ class AutoFunctionGadget(FunctionGadget):
 		_gizmo (str): The gizmo that this gadget grabs.
 		_fn (Callable[tuple, Any]): The function that this gadget uses to grab the gizmo.
 	"""
+
 
 	@staticmethod
 	def _extract_gizmo_args(fn: Callable, ctx: AbstractGig, *, args: Optional[tuple] = None,
@@ -156,25 +185,35 @@ class AutoFunctionGadget(FunctionGadget):
 		"""
 		return extract_function_signature(fn, args=args, kwargs=kwargs, default_fn=ctx.grab)
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+
+	def _grab_from(self, ctx: AbstractGig) -> Any:
 		"""
-		Returns the given gizmo from this gadget, or raises MissingGadgetError if the gizmo cannot be grabbed.
-		The function that this gadget uses to grab the gizmo is called with the arguments extracted by _extract_gizmo_args.
+		Grabs the gizmo from the given context. This method is called by grab_from.
 
 		Args:
-			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
-			gizmo (str): The gizmo to grab.
+			ctx (AbstractGig): The context from which to grab the gizmo.
 
 		Returns:
 			Any: The grabbed gizmo.
-
-		Raises:
-			MissingGadgetError: If the wrong gizmo is requested.
 		"""
-		if gizmo != self._gizmo:
-			raise self._MissingGadgetError(gizmo)
-
 		args, kwargs = self._extract_gizmo_args(self._fn, ctx)
 		return self._fn(*args, **kwargs)
+
+
+
+class FunctionGadget(SingleGadgetBase):
+	'''the function is expected to be MISO'''
+	def __init__(self, fn: Callable = None, **kwargs):
+		super().__init__(**kwargs)
+		self._fn = fn
+
+
+	def _grab_from(self, ctx: 'AbstractGig') -> Any:
+		return self._fn(ctx)
+
+
+	@property
+	def __call__(self):
+		return self._fn
 
 

@@ -108,7 +108,7 @@ class AbstractGadget:
 		"""
 		raise NotImplementedError
 
-	def grabable(self, gizmo: str) -> bool:
+	def gives(self, gizmo: str) -> bool:
 		"""
 		Checks if this tool can produce the given gizmo.
 
@@ -176,51 +176,11 @@ class AbstractGaggle(AbstractGadget):
 		raise NotImplementedError
 
 
-class AbstractMultiGadget(AbstractGaggle):
-	"""
-	AbstractMultiGadget is a special kind of gaggle that hides all sub-gadgets from being accessed through `gadgets()`
-	and `vendors()`. Instead, it presents itself as a gadget that can produce all the products of the sub-gadgets.
-
-	Generally, if you know before runtime what gizmos a gadget can produce, then it should just be a gadget, however,
-	if you want to be able to dynamically add sub-gadgets, while still preventing delegation, then you can use this.
-
-	"""
-
-	def gadgets(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
-		"""
-		Lists all known gadgets under this multi-gadget that can produce the given gizmo.
-		Since this is a multi-gadget, it doesn't delegate to sub-gadgets, and instead yields itself.
-
-		Args:
-			gizmo (Optional[str]): If specified, yields only the gadgets that can produce this gizmo. In this case, it
-			has no effect.
-
-		Returns:
-			Iterator[AbstractGadget]: An iterator over the known gadgets in this multi-gadget that can produce the
-			specified gizmo. Since this is a multi-gadget, it yields only itself.
-		"""
-		yield self
-
-	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
-		"""
-		Lists all known sub-gadgets and sub-gaggles in this multi-gadget that can produce the given gizmo.
-		Since this is a multi-gadget, it doesn't delegate to sub-gadgets, and instead yields itself.
-
-		Args:
-			gizmo (Optional[str]): If specified, yields only the gadgets that can produce this gizmo. In this case, it
-			checks if this multi-gadget can produce the gizmo.
-
-		Returns:
-			Iterator[AbstractGadget]: An iterator over the known gadgets that can directly produce the given gizmo. Since
-			this is a multi-gadget, it yields itself.
-		"""
-		yield self
-
-
 _unique_gig_default_value = object()
 
 
-class AbstractGig(AbstractMultiGadget):
+
+class AbstractGig(AbstractGaggle):
 	"""
 	Gigs are usually the top-level interface for users to use the inference engine of `omni-ply`. Gigs are a special
 	kind of gaggle that takes ownership of a `grab_from()` call, rather than (usually silently) delegating to an
@@ -290,5 +250,39 @@ class AbstractGang(AbstractGig):
 
 
 
-# Moguls -> Guru
+### exotic animals
+
+
+
+class AbstractGenetic(AbstractGadget):
+	def genes(self, gizmo: str) -> Iterator[str]:
+		"""
+		Returns all the gizmos that may be needed to produce the given gizmo.
+
+		Args:
+			gizmo (str): The gizmo to check.
+
+		Returns:
+			Iterator[str]: An iterator over the gizmos that are required to produce the given gizmo.
+		"""
+		raise NotImplementedError
+
+
+
+class AbstractConsistentGig(AbstractGig):
+	def is_unchanged(self, gizmo: str):
+		raise NotImplementedError
+
+
+	def update_gadget_cache(self, gadget: AbstractGadget, cache: dict[str,Any] = None):
+		raise NotImplementedError
+
+
+	def check_gadget_cache(self, gadget: AbstractGadget):
+		raise NotImplementedError
+
+
+
+
+
 

@@ -1,1 +1,0 @@
-from .manifolds import SwissRoll, SwissRollDataset, Helix, HelixDataset, Noisy

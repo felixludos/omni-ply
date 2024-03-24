@@ -5,7 +5,7 @@ from omnibelt import filter_duplicates
 # from collections import frozenset
 
 from ..core import AbstractGig
-from ..core.gadgets import GadgetBase
+from ..core.gadgets import GadgetBase, AbstractGenetic
 
 
 
@@ -38,7 +38,7 @@ class DictGadget(GadgetBase):
 
 
 
-class Table(GadgetBase):
+class Table(GadgetBase, AbstractGenetic):
 	_index_gizmo = 'index'
 	_index_attribute = None
 
@@ -70,14 +70,13 @@ class Table(GadgetBase):
 
 	@property
 	def columns(self) -> list[str]:
-		if self._columns is None:
-			self.load()
 		return self._columns
 
 
 	@property
 	def number_of_rows(self) -> int:
-		return len(self.data[self.columns[0]])
+		if self.is_loaded:
+			return len(self.data[self.columns[0]])
 
 
 	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
@@ -87,16 +86,40 @@ class Table(GadgetBase):
 
 
 	def gizmos(self) -> Iterator[str]:
+		self.load()
 		yield from self.columns
 
 
+	def genes(self, gizmo: str) -> Iterator[str]:
+		if self._index_attribute is None:
+			yield self._index_gizmo
+
+
 	def __len__(self):
+		if not self.is_loaded:
+			raise ValueError(f'Cannot determine length of unloaded table (run load() first)')
 		return self.number_of_rows
 
 
 	def __getitem__(self, index: int):
 		self.load()
 		return {col: self.data[col][index] for col in self.columns}
+
+
+	def __repr__(self):
+		rows = self.number_of_rows
+		cols = self.columns
+
+		terms = [f'{self.__class__.__name__}']
+		if rows:
+			terms.append(f'[{rows}]')
+		if cols:
+			terms.append(f'({", ".join(cols)})')
+		return ''.join(terms)
+
+
+	def __str__(self):
+		return repr(self)
 
 
 	@staticmethod
