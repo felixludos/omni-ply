@@ -6,52 +6,20 @@ from .gadgets import GadgetBase, FunctionGadget
 from .genetics import AutoMIMOFunctionGadget
 
 
-
-class ToolSkill(AbstractSkill):
-	"""
-	The ToolSkill class is a subclass of AbstractSkill. It provides methods to handle unbound functions and their bases.
-
-	Attributes:
-		_unbound_fn (Callable): The unbound function to be handled.
-		_base (Optional[AbstractCraft]): The base of the unbound function. Defaults to None.
-	"""
-
+class SkillBase(AbstractSkill):
 	def __init__(self, *, unbound_fn: Callable, base: Optional[AbstractCraft] = None, **kwargs):
-		"""
-		Initializes a new instance of the ToolSkill class.
-
-		Args:
-			unbound_fn (Callable): The unbound function to be handled.
-			base (Optional[AbstractCraft]): The base of the unbound function. If not provided, base will be None.
-			kwargs: Arbitrary keyword arguments.
-		"""
 		super().__init__(**kwargs)
 		self._unbound_fn = unbound_fn
 		self._base = base
 
+
 	def __get__(self, instance, owner):
-		"""
-		Returns the unbound function if the instance is None, otherwise it returns the bound method.
-
-		Args:
-			instance: The instance that the method is being accessed through, or None when the method is accessed through the owner.
-			owner: The owner class.
-
-		Returns:
-			Callable: The unbound function if the instance is None, otherwise the bound method.
-		"""
 		if instance is None:
 			return self
 		return self._unbound_fn.__get__(instance, owner)
 
-class ToolCraft(FunctionGadget, NestableCraft):
-	"""
-	The ToolCraft class is a subclass of FunctionGadget and NestableCraft. It provides methods to handle gizmos and their associated functions.
 
-	Attributes:
-		_ToolSkill (FunctionGadget, ToolSkill): A nested class that inherits from FunctionGadget and ToolSkill.
-	"""
-
+class CraftBase(NestableCraft):
 	@property
 	def __call__(self):
 		"""
@@ -86,13 +54,60 @@ class ToolCraft(FunctionGadget, NestableCraft):
 		"""
 		return self._fn
 
-	class _ToolSkill(FunctionGadget, ToolSkill):
+
+
+# class ToolSkill(AbstractSkill):
+# 	"""
+# 	The ToolSkill class is a subclass of AbstractSkill. It provides methods to handle unbound functions and their bases.
+#
+# 	Attributes:
+# 		_unbound_fn (Callable): The unbound function to be handled.
+# 		_base (Optional[AbstractCraft]): The base of the unbound function. Defaults to None.
+# 	"""
+#
+# 	def __init__(self, *, unbound_fn: Callable, base: Optional[AbstractCraft] = None, **kwargs):
+# 		"""
+# 		Initializes a new instance of the ToolSkill class.
+#
+# 		Args:
+# 			unbound_fn (Callable): The unbound function to be handled.
+# 			base (Optional[AbstractCraft]): The base of the unbound function. If not provided, base will be None.
+# 			kwargs: Arbitrary keyword arguments.
+# 		"""
+# 		super().__init__(**kwargs)
+# 		self._unbound_fn = unbound_fn
+# 		self._base = base
+#
+# 	def __get__(self, instance, owner):
+# 		"""
+# 		Returns the unbound function if the instance is None, otherwise it returns the bound method.
+#
+# 		Args:
+# 			instance: The instance that the method is being accessed through, or None when the method is accessed through the owner.
+# 			owner: The owner class.
+#
+# 		Returns:
+# 			Callable: The unbound function if the instance is None, otherwise the bound method.
+# 		"""
+# 		if instance is None:
+# 			return self
+# 		return self._unbound_fn.__get__(instance, owner)
+
+class ToolCraft(FunctionGadget, CraftBase):
+	"""
+	The ToolCraft class is a subclass of FunctionGadget and NestableCraft. It provides methods to handle gizmos and their associated functions.
+
+	Attributes:
+		_ToolSkill (FunctionGadget, ToolSkill): A nested class that inherits from FunctionGadget and ToolSkill.
+	"""
+
+	class _ToolSkill(FunctionGadget, SkillBase):
 		"""
 		The _ToolSkill class is a nested class that inherits from FunctionGadget and ToolSkill.
 		"""
 		pass
 
-	def as_skill(self, owner: AbstractCrafty) -> ToolSkill:
+	def as_skill(self, owner: AbstractCrafty) -> SkillBase:
 		"""
 		When an AbstractCrafty is instantiated (i.e., `owner`), any crafts accessible by the class (including inherited ones) can be converted to skills.
 
@@ -107,24 +122,8 @@ class ToolCraft(FunctionGadget, NestableCraft):
 		return self._ToolSkill(fn=fn, gizmo=self._gizmo, unbound_fn=unbound_fn, base=self)
 
 
-# class AutoToolCraft(AutoFunctionGadget, ToolCraft):
-# 	"""
-# 	The AutoToolCraft class is a subclass of AutoFunctionGadget and ToolCraft. It provides methods to handle automatic
-# 	function gadgets and tool crafts.
-#
-# 	Attributes:
-# 		_ToolSkill (AutoFunctionGadget, ToolSkill): A nested class that inherits from AutoFunctionGadget and ToolSkill.
-# 	"""
-#
-# 	class _ToolSkill(AutoFunctionGadget, ToolSkill):
-# 		"""
-# 		The _ToolSkill class is a nested class that inherits from AutoFunctionGadget and ToolSkill. It provides methods
-# 		to handle automatic function gadgets and tool skills.
-# 		"""
-# 		pass
-
 class AutoToolCraft(AutoMIMOFunctionGadget, ToolCraft):
-	class _ToolSkill(AutoMIMOFunctionGadget, ToolSkill):
+	class _ToolSkill(AutoMIMOFunctionGadget, SkillBase):
 		pass
 
 

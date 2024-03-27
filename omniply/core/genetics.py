@@ -124,10 +124,21 @@ class AutoMIMOFunctionGadget(MIMOGadgetBase, AutoFunctionGadget):
 
 
 
-from omnibelt.crafts import NestableCraft
+from omnibelt.crafts import NestableCraft, AbstractCraft, AbstractSkill
 from .gaggles import CraftyGaggle
+from .tools import SkillBase, CraftBase
 
 
+
+class GenomeSkill(SkillBase):
+	pass
+
+
+class GenomeCraft(NestableCraft):
+
+
+
+	pass
 
 
 
