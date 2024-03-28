@@ -1,10 +1,12 @@
+from typing import Iterable, Callable
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig, AbstractGang
 from .errors import GadgetFailure, MissingGadget
-from .tools import ToolCraft, AutoToolCraft, ToolDecorator, AutoToolDecorator
+from .tools import ToolCraftBase, AutoToolCraft, MIMOToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
 from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle
 from .gigs import CacheGig, GroupCache, TraceGig, RollingGig, ConsistentGig
 from .gangs import GroupBase, CachableGroup, SelectiveGroup
+from .genetics import GeneticGaggle
 
 
 
@@ -19,7 +21,7 @@ class tool(AutoToolDecorator):
 
 	# _gizmo_type = DashGizmo
 
-	class from_context(ToolDecorator):
+	class from_context(MIMOToolDecorator):
 		"""
 		The from_context class is a nested class within tool that inherits from ToolDecorator. It provides a way to create
 		tool instances that handle DashGizmo types specifically. This is useful when the gizmos being handled contain dashes.
@@ -28,10 +30,17 @@ class tool(AutoToolDecorator):
 			_gizmo_type (DashGizmo): The type of the gizmo. Defaults to DashGizmo.
 		"""
 		# _gizmo_type = DashGizmo
-		pass
+		def __init__(self, *args, parents: Iterable[str] = None, **kwargs):
+			super().__init__(*args, **kwargs)
+			self._parents = parents
 
 
-class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle):
+		def _actualize_tool(self, fn: Callable, **kwargs):
+			return super()._actualize_tool(fn, parents=self._parents, **kwargs)
+
+
+
+class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle):
 	"""
 	The ToolKit class is a subclass of LoopyGaggle, MutableGaggle, and CraftyGaggle. It provides methods to handle
 	tools in a kit.
@@ -54,7 +63,7 @@ class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle):
 		self._process_crafts()
 
 
-class Context(GroupCache, ConsistentGig, RollingGig, LoopyGaggle, MutableGaggle, AbstractGig):
+class Context(GroupCache, ConsistentGig, RollingGig, LoopyGaggle, MutableGaggle, GeneticGaggle, AbstractGig):
 	"""
 	The Context class is a subclass of GroupCache, LoopyGaggle, MutableGaggle, and AbstractGig. It provides methods to handle
 	gadgets in a context.

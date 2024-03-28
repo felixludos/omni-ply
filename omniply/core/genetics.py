@@ -2,10 +2,115 @@ from typing import Iterator, Callable, Optional, Any, Iterable
 import inspect
 from functools import cache, cached_property
 from omnibelt import extract_missing_args
+# from omnibelt.crafts import NestableCraft, AbstractCraft, AbstractSkill
 
 from .errors import GrabError
-from .abstract import AbstractGenetic, AbstractConsistentGig, AbstractGig
-from .gadgets import FunctionGadget
+from .abstract import AbstractConsistentGig, AbstractGig, AbstractGadget, AbstractGaggle
+from .gadgets import FunctionGadget, GadgetBase
+
+
+# from .gaggles import CraftyGaggle
+# from .tools import SkillBase, CraftBase
+
+
+
+class AbstractGenome:
+	@property
+	def name(self) -> str:
+		raise NotImplementedError
+
+	@property
+	def source(self) -> AbstractGadget:
+		raise NotImplementedError
+
+	@property
+	def endpoint(self):
+		return self.source.grab_from
+
+	@property
+	def parents(self) -> tuple:
+		raise NotImplementedError
+
+	@property
+	def siblings(self) -> tuple:
+		'''returns the siblings in order with the space for self set to None'''
+		raise NotImplementedError
+
+	def alternatives(self) -> Iterator['AbstractGadget']:
+		raise NotImplementedError
+
+
+
+class AbstractGenetic(AbstractGadget):
+	def genes(self, gizmo: str) -> Iterator[AbstractGenome]:
+		"""
+		Returns all the gizmos that may be needed to produce the given gizmo.
+
+		Args:
+			gizmo (str): The gizmo to check.
+
+		Returns:
+			Iterator[str]: An iterator over the gizmos that are required to produce the given gizmo.
+		"""
+		raise NotImplementedError
+
+
+class Genome(AbstractGenome):
+	def __init__(self, name: str, source: AbstractGadget, parents: tuple = None, siblings: tuple = None,
+				 endpoint: Callable = None):
+		self._name = name
+		self._source = source
+		self._parents = parents
+		self._siblings = siblings
+		self._endpoint = endpoint
+
+	def __str__(self):
+		args = f'{", ".join(self.parents)}' if len(self.parents) else '⋅'
+		return f'{self.name} ← {args}'
+
+	def __repr__(self):
+		return str(self)
+
+	def __hash__(self):
+		return hash((self.name, self.source, self.endpoint))
+
+	def __eq__(self, other):
+		return (isinstance(other, Genome) and self.name == other.name
+				and self.source == other.source and self.endpoint == other.endpoint)
+
+	@property
+	def name(self) -> str:
+		return self._name
+
+	@property
+	def source(self) -> AbstractGadget:
+		return self._source
+
+	@property
+	def parents(self) -> tuple:
+		return self._parents
+
+	@property
+	def siblings(self) -> tuple:
+		return self._siblings
+
+	@property
+	def endpoint(self):
+		return self._endpoint
+
+	def __iter__(self):
+		yield from self.parents
+
+	def __len__(self):
+		return len(self.parents)
+
+
+
+class GeneticGaggle(AbstractGenetic, AbstractGaggle):
+	def genes(self, gizmo: str) -> AbstractGenome:
+		for vendor in self.vendors(gizmo):
+			if isinstance(vendor, AbstractGenetic):
+				yield from vendor.genes(gizmo)
 
 
 
@@ -23,9 +128,10 @@ class AutoFunctionGadget(FunctionGadget, AbstractGenetic):
 		fn = fn.__func__ if isinstance(fn, (classmethod, staticmethod)) else fn
 		return extract_missing_args(fn, args=args, kwargs=kwargs, skip_first=isinstance(fn, classmethod))
 
-	def genes(self, gizmo: str) -> Iterator[str]:
-		for param in self._extract_missing_genes():
-			yield self._arg_map.get(param.name, param.name)
+	_Genome = Genome
+	def genes(self, gizmo: str) -> Iterator[AbstractGenome]:
+		parents = [self._arg_map.get(param.name, param.name) for param in self._extract_missing_genes()]
+		yield self._Genome(gizmo, self, parents=tuple(parents), endpoint=self._fn)
 
 	def _find_missing_gene(self, ctx: 'AbstractGig', param: inspect.Parameter) -> dict[str, Any]:
 		try:
@@ -45,27 +151,32 @@ class AutoFunctionGadget(FunctionGadget, AbstractGenetic):
 
 
 
-class MIMOGadgetBase(AbstractGenetic):
+class MIMOGadgetBase(FunctionGadget, AbstractGenetic):
 	'''if `gizmos` is specified then the function is expected to give multiple outputs
 	these must be returned as a dict (with the gizmos as keys) or a tuple (with the gizmos in the same order)'''
 
+	def __init__(self, fn: Callable = None, gizmos: Iterable[str] = None, gizmo: str = None, **kwargs):
+		assert (gizmo is None) != (gizmos is None), f'Cannot specify both gizmo and gizmos: {gizmo}, {gizmos}'
+		super().__init__(fn=fn, gizmo=tuple(gizmos) if gizmo is None else gizmo, **kwargs)
+
 	def __eq__(self, other):
-		raise NotImplementedError
+		return isinstance(other, AutoMIMOFunctionGadget) and self._fn == other._fn and self._gizmo == other._gizmo
 
 
 	def __hash__(self):
-		raise NotImplementedError
+		return hash((self._fn, self._gizmo))
 
-
-	def _multi_output_order(self, gizmo: str):
-		raise NotImplementedError
+	# @cache # TODO: does this matter for performance?
+	def _multi_output_order(self, gizmo: str = None):
+		if isinstance(self._gizmo, tuple):
+			return self._gizmo
 
 
 	def _grab_from_multi_output(self, ctx: Optional[AbstractGig], gizmo: str) -> dict[str, Any]:
 		if not isinstance(ctx, AbstractConsistentGig):
 			raise TypeError(f'Cannot use MIMOFunctionGadget with non-consistent gig')
 
-		reqs = list(self.genes(gizmo))
+		reqs = list(next(self.genes(gizmo)).parents)
 
 		if all(ctx.is_unchanged(gene) for gene in reqs):
 			cache = ctx.check_gadget_cache(self)
@@ -95,27 +206,6 @@ class MIMOGadgetBase(AbstractGenetic):
 		return self._grab_from_multi_output(ctx, gizmo)
 
 
-
-class AutoMIMOFunctionGadget(MIMOGadgetBase, AutoFunctionGadget):
-	def __init__(self, fn: Callable = None, gizmos: Iterable[str] = None, gizmo: str = None, **kwargs):
-		assert (gizmo is None) != (gizmos is None), f'Cannot specify both gizmo and gizmos: {gizmo}, {gizmos}'
-		super().__init__(fn=fn, gizmo=tuple(gizmos) if gizmo is None else gizmo, **kwargs)
-
-
-	def __eq__(self, other):
-		return isinstance(other, AutoMIMOFunctionGadget) and self._fn == other._fn and self._gizmo == other._gizmo
-
-
-	def __hash__(self):
-		return hash((self._fn, self._gizmo))
-
-
-	# @cache # TODO: does this matter for performance?
-	def _multi_output_order(self, gizmo: str = None):
-		if isinstance(self._gizmo, tuple):
-			return self._gizmo
-
-
 	def gizmos(self) -> Iterator[str]:
 		if self._multi_output_order() is None:
 			yield self._gizmo
@@ -124,70 +214,82 @@ class AutoMIMOFunctionGadget(MIMOGadgetBase, AutoFunctionGadget):
 
 
 
-from omnibelt.crafts import NestableCraft, AbstractCraft, AbstractSkill
-from .gaggles import CraftyGaggle
-from .tools import SkillBase, CraftBase
+class AutoMIMOFunctionGadget(MIMOGadgetBase, AutoFunctionGadget):
+	# def __init__(self, fn: Callable = None, gizmos: Iterable[str] = None, gizmo: str = None, **kwargs):
+	# 	assert (gizmo is None) != (gizmos is None), f'Cannot specify both gizmo and gizmos: {gizmo}, {gizmos}'
+	# 	super().__init__(fn=fn, gizmo=tuple(gizmos) if gizmo is None else gizmo, **kwargs)
 
 
-
-class GenomeSkill(SkillBase):
-	pass
-
-
-class GenomeCraft(NestableCraft):
-
-
-
-	pass
+	def genes(self, gizmo: str) -> Iterator[AbstractGenome]:
+		parents = [self._arg_map.get(param.name, param.name) for param in self._extract_missing_genes()]
+		siblings = self._multi_output_order(gizmo)
+		if siblings is not None:
+			siblings = tuple(sibling if sibling != gizmo else None for sibling in siblings)
+		yield self._Genome(gizmo, self, parents=tuple(parents), siblings=siblings, endpoint=self._fn)
 
 
+# class GenomeDecorator(NestableCraft):
+# 	def __init__(self, gizmo: str):
+# 		self.gizmo = gizmo
+#
+# 	def __call__(self, fn):
+# 		fn._gene_decorator = self
+# 		return fn
+#
+# 	def __get__(self, instance, owner):
+# 		if instance is None:
+# 			return self
+# 		return self.__class__(self.gizmo, self.arg)
+#
+# 	def __set_name__(self, owner, name):
+# 		self.name = name
+#
+# 	def __set__(self, instance, value):
+# 		setattr(instance, self.name, value)
+#
+# 	def __get__(self, instance, owner):
+# 		if instance is None:
+# 			return self
+# 		return getattr(instance, self.name)
 
-class GeneticCrafty(CraftyGaggle, AbstractGenetic):
-	def __init__(self, *args, **kwargs):
+
+from omnibelt.crafts import NestableCraft, AbstractCrafty
+
+
+class Parentable(NestableCraft):
+	def __init__(self, *args, parents: tuple = None, **kwargs):
 		super().__init__(*args, **kwargs)
-		self._genome_table = {}
+		self._parents = parents
+		self._parents_fn = None
 
 
-	def _process_auxiliary_skill(self, skill):
-		super()._process_auxiliary_skill(skill)
-		if isinstance(skill, GenomeSkill):
-			pass
-
-
-	def genes(self, gizmo: str) -> Iterator[str]:
-		if gizmo in self._genome_table:
-			yield from self._genome_table[gizmo].genes(gizmo)
-
-
-class GenomeDecorator(NestableCraft):
-	def __init__(self, gizmo: str):
-		self.gizmo = gizmo
-
-	def __call__(self, fn):
-		fn._gene_decorator = self
+	def parents(self, fn: Callable[[], Iterable[str]]) -> Callable:
+		assert self._parents is None, f'Parents have already been specified ({self._parents})'
+		self._parents_fn = fn
 		return fn
 
-	def __get__(self, instance, owner):
-		if instance is None:
-			return self
-		return self.__class__(self.gizmo, self.arg)
+	def as_skill(self, owner: AbstractCrafty):
+		skill: ParentedSkill = super().as_skill(owner)
+		skill._set_parents(self._parents)
+		if self._parents_fn is not None:
+			fn = self._parents_fn.__get__(owner, type(owner))
+			skill._set_parents_fn(fn)
+		return skill
 
-	def __set_name__(self, owner, name):
-		self.name = name
+class ParentedSkill(AbstractGenetic):
+	def get_parents(self):
+		if self._parents is not None:
+			return tuple(self._parents)
+		elif self._parents_fn is not None:
+			return tuple(self._parents_fn())
 
-	def __set__(self, instance, value):
-		setattr(instance, self.name, value)
+	_parents = None
+	def _set_parents(self, parents: tuple):
+		self._parents = parents
 
-	def __get__(self, instance, owner):
-		if instance is None:
-			return self
-		return getattr(instance, self.name)
-
-
-
-
-
-
+	_parents_fn = None
+	def _set_parents_fn(self, fn: Callable[[], Iterable[str]]):
+		self._parents_fn = fn
 
 
 

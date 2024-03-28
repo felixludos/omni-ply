@@ -415,6 +415,7 @@ class _Kit3(ToolKit):
 		return b + 10
 
 
+
 def test_nested_tools():
 	"""
 	This function tests the functionality of the '_Kit3' class and the 'Context' class.
@@ -719,6 +720,74 @@ def test_simple_purge():
 
 
 
+def test_genetics():
+	kit = _Kit3()
+
+	genome = next(kit.genes('a'))
+
+	assert genome.name == 'a'
+	assert genome.parents == ()
+	assert genome.siblings is None
+
+	genomes = list(kit.genes('c'))
+
+	assert len(genomes) == 2
+	assert genomes[1].name == 'c'
+	assert genomes[1].parents == ('b',)
+	assert genomes[1].siblings is None
+
+	genome = next(kit.genes('d'))
+
+	assert genome.name == 'd'
+	assert genome.parents == ('b',)
+	assert genome.siblings is None
+
+
+	@tool('x', 'y')
+	def f(a):
+		return a + 1, a + 2
+
+	genome = next(f.genes('x'))
+
+	assert genome.name == 'x'
+	assert genome.parents == ('a',)
+	assert genome.siblings == (None, 'y')
+
+	genome = next(f.genes('y'))
+
+	assert genome.name == 'y'
+	assert genome.parents == ('a',)
+	assert genome.siblings == ('x', None)
+	assert genome.endpoint == f._fn
+	assert genome.source == f
+
+
+
+def test_parents():
+	class MyKit(ToolKit):
+		@tool.from_context('a', 'b')
+		def f(self, ctx):
+			return ctx['x'] * ctx['y'], ctx['y']
+		@f.parents
+		def _f_parents(self):
+			return 'x', 'y'
+
+	kit = MyKit()
+
+	genome = next(kit.genes('a'))
+
+	assert genome.name == 'a'
+	assert genome.parents == ('x', 'y')
+	assert genome.siblings == (None, 'b')
+
+	ctx = Context(kit)
+
+	ctx['x'] = 10
+	ctx['y'] = 20
+
+	assert ctx['a'] == 200
+	assert not ctx.is_cached('b')
+	assert ctx['b'] == 20
 
 
 

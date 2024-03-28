@@ -3,7 +3,8 @@ from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, Nestab
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
 from .gadgets import GadgetBase, FunctionGadget
-from .genetics import AutoMIMOFunctionGadget
+from .genetics import AutoMIMOFunctionGadget, MIMOGadgetBase, Parentable, AbstractGenetic, Genome, ParentedSkill
+
 
 
 class SkillBase(AbstractSkill):
@@ -56,44 +57,7 @@ class CraftBase(NestableCraft):
 
 
 
-# class ToolSkill(AbstractSkill):
-# 	"""
-# 	The ToolSkill class is a subclass of AbstractSkill. It provides methods to handle unbound functions and their bases.
-#
-# 	Attributes:
-# 		_unbound_fn (Callable): The unbound function to be handled.
-# 		_base (Optional[AbstractCraft]): The base of the unbound function. Defaults to None.
-# 	"""
-#
-# 	def __init__(self, *, unbound_fn: Callable, base: Optional[AbstractCraft] = None, **kwargs):
-# 		"""
-# 		Initializes a new instance of the ToolSkill class.
-#
-# 		Args:
-# 			unbound_fn (Callable): The unbound function to be handled.
-# 			base (Optional[AbstractCraft]): The base of the unbound function. If not provided, base will be None.
-# 			kwargs: Arbitrary keyword arguments.
-# 		"""
-# 		super().__init__(**kwargs)
-# 		self._unbound_fn = unbound_fn
-# 		self._base = base
-#
-# 	def __get__(self, instance, owner):
-# 		"""
-# 		Returns the unbound function if the instance is None, otherwise it returns the bound method.
-#
-# 		Args:
-# 			instance: The instance that the method is being accessed through, or None when the method is accessed through the owner.
-# 			owner: The owner class.
-#
-# 		Returns:
-# 			Callable: The unbound function if the instance is None, otherwise the bound method.
-# 		"""
-# 		if instance is None:
-# 			return self
-# 		return self._unbound_fn.__get__(instance, owner)
-
-class ToolCraft(FunctionGadget, CraftBase):
+class ToolCraftBase(FunctionGadget, CraftBase):
 	"""
 	The ToolCraft class is a subclass of FunctionGadget and NestableCraft. It provides methods to handle gizmos and their associated functions.
 
@@ -101,12 +65,7 @@ class ToolCraft(FunctionGadget, CraftBase):
 		_ToolSkill (FunctionGadget, ToolSkill): A nested class that inherits from FunctionGadget and ToolSkill.
 	"""
 
-	class _ToolSkill(FunctionGadget, SkillBase):
-		"""
-		The _ToolSkill class is a nested class that inherits from FunctionGadget and ToolSkill.
-		"""
-		pass
-
+	_ToolSkill = None
 	def as_skill(self, owner: AbstractCrafty) -> SkillBase:
 		"""
 		When an AbstractCrafty is instantiated (i.e., `owner`), any crafts accessible by the class (including inherited ones) can be converted to skills.
@@ -122,19 +81,36 @@ class ToolCraft(FunctionGadget, CraftBase):
 		return self._ToolSkill(fn=fn, gizmo=self._gizmo, unbound_fn=unbound_fn, base=self)
 
 
-class AutoToolCraft(AutoMIMOFunctionGadget, ToolCraft):
+
+class ToolCraft(Parentable, ToolCraftBase, MIMOGadgetBase):
+	class _ToolSkill(ParentedSkill, MIMOGadgetBase, SkillBase):
+		"""
+		The _ToolSkill class is a nested class that inherits from FunctionGadget and ToolSkill.
+		"""
+		_Genome = Genome
+		def genes(self, gizmo: str) -> Iterator['AbstractGenome']:
+			siblings = list(self.gizmos())
+			if len(siblings) == 1:
+				siblings = None
+			else:
+				siblings = tuple(sibling if sibling != gizmo else None for sibling in self.gizmos())
+			yield self._Genome(gizmo, self, parents=self.get_parents(), siblings=siblings, endpoint=self._fn)
+
+
+class AutoToolCraft(AutoMIMOFunctionGadget, ToolCraftBase):
 	class _ToolSkill(AutoMIMOFunctionGadget, SkillBase):
 		pass
 
 
-class ToolDecorator(GadgetBase):
+
+class ToolDecoratorBase(GadgetBase):
 	"""
 	The ToolDecorator class is a subclass of GadgetBase. It provides methods to handle gizmo decoration.
 
 	Attributes:
 		_gizmo_type (None): The type of the gizmo. Defaults to None.
 		_gizmo (str): The gizmo to be handled.
-		_ToolCraft (ToolCraft): A nested class that inherits from ToolCraft.
+		_ToolCraft (ToolCraftBase): A nested class that inherits from ToolCraft.
 	"""
 
 	_gizmo_type = None
@@ -189,8 +165,7 @@ class ToolDecorator(GadgetBase):
 		"""
 		raise self._GadgetFailure(gizmo)
 
-	_ToolCraft = ToolCraft
-
+	_ToolCraft = ToolCraftBase
 	def _actualize_tool(self, fn: Callable, **kwargs):
 		"""
 		Actualizes a tool by creating a ToolCraft instance with the gizmo and the function.
@@ -200,7 +175,7 @@ class ToolDecorator(GadgetBase):
 			kwargs: Arbitrary keyword arguments.
 
 		Returns:
-			ToolCraft: The actualized tool.
+			ToolCraftBase: The actualized tool.
 		"""
 		return self._ToolCraft(gizmo=self._gizmo, fn=fn, **kwargs)
 
@@ -212,21 +187,14 @@ class ToolDecorator(GadgetBase):
 			fn (Callable): The function to be actualized.
 
 		Returns:
-			ToolCraft: The actualized tool.
+			ToolCraftBase: The actualized tool.
 		"""
 		return self._actualize_tool(fn)
 
-class AutoToolDecorator(ToolDecorator):
-	"""
-	The AutoToolDecorator class is a subclass of ToolDecorator. It overrides the _ToolCraft attribute of the parent class
-	with AutoToolCraft. This means that when a tool is actualized, an instance of AutoToolCraft will be created instead
-	of ToolCraft.
 
-	Attributes:
-		_ToolCraft (AutoToolCraft): A nested class that inherits from AutoToolCraft.
-	"""
-	_ToolCraft = AutoToolCraft
 
+class MIMOToolDecorator(ToolDecoratorBase):
+	_ToolCraft = ToolCraft
 
 	def __init__(self, *gizmos: str, **kwargs):
 		"""
@@ -249,8 +217,32 @@ class AutoToolDecorator(ToolDecorator):
 		super().__init__(gizmo=gizmo, **kwargs)
 		self._gizmos = gizmos
 
+
+		def gizmos(self) -> Iterator[str]:
+			"""
+			Lists gizmos produced by self.
+
+			Returns:
+				Iterator[str]: An iterator over the gizmos.
+			"""
+			yield from self._gizmos
+
+
 	def _actualize_tool(self, fn: Callable, **kwargs):
 		return super()._actualize_tool(fn, gizmos=self._gizmos, **kwargs)
+
+
+
+class AutoToolDecorator(MIMOToolDecorator):
+	"""
+	The AutoToolDecorator class is a subclass of ToolDecorator. It overrides the _ToolCraft attribute of the parent class
+	with AutoToolCraft. This means that when a tool is actualized, an instance of AutoToolCraft will be created instead
+	of ToolCraft.
+
+	Attributes:
+		_ToolCraft (AutoToolCraft): A nested class that inherits from AutoToolCraft.
+	"""
+	_ToolCraft = AutoToolCraft
 
 
 
