@@ -6,18 +6,29 @@ from ..core.gadgets import AbstractGenetic
 
 
 
-class AbstractSpaced(AbstractGadget):
-	def infer_space(self, ctx: AbstractGig, gizmo: str):
-		raise NotImplementedError
+# class AbstractSpaced(AbstractGadget):
+# 	def infer_space(self, ctx: AbstractGig, gizmo: str):
+# 		raise NotImplementedError
 
 
 
-class AbstractPlan(AbstractSpaced):
+class AbstractPlan:
 	pass
 
 
 
-class Staged:
+class AbstractStaged:
+	@property
+	def is_staged(self):
+		raise NotImplementedError
+
+
+	def stage(self, plan: AbstractPlan = None):
+		raise NotImplementedError
+
+
+
+class Staged(AbstractStaged):
 	_is_staged = False
 	@property
 	def is_staged(self):
@@ -36,11 +47,32 @@ class Staged:
 
 
 
-class StagedGaggle(GaggleBase):
+class AlreadyStagedError(Exception):
+	pass
+
+
+
+class Sensitive(AbstractStaged):
+	_AlreadyStagedError = AlreadyStagedError
+
+	_is_sensitive = False
+	@property
+	def is_sensitive(self):
+		return self._is_sensitive
+
+	def stage(self, plan: AbstractPlan = None):
+		if self.is_sensitive and self.is_staged:
+			raise self._AlreadyStagedError(f'{self} is already staged.')
+		return super().stage(plan)
+
+
+
+class StagedGaggle(GaggleBase, Staged):
 	def _stage(self, plan: AbstractPlan):
 		for gadget in self._vendors():
 			if isinstance(gadget, Staged):
 				gadget.stage(plan)
+		return super()._stage(plan)
 
 
 

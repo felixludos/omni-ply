@@ -1,1 +1,1 @@
-from .guru import GuruBase
+from .guru import GodBase

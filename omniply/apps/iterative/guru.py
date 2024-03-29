@@ -1,10 +1,10 @@
 from .imports import *
 
-from .abstract import AbstractMogul, AbstractGuru
+from .abstract import AbstractGuru, AbstractGod
 
 
 
-class GuruBase(AbstractGuru):
+class GodBase(AbstractGod):
 	_Gift: Type[AbstractGig] = Context
 
 
@@ -12,22 +12,22 @@ class GuruBase(AbstractGuru):
 		raise NotImplementedError
 
 
-	def guide(self, base: AbstractMogul | Iterable[AbstractGadget] = None) -> Iterator[AbstractGig]:
+	def grant(self, base: AbstractGuru | Iterable[AbstractGadget] = None) -> Iterator[AbstractGig]:
 		for spark in self._guide_sparks():
 			ctx = self._Gift(spark) if spark is not None else self._Gift()
 			if isinstance(self, AbstractGadget):
 				ctx.include(self)
 			if base is not None:
-				ctx.extend(base.gadgetry() if isinstance(base, AbstractMogul) else base)
+				ctx.extend(base.gadgetry() if isinstance(base, AbstractGuru) else base)
 			yield ctx
 
 
 	def __iter__(self):
-		return self.guide()
+		return self.grant()
 
 
 	def __next__(self):
-		return next(self.guide())
+		return next(self.grant())
 
 
 

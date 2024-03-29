@@ -1,6 +1,6 @@
 from .imports import *
 
-from .abstract import AbstractMogul, AbstractGuru
+from .abstract import AbstractGuru, AbstractGod
 
 
 #
@@ -38,8 +38,8 @@ from .abstract import AbstractMogul, AbstractGuru
 
 
 
-class MogulBase(AbstractMogul):
-	def __init__(self, source: AbstractGuru, **kwargs):
+class GuruBase(AbstractGuru):
+	def __init__(self, source: AbstractGod, **kwargs):
 		super().__init__(**kwargs)
 		self._source = source
 		self._content = []
@@ -63,11 +63,11 @@ class MogulBase(AbstractMogul):
 
 
 	def __iter__(self):
-		return self._source.guide(self)
+		return self._source.grant(self)
 
 
 	def __next__(self):
-		return next(self._source.guide(self))
+		return next(self._source.grant(self))
 
 
 

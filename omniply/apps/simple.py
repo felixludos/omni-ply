@@ -5,11 +5,11 @@ from omnibelt import filter_duplicates
 # from collections import frozenset
 
 from ..core import AbstractGig
-from ..core.gadgets import GadgetBase, AbstractGenetic
+from ..core.gadgets import GadgetBase
+from ..core.genetics import GeneticGadget
 
 
-
-class DictGadget(GadgetBase):
+class DictGadget(GeneticGadget):
 	def __init__(self, *srcs: dict, **data):
 		super().__init__()
 		self.data = {**data}
@@ -33,12 +33,19 @@ class DictGadget(GadgetBase):
 		yield from filter_duplicates(self.data.keys(), *map(lambda x: x.keys(), self._srcs))
 
 
+	def _genetic_information(self, gizmo: str):
+		info = super()._genetic_information(gizmo)
+		info['parents'] = []
+		info['siblings'] = []
+		return info
+
+
 	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
 		return self[gizmo]
 
 
 
-class Table(GadgetBase, AbstractGenetic):
+class Table(GeneticGadget):
 	_index_gizmo = 'index'
 	_index_attribute = None
 
@@ -90,7 +97,12 @@ class Table(GadgetBase, AbstractGenetic):
 		yield from self.columns
 
 
-	def genes(self, gizmo: str) -> Iterator[str]:
+	def _genetic_information(self, gizmo: str) -> Iterator[str]:
+
+		parents = [self._index_gizmo] if self._index_attribute is None else []
+
+
+
 		if self._index_attribute is None:
 			yield self._index_gizmo
 

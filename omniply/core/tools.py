@@ -3,7 +3,7 @@ from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, Nestab
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
 from .gadgets import GadgetBase, FunctionGadget
-from .genetics import AutoMIMOFunctionGadget, MIMOGadgetBase, Parentable, AbstractGenetic, Genome, ParentedSkill
+from .genetics import AutoMIMOFunctionGadget, MIMOGadgetBase, Parentable, AbstractGenetic, Gene, ParentedSkill
 
 
 
@@ -87,14 +87,14 @@ class ToolCraft(Parentable, ToolCraftBase, MIMOGadgetBase):
 		"""
 		The _ToolSkill class is a nested class that inherits from FunctionGadget and ToolSkill.
 		"""
-		_Genome = Genome
-		def genes(self, gizmo: str) -> Iterator['AbstractGenome']:
+		_Gene = Gene
+		def genes(self, gizmo: str) -> Iterator['AbstractGene']:
 			siblings = list(self.gizmos())
 			if len(siblings) == 1:
 				siblings = None
 			else:
 				siblings = tuple(sibling if sibling != gizmo else None for sibling in self.gizmos())
-			yield self._Genome(gizmo, self, parents=self.get_parents(), siblings=siblings, endpoint=self._fn)
+			yield self._Gene(gizmo, self, parents=self.get_parents(), siblings=siblings, endpoint=self._fn)
 
 
 class AutoToolCraft(AutoMIMOFunctionGadget, ToolCraftBase):

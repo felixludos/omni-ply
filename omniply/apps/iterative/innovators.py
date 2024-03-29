@@ -1,6 +1,6 @@
 from .imports import *
 
-from .abstract import AbstractMogul, AbstractInnovator
+from .abstract import AbstractGuru, AbstractInnovator
 
 
 
@@ -12,13 +12,13 @@ class InnovatorBase(AbstractInnovator):
 		raise NotImplementedError
 
 
-	def innovate(self, base: AbstractMogul | Iterator[AbstractGadget] = None) -> Iterator[AbstractGig]:
+	def innovate(self, base: AbstractGuru | Iterator[AbstractGadget] = None) -> Iterator[AbstractGig]:
 		for spark in self._generate_sparks():
 			ctx = self._Innovation(spark) if spark is not None else self._Innovation()
 			if isinstance(self, AbstractGadget):
 				ctx.include(self)
 			if base is not None:
-				ctx.extend(base.resources() if isinstance(base, AbstractMogul) else base)
+				ctx.extend(base.resources() if isinstance(base, AbstractGuru) else base)
 			yield ctx
 
 
