@@ -5,7 +5,7 @@ from omnibelt import extract_missing_args
 from omnibelt.crafts import NestableCraft, AbstractCrafty
 
 from .errors import GrabError
-from .abstract import AbstractConsistentGig, AbstractGig, AbstractGadget, AbstractGaggle
+from .abstract import AbstractConsistentGame, AbstractGame, AbstractGadget, AbstractGaggle
 from .gadgets import FunctionGadget, GadgetBase
 from .gaggles import GaggleBase
 
@@ -156,7 +156,7 @@ class AutoFunctionGadget(FunctionGadget, AbstractGenetic):
 		parents = [self._arg_map.get(param.name, param.name) for param in self._extract_missing_genes()]
 		yield self._Gene(gizmo, self, parents=tuple(parents), endpoint=self._fn)
 
-	def _find_missing_gene(self, ctx: 'AbstractGig', param: inspect.Parameter) -> dict[str, Any]:
+	def _find_missing_gene(self, ctx: 'AbstractGame', param: inspect.Parameter) -> dict[str, Any]:
 		try:
 			return ctx.grab(self._arg_map.get(param.name, param.name))
 		except GrabError:
@@ -164,7 +164,7 @@ class AutoFunctionGadget(FunctionGadget, AbstractGenetic):
 				raise
 			return param.default
 
-	def _grab_from(self, ctx: 'AbstractGig') -> Any:
+	def _grab_from(self, ctx: 'AbstractGame') -> Any:
 		# conditions = {param.name: self._find_missing_gene(ctx, param) for param in self._extract_missing_genes()}
 		conditions = {}
 		genes = self._extract_missing_genes()
@@ -195,9 +195,9 @@ class MIMOGadgetBase(FunctionGadget, AbstractGenetic):
 			return self._gizmo
 
 
-	def _grab_from_multi_output(self, ctx: Optional[AbstractGig], gizmo: str) -> dict[str, Any]:
-		if not isinstance(ctx, AbstractConsistentGig):
-			raise TypeError(f'Cannot use MIMOFunctionGadget with non-consistent gig')
+	def _grab_from_multi_output(self, ctx: Optional[AbstractGame], gizmo: str) -> dict[str, Any]:
+		if not isinstance(ctx, AbstractConsistentGame):
+			raise TypeError(f'Cannot use MIMOFunctionGadget with non-consistent game')
 
 		reqs = list(next(self.genes(gizmo)).parents)
 
@@ -223,7 +223,7 @@ class MIMOGadgetBase(FunctionGadget, AbstractGenetic):
 		return out[gizmo]
 
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 		if self._multi_output_order(gizmo) is None:
 			return super().grab_from(ctx, gizmo)
 		return self._grab_from_multi_output(ctx, gizmo)

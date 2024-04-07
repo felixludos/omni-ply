@@ -1,13 +1,13 @@
 
 
-from ..core import AbstractGadget, AbstractGig, AbstractGaggle
+from ..core import AbstractGadget, AbstractGame, AbstractGaggle
 from ..core.gaggles import GaggleBase
 from ..core.gadgets import AbstractGenetic
 
 
 
 # class AbstractSpaced(AbstractGadget):
-# 	def infer_space(self, ctx: AbstractGig, gizmo: str):
+# 	def infer_space(self, ctx: AbstractGame, gizmo: str):
 # 		raise NotImplementedError
 
 

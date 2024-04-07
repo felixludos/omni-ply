@@ -5,14 +5,14 @@ from .abstract import AbstractGuru, AbstractGod
 
 
 class GodBase(AbstractGod):
-	_Gift: Type[AbstractGig] = Context
+	_Gift: Type[AbstractGame] = Context
 
 
 	def _guide_sparks(self):
 		raise NotImplementedError
 
 
-	def grant(self, base: AbstractGuru | Iterable[AbstractGadget] = None) -> Iterator[AbstractGig]:
+	def grant(self, base: AbstractGuru | Iterable[AbstractGadget] = None) -> Iterator[AbstractGame]:
 		for spark in self._guide_sparks():
 			ctx = self._Gift(spark) if spark is not None else self._Gift()
 			if isinstance(self, AbstractGadget):

@@ -1,7 +1,7 @@
 from typing import Iterator, Optional, Any, Iterable, Callable
 from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, NestableCraft
 
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGame
 from .gadgets import GadgetBase, FunctionGadget
 from .genetics import AutoMIMOFunctionGadget, MIMOGadgetBase, Parentable, AbstractGenetic, Gene, ParentedSkill
 
@@ -149,12 +149,12 @@ class ToolDecoratorBase(GadgetBase):
 		"""
 		return gizmo == self._gizmo
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 		"""
 		Tries to grab a gizmo from the context.
 
 		Args:
-			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
+			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
 			gizmo (str): The name of the gizmo to grab.
 
 		Returns:

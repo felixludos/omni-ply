@@ -2,8 +2,8 @@ from .kits import *
 
 
 
-class Gig(AbstractGig):
-	def _grab_from_fallback(self, error: GadgetFailedError, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
+class Game(AbstractGame):
+	def _grab_from_fallback(self, error: GadgetFailedError, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
 		if ctx is None or ctx is self:
 			raise AssemblyFailedError(gizmo, error)
 			# raise error from error
@@ -14,7 +14,7 @@ class Gig(AbstractGig):
 		return super().grab_from(self, gizmo)
 
 
-	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
 		try:
 			out = self._grab(gizmo)
 		except GadgetFailedError as error:
@@ -23,7 +23,7 @@ class Gig(AbstractGig):
 
 
 
-class Cached(AbstractGig, UserDict):
+class Cached(AbstractGame, UserDict):
 	def __repr__(self):
 		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + gizmo + '}') for gizmo in self.gizmos()]
 		return f'{self.__class__.__name__}({", ".join(gizmos)})'
@@ -51,7 +51,7 @@ class Cached(AbstractGig, UserDict):
 	# 	return val
 
 
-	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
 		if self.is_cached(gizmo):
 			return self.data[gizmo]
 		val = super().grab_from(ctx, gizmo)
@@ -63,8 +63,8 @@ class Cached(AbstractGig, UserDict):
 ########################################################################################################################
 
 
-class SimpleGroup(Gig, AbstractGroup):
-	_current_context: Optional[AbstractGig]
+class SimpleGroup(Game, AbstractGroup):
+	_current_context: Optional[AbstractGame]
 
 	def __init__(self, *, apply: Optional[Dict[str, str]] = None, **kwargs):
 		if apply is None:
@@ -115,11 +115,11 @@ class SimpleGroup(Gig, AbstractGroup):
 		return self.internal2external.get(gizmo, gizmo)
 
 
-	def _grab_from_fallback(self, error: GadgetFailedError, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
+	def _grab_from_fallback(self, error: GadgetFailedError, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
 		return super()._grab_from_fallback(error, self._current_context, self.gizmo_to(gizmo))
 
 
-	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
 		if ctx is not None and ctx is not self:
 			assert self._current_context is None, f'Context already set to {self._current_context}'
 			self._current_context = ctx

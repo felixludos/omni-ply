@@ -2,7 +2,7 @@ from typing import Iterator, Any, Iterable, Mapping, Self, Union
 import random
 from omnibelt import filter_duplicates
 
-from ..core.abstract import AbstractGadget, AbstractGaggle, AbstractGig
+from ..core.abstract import AbstractGadget, AbstractGaggle, AbstractGame
 from ..core.gadgets import SingleGadgetBase
 from ..core.gaggles import GaggleBase
 
@@ -56,7 +56,7 @@ class DecisionBase(AbstractDecision):
 
 
 	_NoOptionsError = NoOptionsError
-	def _choose(self, ctx: 'AbstractGig') -> str:
+	def _choose(self, ctx: 'AbstractGame') -> str:
 		'''this method is called to determine the choice to be made.'''
 		rng = getattr(ctx, 'rng', random)
 		options = list(self.choices())
@@ -65,14 +65,14 @@ class DecisionBase(AbstractDecision):
 		return rng.choice(options)
 
 
-	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		if gizmo == self.choice_gizmo:
 			return self._choose(ctx)
 		choice = ctx.grab(self.choice_gizmo)
 		return self._commit(ctx, choice, gizmo)
 
 
-	def _commit(self, ctx: 'AbstractGig', choice: CHOICE, gizmo: str) -> Any:
+	def _commit(self, ctx: 'AbstractGame', choice: CHOICE, gizmo: str) -> Any:
 		'''after a choice has been selected, this method is called to determine the final result.'''
 		raise NotImplementedError
 
@@ -103,7 +103,7 @@ class SimpleDecision(SingleGadgetBase, DecisionBase, AbstractDynamicDecision):
 		return self
 
 
-	def _commit(self, ctx: 'AbstractGig', choice: CHOICE, gizmo: str) -> Any:
+	def _commit(self, ctx: 'AbstractGame', choice: CHOICE, gizmo: str) -> Any:
 		'''after a choice has been selected, this method is called to determine the final result.'''
 		return self._choices[choice]
 
@@ -124,7 +124,7 @@ class GadgetDecisionBase(DecisionBase, AbstractGadgetDecision):
 				self._option_table.setdefault(gizmo, []).append(choice)
 
 
-	def _commit(self, ctx: 'AbstractGig', choice: CHOICE, gizmo: str) -> Any:
+	def _commit(self, ctx: 'AbstractGame', choice: CHOICE, gizmo: str) -> Any:
 		'''after a choice has been selected, this method is called to determine the final result.'''
 		return self._choices[choice].grab_from(ctx, gizmo)
 
@@ -149,7 +149,7 @@ class SelfSelectingDecision(GadgetDecisionBase):
 	_waiting_gizmo = None
 
 
-	def _choose(self, ctx: 'AbstractGig') -> str:
+	def _choose(self, ctx: 'AbstractGame') -> str:
 		'''this method is called to determine the choice to be made.'''
 		rng = getattr(ctx, 'rng', random)
 		options = list(self.choices() if self._waiting_gizmo is None else self.choices(self._waiting_gizmo))
@@ -158,7 +158,7 @@ class SelfSelectingDecision(GadgetDecisionBase):
 		return rng.choice(options)
 
 
-	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		prev = self._waiting_gizmo
 		if gizmo != self.choice_gizmo:
 			self._waiting_gizmo = gizmo
@@ -180,18 +180,18 @@ class AbstractDecidable:
 		raise NotImplementedError
 
 
-	def consider(self, target: str, prior: dict[str, Any]) -> Iterator[AbstractGig]:
+	def consider(self, target: str, prior: dict[str, Any]) -> Iterator[AbstractGame]:
 		raise NotImplementedError
 
 
 class NaiveConsiderationBase(AbstractDecidable):
-	def _create_case(self, cache: dict[str, Any]) -> AbstractGig:
+	def _create_case(self, cache: dict[str, Any]) -> AbstractGame:
 		raise NotImplementedError
 
 
 	def _consider(self, *, targets: Iterable[str], cache: dict[str, Any],
 				  available: Mapping[str, Iterator[AbstractGadget]],
-				  resolved: set[str]) -> Iterator[AbstractGig]:
+				  resolved: set[str]) -> Iterator[AbstractGame]:
 		todo = list(targets)
 		while len(todo):
 			gizmo = todo.pop() # targets
@@ -234,7 +234,7 @@ class NaiveConsiderationBase(AbstractDecidable):
 
 
 class DecidableBase(GaggleBase, NaiveConsiderationBase):
-	def consider(self, *targets: str, given: Mapping[str, Any] = None) -> Iterator[AbstractGig]:
+	def consider(self, *targets: str, given: Mapping[str, Any] = None) -> Iterator[AbstractGame]:
 		yield from self._consider(targets=targets, resolved=set(given.keys()), cache=dict(given),
 								  available={gizmo: self.gadgets(gizmo) for gizmo in self.gizmos()})
 

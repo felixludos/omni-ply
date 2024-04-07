@@ -3,7 +3,7 @@ from omniply.core.abstract import *
 
 
 class AbstractSpaced(AbstractGadget):
-	def space_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
+	def space_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		raise NotImplementedError
 
 
@@ -11,7 +11,7 @@ class AbstractSpaced(AbstractGadget):
 		raise NotImplementedError
 
 
-	def space_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
+	def space_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		raise NotImplementedError
 
 

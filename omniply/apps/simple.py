@@ -4,7 +4,7 @@ from omnibelt import filter_duplicates
 
 # from collections import frozenset
 
-from ..core import AbstractGig
+from ..core import AbstractGame
 from ..core.gadgets import GadgetBase
 from ..core.genetics import GeneticGadget
 
@@ -40,7 +40,7 @@ class DictGadget(GeneticGadget):
 		return info
 
 
-	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		return self[gizmo]
 
 
@@ -86,7 +86,7 @@ class Table(GeneticGadget):
 			return len(self.data[self.columns[0]])
 
 
-	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		self.load()
 		index = ctx.grab(self._index_gizmo) if self._index_attribute is None else getattr(ctx, self._index_attribute)
 		return self.data[gizmo][index]

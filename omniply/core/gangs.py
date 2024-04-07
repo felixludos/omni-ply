@@ -2,10 +2,10 @@ from typing import Any, Optional, Iterator
 from collections import UserDict
 from omnibelt import filter_duplicates
 
-from .abstract import AbstractGang, AbstractGig
+from .abstract import AbstractGang, AbstractGame
 from .errors import GadgetFailure, ApplicationAmbiguityError
 from .gaggles import GaggleBase, MultiGadgetBase
-from .gigs import GigBase, GroupCache
+from .games import GameBase, GroupCache
 
 
 class GroupBase(MultiGadgetBase, GaggleBase, AbstractGang):
@@ -13,10 +13,10 @@ class GroupBase(MultiGadgetBase, GaggleBase, AbstractGang):
 	The GroupBase class is a subclass of GaggleBase and AbstractGroup. It provides methods to handle gizmo grabbing and packaging.
 
 	Attributes:
-		_current_context (Optional[AbstractGig]): The current context of the group.
+		_current_context (Optional[AbstractGame]): The current context of the group.
 	"""
 
-	_current_context: Optional[AbstractGig]
+	_current_context: Optional[AbstractGame]
 
 	def __init__(self, *args, gap: Optional[dict[str, str]] = None, **kwargs):
 		"""
@@ -32,7 +32,7 @@ class GroupBase(MultiGadgetBase, GaggleBase, AbstractGang):
 		super().__init__(*args, **kwargs)
 		self._raw_gap = gap # internal gizmos -> external gizmos
 		self._raw_reverse_gap = None
-		self._gig_stack = []
+		self._game_stack = []
 
 	def _gizmos(self) -> Iterator[str]:
 		"""
@@ -143,48 +143,48 @@ class GroupBase(MultiGadgetBase, GaggleBase, AbstractGang):
 		"""
 		return super().grab_from(self, gizmo)
 
-	def grab_from(self, ctx: AbstractGig, gizmo: str) -> Any:
+	def grab_from(self, ctx: AbstractGame, gizmo: str) -> Any:
 		"""
 		Tries to grab a gizmo from the context.
 
 		Args:
-			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
+			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
 			gizmo (str): The name of the gizmo to grab.
 
 		Returns:
 			Any: The grabbed gizmo.
 		"""
 		if ctx is not None and ctx is not self:
-			self._gig_stack.append(ctx)
+			self._game_stack.append(ctx)
 			gizmo = self.gizmo_from(gizmo)  # convert to internal gizmo
 
 		try:
 			out = self._grab(gizmo)
 		except self._GadgetFailure:
-			if len(self._gig_stack) == 0 or ctx is self._gig_stack[-1]:
+			if len(self._game_stack) == 0 or ctx is self._game_stack[-1]:
 				raise
 			# default to parent/s
-			out = self._gig_stack[-1].grab(self.gizmo_to(gizmo))
+			out = self._game_stack[-1].grab(self.gizmo_to(gizmo))
 
-		if len(self._gig_stack) and ctx is self._gig_stack[-1]:
-			self._gig_stack.pop()
+		if len(self._game_stack) and ctx is self._game_stack[-1]:
+			self._game_stack.pop()
 
 		return out
 
-	# def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	# def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 	# 	assert ctx is self, f'{ctx} != {self}'
-	# 	if len(self._gig_stack):
-	# 		return super()._grab_from_fallback(error, self._gig_stack[-1], self.gizmo_to(gizmo))
+	# 	if len(self._game_stack):
+	# 		return super()._grab_from_fallback(error, self._game_stack[-1], self.gizmo_to(gizmo))
 	# 	raise error from error
 	#
 	#
-	# def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	# def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 	# 	if ctx is not None and ctx is not self:
-	# 		self._gig_stack.append(ctx)
+	# 		self._game_stack.append(ctx)
 	# 		gizmo = self.gizmo_from(gizmo) # convert to internal gizmo
 	# 	out = super().grab_from(self, gizmo)
-	# 	if len(self._gig_stack) and ctx is self._gig_stack[-1]:
-	# 		self._gig_stack.pop()
+	# 	if len(self._game_stack) and ctx is self._game_stack[-1]:
+	# 		self._game_stack.pop()
 	# 	return out
 
 
@@ -209,9 +209,9 @@ class CachableGroup(GroupBase):
 		Returns:
 			Any: The grabbed gizmo.
 		"""
-		if len(self._gig_stack):
+		if len(self._game_stack):
 			# check cache (if one exists)
-			for parent in reversed(self._gig_stack):
+			for parent in reversed(self._game_stack):
 				if isinstance(parent, GroupCache):
 					try:
 						return parent.check_group_cache(self, gizmo)
@@ -220,7 +220,7 @@ class CachableGroup(GroupBase):
 
 			# if it can't be found in my cache, check the cache using the external gizmo name
 			ext = self.gizmo_to(gizmo)
-			for parent in reversed(self._gig_stack):
+			for parent in reversed(self._game_stack):
 				if isinstance(parent, GroupCache) and parent.is_cached(ext):
 					return parent.grab(ext)
 
@@ -228,8 +228,8 @@ class CachableGroup(GroupBase):
 		out = super()._grab(gizmo)
 
 		# update my cache
-		if len(self._gig_stack):
-			for parent in reversed(self._gig_stack):
+		if len(self._game_stack):
+			for parent in reversed(self._game_stack):
 				if isinstance(parent, GroupCache):
 					parent.update_group_cache(self, gizmo, out)
 					break

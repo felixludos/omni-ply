@@ -4,7 +4,7 @@ from collections import OrderedDict
 from omnibelt import filter_duplicates
 from omnibelt.crafts import InheritableCrafty
 
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGame
 from .errors import logger, GadgetFailure, MissingGadget, AssemblyError
 from .gadgets import GadgetBase, SingleGadgetBase, SingleFunctionGadget, AutoSingleFunctionGadget
 
@@ -106,12 +106,12 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 
 
 	_AssemblyFailedError = AssemblyError
-	def grab_from(self, ctx: AbstractGig, gizmo: str) -> Any:
+	def grab_from(self, ctx: AbstractGame, gizmo: str) -> Any:
 		"""
 		Tries to grab a gizmo using the subgadgets given the context.
 
 		Args:
-			ctx (AbstractGig): The context with which to grab the gizmo.
+			ctx (AbstractGame): The context with which to grab the gizmo.
 			gizmo (str): The name of the gizmo to grab.
 
 		Returns:
@@ -200,12 +200,12 @@ class LoopyGaggle(GaggleBase):
 		super().__init__(*args, **kwargs)
 		self._grabber_stack = {}
 
-	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		"""
 		Tries to grab a gizmo from the context using the gadgets in the _grabber_stack dictionary.
 
 		Args:
-			ctx (AbstractGig): The context with which to grab the gizmo.
+			ctx (AbstractGame): The context with which to grab the gizmo.
 			gizmo (str): The name of the gizmo to grab.
 
 		Returns:

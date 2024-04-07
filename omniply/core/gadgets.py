@@ -3,7 +3,7 @@ from omnibelt import extract_function_signature, extract_missing_args
 from omnibelt.crafts import AbstractSkill, NestableCraft
 
 from .errors import GadgetFailure, MissingGadget
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGig
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGame
 
 
 class GadgetBase(AbstractGadget):
@@ -49,12 +49,12 @@ class SingleGadgetBase(GadgetBase):
 		yield self._gizmo
 
 
-	def _grab_from(self, ctx: AbstractGig):
+	def _grab_from(self, ctx: AbstractGame):
 		"""
 		Grabs the gizmo from the given context. This method is called by grab_from.
 
 		Args:
-			ctx (AbstractGig): The context from which to grab the gizmo.
+			ctx (AbstractGame): The context from which to grab the gizmo.
 
 		Returns:
 			Any: The grabbed gizmo.
@@ -62,12 +62,12 @@ class SingleGadgetBase(GadgetBase):
 		raise NotImplementedError
 
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 		"""
 		Returns the given gizmo from this gadget, or raises MissingGadgetError if the gizmo cannot be grabbed.
 
 		Args:
-			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
+			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
 			gizmo (str): The gizmo to grab.
 
 		Returns:
@@ -91,7 +91,7 @@ class SingleFunctionGadget(SingleGadgetBase):
 		_fn (Callable[[AbstractGig], Any]): The function that this gadget uses to grab the gizmo.
 	"""
 
-	def __init__(self, gizmo: str, fn: Callable[[AbstractGig], Any], **kwargs):
+	def __init__(self, gizmo: str, fn: Callable[[AbstractGame], Any], **kwargs):
 		"""
 		Initializes a new instance of the FunctionGadget class.
 
@@ -140,12 +140,12 @@ class SingleFunctionGadget(SingleGadgetBase):
 		return self._fn.__get__(instance, owner)
 
 
-	def _grab_from(self, ctx: AbstractGig) -> Any:
+	def _grab_from(self, ctx: AbstractGame) -> Any:
 		"""
 		Grabs the gizmo from the given context. This method is called by grab_from.
 
 		Args:
-			ctx (AbstractGig): The context from which to grab the gizmo.
+			ctx (AbstractGame): The context from which to grab the gizmo.
 
 		Returns:
 			Any: The grabbed gizmo.
@@ -167,7 +167,7 @@ class AutoSingleFunctionGadget(SingleFunctionGadget):
 
 
 	@staticmethod
-	def _extract_gizmo_args(fn: Callable, ctx: AbstractGig, *, args: Optional[tuple] = None,
+	def _extract_gizmo_args(fn: Callable, ctx: AbstractGame, *, args: Optional[tuple] = None,
 							kwargs: Optional[dict[str, Any]] = None) -> tuple[list[Any], dict[str, Any]]:
 		"""
 		Extracts the arguments for the function that this gadget uses to grab the gizmo. Any arguments that are gizmos
@@ -175,7 +175,7 @@ class AutoSingleFunctionGadget(SingleFunctionGadget):
 
 		Args:
 			fn (Callable): The function that this gadget uses to produce the gizmo.
-			ctx (AbstractGig): The context from which to grab any arguments needed by fn.
+			ctx (AbstractGame): The context from which to grab any arguments needed by fn.
 			args (Optional[tuple]): The positional arguments for the function passed in manually.
 			kwargs (Optional[dict[str, Any]]): The keyword arguments for the function passed in manually.
 
@@ -186,12 +186,12 @@ class AutoSingleFunctionGadget(SingleFunctionGadget):
 		return extract_function_signature(fn, args=args, kwargs=kwargs, default_fn=ctx.grab)
 
 
-	def _grab_from(self, ctx: AbstractGig) -> Any:
+	def _grab_from(self, ctx: AbstractGame) -> Any:
 		"""
 		Grabs the gizmo from the given context. This method is called by grab_from.
 
 		Args:
-			ctx (AbstractGig): The context from which to grab the gizmo.
+			ctx (AbstractGame): The context from which to grab the gizmo.
 
 		Returns:
 			Any: The grabbed gizmo.
@@ -208,7 +208,7 @@ class FunctionGadget(SingleGadgetBase):
 		self._fn = fn
 
 
-	def _grab_from(self, ctx: 'AbstractGig') -> Any:
+	def _grab_from(self, ctx: 'AbstractGame') -> Any:
 		return self._fn(ctx)
 
 

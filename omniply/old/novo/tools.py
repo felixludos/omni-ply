@@ -59,13 +59,13 @@ class FunctionTool(SingleGizmoTool):
 
 
 	@staticmethod
-	def _extract_gizmo_args(fn: Callable, ctx: AbstractGig,
+	def _extract_gizmo_args(fn: Callable, ctx: AbstractGame,
 							args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None) \
 			-> Tuple[Tuple, Dict[str, Any]]:
 		return extract_function_signature(fn, default_fn=lambda gizmo, default: ctx.grab_from(ctx, gizmo))
 
 
-	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
 		if gizmo != self._gizmo:
 			raise self._MissingGizmoError(gizmo)
 		return self._fn(ctx)
@@ -74,13 +74,13 @@ class FunctionTool(SingleGizmoTool):
 
 class AutoFunctionTool(FunctionTool):
 	@staticmethod
-	def _extract_gizmo_args(fn: Callable, ctx: AbstractGig,
+	def _extract_gizmo_args(fn: Callable, ctx: AbstractGame,
 							args: Optional[Tuple] = None, kwargs: Optional[Dict[str, Any]] = None) \
 			-> Tuple[Tuple, Dict[str, Any]]:
 		return extract_function_signature(fn, default_fn=lambda gizmo, default: ctx.grab_from(ctx, gizmo))
 
 
-	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
 		if gizmo != self._gizmo:
 			raise self._MissingGizmoError(gizmo)
 
@@ -165,7 +165,7 @@ class ToolDecorator(ToolBase):
 		return gizmo == self._gizmo
 
 
-	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
 		raise self._ToolFailedError(gizmo)
 
 

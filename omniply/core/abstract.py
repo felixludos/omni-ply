@@ -89,7 +89,7 @@ class AbstractGadget:
 		"""
 		raise NotImplementedError
 
-	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		"""
 		Transforms the given context `ctx` to produce the specified `gizmo`, or raises ToolFailedError.
 		The context can be expected to contain all the necessary input gizmos.
@@ -97,7 +97,7 @@ class AbstractGadget:
 		This method should be overridden by subclasses to provide the actual implementation.
 
 		Args:
-			ctx (Optional['AbstractGig']): The context from which to grab any necessary input gizmos.
+			ctx (Optional['AbstractGame']): The context from which to grab any necessary input gizmos.
 			gizmo (str): The gizmo that must be produced.
 
 		Returns:
@@ -176,19 +176,19 @@ class AbstractGaggle(AbstractGadget):
 		raise NotImplementedError
 
 
-_unique_gig_default_value = object()
+_unique_game_default_value = object()
 
 
 
-class AbstractGig(AbstractGaggle):
+class AbstractGame(AbstractGaggle):
 	"""
-	Gigs are usually the top-level interface for users to use the inference engine of `omni-ply`. Gigs are a special
+	Games are usually the top-level interface for users to use the inference engine of `omni-ply`. Games are a special
 	kind of gaggle that takes ownership of a `grab_from()` call, rather than (usually silently) delegating to an
-	appropriate gadget to produce the specified gizmo. This also means gigs are responsible providing the current
+	appropriate gadget to produce the specified gizmo. This also means games are responsible providing the current
 	context for gadgets (which often includes caching existing gizmos).
 	"""
 
-	def grab(self, gizmo: str, default: Any = _unique_gig_default_value):
+	def grab(self, gizmo: str, default: Any = _unique_game_default_value):
 		"""
 		Convenience function for grab_from to match dict.get API. It returns the given gizmo from this gadget,
 		or raises ToolFailedError if the gizmo cannot be grabbed and no default value is provided.
@@ -207,14 +207,14 @@ class AbstractGig(AbstractGaggle):
 		try:
 			return self.grab_from(None, gizmo)
 		except AbstractGadgetError:
-			if default is _unique_gig_default_value:
+			if default is _unique_game_default_value:
 				raise
 			return default
 
 
-class AbstractGang(AbstractGig):
+class AbstractGang(AbstractGame):
 	"""
-	Gangs are a special kind of gig that relabels gizmos. It behaves a bit like a local/internal scope
+	Gangs are a special kind of game that relabels gizmos. It behaves a bit like a local/internal scope
 	for its sub-gadgets, and can default to the global/external scope if necessary.
 
 	This class must be typically subclassed to create a specific type of gang.
@@ -253,14 +253,14 @@ class AbstractGang(AbstractGig):
 ### exotic animals
 
 
-class AbstractGenerous(AbstractGig):
+class AbstractGenerous(AbstractGame):
 	def gabel(self):
 		'''duplicates this game, all the tools should be included, but not the cache'''
 		raise NotImplementedError
 
 
 
-class AbstractConsistentGig(AbstractGig):
+class AbstractConsistentGame(AbstractGame):
 	def is_unchanged(self, gizmo: str):
 		raise NotImplementedError
 

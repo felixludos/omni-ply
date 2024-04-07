@@ -37,7 +37,7 @@ class Kit(AbstractToolKit, ToolBase):
 
 
 	_AssemblyFailedError = AssemblyFailedError
-	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		failures = []
 		for tool in self._vendors(gizmo):
 			try:
@@ -60,7 +60,7 @@ class LoopyKit(Kit):
 		self._grabber_stack: Optional[Dict[str, Iterator[AbstractGadget]]] = {}
 
 
-	def grab_from(self, ctx: 'AbstractGig', gizmo: str) -> Any:
+	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		failures = []
 		itr = self._grabber_stack.setdefault(gizmo, self._vendors(gizmo))
 		# should be the same as Kit, except the iterators are cached until the gizmo is produced

@@ -1,7 +1,7 @@
 from typing import Any, Optional
 from omnibelt import pformat, pformat_vars, pathfinder
 
-from ..core import AbstractGig
+from ..core import AbstractGame
 from ..core.gadgets import SingleGadgetBase
 
 
@@ -32,7 +32,7 @@ class Template(SingleGadgetBase):
 		return pformat(self.template, reqs, **vals)
 
 
-	def _grab_from(self, ctx: Optional[AbstractGig]) -> Any:
+	def _grab_from(self, ctx: Optional[AbstractGame]) -> Any:
 		reqs = {key: ctx.grab_from(ctx, key) for key in self.keys}
 		return self.fill_in(reqs)
 

@@ -31,7 +31,7 @@ class TestCraftyKitBase(CraftyKit):
 
 
 
-class TestContext(Cached, Gig, TestKit):#, Kit, AbstractContext):
+class TestContext(Cached, Game, TestKit):#, Kit, AbstractContext):
 	def tools(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
 		if gizmo is None:
 			yield from filter_duplicates(chain.from_iterable(map(reversed, self._tools_table.values())))
@@ -205,7 +205,7 @@ class LambdaTool(AbstractGadget):
 		yield self.output_key
 
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 		if gizmo != self.output_key:
 			raise GadgetFailedError(gizmo)
 		# inputs = [ctx[g] for g in self.input_keys]
@@ -299,7 +299,7 @@ class TestDecision(AbstractDecision):
 		self._choices = choices
 		self._gizmo = gizmo
 
-	def grab_from(self, ctx: Optional['AbstractGig'], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
 		if isinstance(ctx, AbstractCrawler):
 			return ctx.select(self, gizmo)
 		return super().grab_from(ctx, gizmo)

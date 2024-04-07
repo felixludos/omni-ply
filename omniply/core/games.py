@@ -2,16 +2,16 @@ from typing import Any, Optional, Iterator, Self, Iterable
 from collections import UserDict
 from omnibelt import filter_duplicates
 
-from .abstract import (AbstractGadget, AbstractGaggle, AbstractGig, AbstractGang, AbstractGadgetError,
-					   AbstractConsistentGig)
+from .abstract import (AbstractGadget, AbstractGaggle, AbstractGame, AbstractGang, AbstractGadgetError,
+					   AbstractConsistentGame)
 from .errors import GadgetFailure, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
 from .gaggles import GaggleBase, MutableGaggle, MultiGadgetBase
 
 
-class GigBase(MultiGadgetBase, GadgetBase, AbstractGig):
+class GameBase(MultiGadgetBase, GadgetBase, AbstractGame):
 	"""
-	The GigBase class is a subclass of GadgetBase and AbstractGig. It provides methods to handle gizmo grabbing and packaging.
+	The GameBase class is a subclass of GadgetBase and AbstractGame. It provides methods to handle gizmo grabbing and packaging.
 
 	Attributes:
 		_GrabError (Exception): The exception to be raised when a grab operation fails.
@@ -19,13 +19,13 @@ class GigBase(MultiGadgetBase, GadgetBase, AbstractGig):
 
 	_GrabError = GrabError
 
-	def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 		"""
 		Handles a GadgetFailure when trying to grab a gizmo from the context.
 
 		Args:
 			error (Exception): The exception that occurred during the grab operation.
-			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
+			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
 			gizmo (str): The name of the gizmo to grab.
 
 		Returns:
@@ -54,12 +54,12 @@ class GigBase(MultiGadgetBase, GadgetBase, AbstractGig):
 		"""
 		return super().grab_from(self, gizmo)
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 		"""
 		Tries to grab a gizmo from the context.
 
 		Args:
-			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
+			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
 			gizmo (str): The name of the gizmo to grab.
 
 		Returns:
@@ -85,9 +85,9 @@ class GigBase(MultiGadgetBase, GadgetBase, AbstractGig):
 		return val
 
 
-class CacheGig(GigBase, UserDict):
+class CacheGame(GameBase, UserDict):
 	"""
-	The CacheGig class is a subclass of GigBase and UserDict. It provides methods to handle gizmo caching.
+	The CacheGame class is a subclass of GameBase and UserDict. It provides methods to handle gizmo caching.
 
 	Attributes:
 		_gizmo_type (Optional[type]): The type of the gizmo. Defaults to None.
@@ -120,10 +120,10 @@ class CacheGig(GigBase, UserDict):
 
 	def __repr__(self):
 		"""
-		Returns a string representation of the CacheGig instance.
+		Returns a string representation of the CacheGame instance.
 
 		Returns:
-			str: A string representation of the CacheGig instance.
+			str: A string representation of the CacheGame instance.
 		"""
 		gizmos = [(gizmo if self.is_cached(gizmo) else '{' + str(gizmo) + '}') for gizmo in self.gizmos()]
 		return f'{self.__class__.__name__}({", ".join(gizmos)})'
@@ -166,7 +166,7 @@ class CacheGig(GigBase, UserDict):
 		self.data.clear()
 		return self
 
-	def _cache_miss(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def _cache_miss(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 		"""
 		Handles a cache miss.
 
@@ -178,12 +178,12 @@ class CacheGig(GigBase, UserDict):
 		"""
 		return super().grab_from(ctx, gizmo)
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 		"""
 		Tries to grab a gizmo from the context.
 
 		Args:
-			ctx (Optional[AbstractGig]): The context from which to grab the gizmo.
+			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
 			gizmo (str): The name of the gizmo to grab.
 
 		Returns:
@@ -197,9 +197,9 @@ class CacheGig(GigBase, UserDict):
 
 
 
-class GroupCache(CacheGig):
+class GroupCache(CacheGame):
 	"""
-	The GroupCache class is a subclass of CacheGig. It provides methods to handle gizmo caching with group support.
+	The GroupCache class is a subclass of CacheGame. It provides methods to handle gizmo caching with group support.
 
 	Attributes:
 		_group_cache (dict): A dictionary to store group caches.
@@ -289,9 +289,9 @@ class GroupCache(CacheGig):
 
 
 
-class TraceGig(CacheGig):
+class TraceGame(CacheGame):
 	"""
-	The TraceGig class is a subclass of CacheGig. It provides methods to handle gizmo caching with trace support.
+	The TraceGame class is a subclass of CacheGame. It provides methods to handle gizmo caching with trace support.
 	"""
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -315,7 +315,7 @@ class TraceGig(CacheGig):
 			self.purge(dep)
 		return self
 
-	def _cache_miss(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def _cache_miss(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 		self._partial_grabs.append(gizmo)
 		try:
 			val = super()._cache_miss(ctx, gizmo)
@@ -326,7 +326,7 @@ class TraceGig(CacheGig):
 			self._history.setdefault(self._partial_grabs[-1], set()).add(gizmo)
 		return val
 
-	def grab_from(self, ctx: Optional[AbstractGig], gizmo: str) -> Any:
+	def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
 		val = super().grab_from(ctx, gizmo)
 		if len(self._partial_grabs):
 			self._products.setdefault(gizmo, set()).add(self._partial_grabs[-1])
@@ -334,7 +334,7 @@ class TraceGig(CacheGig):
 
 
 
-class RollingGig(TraceGig, MutableGaggle):
+class RollingGame(TraceGame, MutableGaggle):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._rolling_stock = {} # gizmo -> list of gadgets that were included during the gizmos creation
@@ -362,7 +362,7 @@ class RollingGig(TraceGig, MutableGaggle):
 
 
 
-class ConsistentGig(TraceGig, AbstractConsistentGig):
+class ConsistentGame(TraceGame, AbstractConsistentGame):
 	'''can handle gadgets with multiple outputs (provided those gadgets are deterministic wrt their inputs)'''
 
 	def __init__(self, *args, **kwargs):
