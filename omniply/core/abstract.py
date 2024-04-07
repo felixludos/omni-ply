@@ -212,12 +212,12 @@ class AbstractGame(AbstractGaggle):
 			return default
 
 
-class AbstractGang(AbstractGame):
+class AbstractGate(AbstractGame):
 	"""
-	Gangs are a special kind of game that relabels gizmos. It behaves a bit like a local/internal scope
+	Gates are a special kind of game that relabels gizmos. It behaves a bit like a local/internal scope
 	for its sub-gadgets, and can default to the global/external scope if necessary.
 
-	This class must be typically subclassed to create a specific type of gang.
+	This class must be typically subclassed to create a specific type of gate.
 	"""
 
 	def gizmo_from(self, gizmo: str) -> str:

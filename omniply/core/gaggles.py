@@ -311,7 +311,7 @@ class CraftyGaggle(GaggleBase, InheritableCrafty):
 		Note that, in order to be processed correctly, the crafts should produce skills which are instances of
 		`AbstractGadget`.
 		"""
-		# group by where the craft is defined
+		# gate by where the craft is defined
 		history = OrderedDict() # src<N-O> : craft<N-O>
 		for src, key, craft in self._emit_all_craft_items(): # craft<N-O>
 			history.setdefault(src, []).append(craft)

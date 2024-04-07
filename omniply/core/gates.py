@@ -2,25 +2,25 @@ from typing import Any, Optional, Iterator
 from collections import UserDict
 from omnibelt import filter_duplicates
 
-from .abstract import AbstractGang, AbstractGame
+from .abstract import AbstractGate, AbstractGame
 from .errors import GadgetFailure, ApplicationAmbiguityError
 from .gaggles import GaggleBase, MultiGadgetBase
-from .games import GameBase, GroupCache
+from .games import GameBase, GatedCache
 
 
-class GroupBase(MultiGadgetBase, GaggleBase, AbstractGang):
+class GateBase(MultiGadgetBase, GaggleBase, AbstractGate):
 	"""
-	The GroupBase class is a subclass of GaggleBase and AbstractGroup. It provides methods to handle gizmo grabbing and packaging.
+	The GateBase class is a subclass of GaggleBase and AbstractGate. It provides methods to handle gizmo grabbing and packaging.
 
 	Attributes:
-		_current_context (Optional[AbstractGame]): The current context of the group.
+		_current_context (Optional[AbstractGame]): The current context of the gate.
 	"""
 
 	_current_context: Optional[AbstractGame]
 
 	def __init__(self, *args, gap: Optional[dict[str, str]] = None, **kwargs):
 		"""
-		Initializes a new instance of the GroupBase class.
+		Initializes a new instance of the GateBase class.
 
 		Args:
 			args: Variable length argument list.
@@ -188,20 +188,20 @@ class GroupBase(MultiGadgetBase, GaggleBase, AbstractGang):
 	# 	return out
 
 
-class CachableGroup(GroupBase):
+class CachableGate(GateBase):
 	"""
-	The CachableGroup class is a subclass of GroupBase. It provides methods to handle gizmo grabbing with cache support.
+	The CachableGate class is a subclass of GateBase. It provides methods to handle gizmo grabbing with cache support.
 
 	Attributes:
-		_GroupCacheMiss (KeyError): The exception to be raised when a cache miss occurs.
+		_GateCacheMiss (KeyError): The exception to be raised when a cache miss occurs.
 	"""
 
-	_GroupCacheMiss = KeyError
+	_GateCacheMiss = KeyError
 
 	def _grab(self, gizmo: str) -> Any:
 		"""
-		Tries to grab a gizmo from the group. If the gizmo is not found in the group's cache, it checks the cache using
-		the external gizmo name. If it still can't be found in any cache, it grabs it from the group's gadgets.
+		Tries to grab a gizmo from the gate. If the gizmo is not found in the gate's cache, it checks the cache using
+		the external gizmo name. If it still can't be found in any cache, it grabs it from the gate's gadgets.
 
 		Args:
 			gizmo (str): The name of the gizmo to grab.
@@ -212,16 +212,16 @@ class CachableGroup(GroupBase):
 		if len(self._game_stack):
 			# check cache (if one exists)
 			for parent in reversed(self._game_stack):
-				if isinstance(parent, GroupCache):
+				if isinstance(parent, GatedCache):
 					try:
-						return parent.check_group_cache(self, gizmo)
-					except self._GroupCacheMiss:
+						return parent.check_gate_cache(self, gizmo)
+					except self._GateCacheMiss:
 						pass
 
 			# if it can't be found in my cache, check the cache using the external gizmo name
 			ext = self.gizmo_to(gizmo)
 			for parent in reversed(self._game_stack):
-				if isinstance(parent, GroupCache) and parent.is_cached(ext):
+				if isinstance(parent, GatedCache) and parent.is_cached(ext):
 					return parent.grab(ext)
 
 		# if it can't be found in any cache, grab it from my gadgets
@@ -230,16 +230,16 @@ class CachableGroup(GroupBase):
 		# update my cache
 		if len(self._game_stack):
 			for parent in reversed(self._game_stack):
-				if isinstance(parent, GroupCache):
-					parent.update_group_cache(self, gizmo, out)
+				if isinstance(parent, GatedCache):
+					parent.update_gate_cache(self, gizmo, out)
 					break
 
 		return out
 
 
-class SelectiveGroup(GroupBase):
+class SelectiveGate(GateBase):
 	"""
-	The SelectiveGroup class is a subclass of GroupBase. It provides methods to handle selective gizmo mapping.
+	The SelectiveGate class is a subclass of GateBase. It provides methods to handle selective gizmo mapping.
 
 	Args:
 		args: Variable length argument list.
@@ -249,7 +249,7 @@ class SelectiveGroup(GroupBase):
 
 	def __init__(self, *args, gap: dict[str, str] | list[str] | None = None, **kwargs):
 		"""
-		Initializes a new instance of the SelectiveGroup class.
+		Initializes a new instance of the SelectiveGate class.
 
 		If the gap argument is a list, it is converted to a dictionary with the same keys and values.
 		If the gap argument is a dictionary, it is processed to ensure that all values are not None.

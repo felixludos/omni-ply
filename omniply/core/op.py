@@ -1,11 +1,11 @@
 from typing import Iterable, Callable
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGang, AbstractGenerous
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGate, AbstractGenerous
 from .errors import GadgetFailure, MissingGadget
 from .tools import ToolCraftBase, AutoToolCraft, MIMOToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
 from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle
-from .games import CacheGame, GroupCache, TraceGame, RollingGame, ConsistentGame
-from .gangs import GroupBase, CachableGroup, SelectiveGroup
+from .games import CacheGame, GatedCache, TraceGame, RollingGame, ConsistentGame
+from .gates import GateBase, CachableGate, SelectiveGate
 from .genetics import GeneticGaggle
 
 
@@ -63,10 +63,10 @@ class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle):
 		self._process_crafts()
 
 
-class Context(GroupCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggle, GeneticGaggle,
+class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggle, GeneticGaggle,
 			  AbstractGenerous, AbstractGame):
 	"""
-	The Context class is a subclass of GroupCache, LoopyGaggle, MutableGaggle, and AbstractGame. It provides methods to handle
+	The Context class is a subclass of GateCache, LoopyGaggle, MutableGaggle, and AbstractGame. It provides methods to handle
 	gadgets in a context.
 
 	Methods:
@@ -108,9 +108,9 @@ class Context(GroupCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggl
 		return self.grab(item)
 
 
-class Scope(CachableGroup, LoopyGaggle, MutableGaggle, AbstractGang):
+class Scope(CachableGate, LoopyGaggle, MutableGaggle, AbstractGate):
 	"""
-	The Scope class is a subclass of CachableGroup, LoopyGaggle, MutableGaggle, and AbstractGang. It provides methods
+	The Scope class is a subclass of CachableGate, LoopyGaggle, MutableGaggle, and AbstractGate. It provides methods
 	to handle gadgets in a scope.
 
 	Methods:
@@ -142,9 +142,9 @@ class Scope(CachableGroup, LoopyGaggle, MutableGaggle, AbstractGang):
 		"""
 		return self.grab(item)
 
-class Selection(SelectiveGroup, Scope):
+class Selection(SelectiveGate, Scope):
 	"""
-	The Selection class is a subclass of SelectiveGroup and Scope. It provides methods to handle selective gizmo mapping
+	The Selection class is a subclass of SelectiveGate and Scope. It provides methods to handle selective gizmo mapping
 	within a scope.
 
 	Methods:

@@ -2,7 +2,7 @@ from typing import Any, Optional, Iterator, Self, Iterable
 from collections import UserDict
 from omnibelt import filter_duplicates
 
-from .abstract import (AbstractGadget, AbstractGaggle, AbstractGame, AbstractGang, AbstractGadgetError,
+from .abstract import (AbstractGadget, AbstractGaggle, AbstractGame, AbstractGate, AbstractGadgetError,
 					   AbstractConsistentGame)
 from .errors import GadgetFailure, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
@@ -197,31 +197,31 @@ class CacheGame(GameBase, UserDict):
 
 
 
-class GroupCache(CacheGame):
+class GatedCache(CacheGame):
 	"""
-	The GroupCache class is a subclass of CacheGame. It provides methods to handle gizmo caching with group support.
+	The GatedCache class is a subclass of CacheGame. It provides methods to handle gizmo caching with support for gates.
 
 	Attributes:
-		_group_cache (dict): A dictionary to store group caches.
+		_gate_cache (dict): A dictionary to store gate caches.
 	"""
 
-	def __init__(self, *args, group_cache=None, **kwargs):
+	def __init__(self, *args, gate_cache=None, **kwargs):
 		"""
-		Initializes a new instance of the GroupCache class.
+		Initializes a new instance of the GateCache class.
 
 		Args:
 			args: Variable length argument list.
-			group_cache (Optional[dict]): A dictionary of group caches. If not provided, an empty dictionary will be used.
+			gate_cache (Optional[dict]): A dictionary of gate caches. If not provided, an empty dictionary will be used.
 			kwargs: Arbitrary keyword arguments.
 		"""
-		if group_cache is None:
-			group_cache = {}
+		if gate_cache is None:
+			gate_cache = {}
 		super().__init__(*args, **kwargs)
-		self._group_cache = group_cache
+		self._gate_cache = gate_cache
 
 	def is_cached(self, gizmo: str) -> bool:
 		"""
-		Checks if a gizmo is cached in either the main cache or any of the group caches.
+		Checks if a gizmo is cached in either the main cache or any of the gate caches.
 
 		Args:
 			gizmo (str): The name of the gizmo to check.
@@ -231,61 +231,61 @@ class GroupCache(CacheGame):
 		"""
 		if super().is_cached(gizmo):
 			return True
-		for group, cache in self._group_cache.items():
+		for gate, cache in self._gate_cache.items():
 			for key in cache:
-				if group.gizmo_to(key) == gizmo:
+				if gate.gizmo_to(key) == gizmo:
 					return True
 		return False
 
 	def cached(self) -> Iterator[str]:
 		"""
-		Lists the cached gizmos in both the main cache and the group caches.
+		Lists the cached gizmos in both the main cache and the gate caches.
 
 		Returns:
 			Iterator[str]: An iterator over the cached gizmos.
 		"""
-		def _group_cached():
-			for group, cache in self._group_cache.items():
+		def _gate_cached():
+			for gate, cache in self._gate_cache.items():
 				for key in cache:
-					yield group.gizmo_to(key)
-		yield from filter_duplicates(super().cached(), _group_cached())
+					yield gate.gizmo_to(key)
+		yield from filter_duplicates(super().cached(), _gate_cached())
 
-	def check_group_cache(self, group: AbstractGang, gizmo: str):
+	def check_gate_cache(self, gate: AbstractGate, gizmo: str):
 		"""
-		Checks a group cache for a gizmo.
+		Checks a gate cache for a gizmo.
 
 		Args:
-			group (AbstractGroup): The group to check.
+			gate (AbstractGate): The gate to check.
 			gizmo (str): The name of the gizmo to check.
 
 		Returns:
-			Any: The cached value of the gizmo in the group cache.
+			Any: The cached value of the gizmo in the gate cache.
 		"""
-		return self._group_cache[group][gizmo]
+		return self._gate_cache[gate][gizmo]
 
-	def update_group_cache(self, group: AbstractGang, gizmo: str, val: Any):
+	def update_gate_cache(self, gate: AbstractGate, gizmo: str, val: Any):
 		"""
-		Updates a group cache with a gizmo and its value.
+		Updates a gate cache with a gizmo and its value.
 
 		Args:
-			group (AbstractGroup): The group to update.
+			gate (AbstractGate): The gate to update.
 			gizmo (str): The name of the gizmo to update.
 			val (Any): The value of the gizmo to update.
 		"""
 		if self._gizmo_type is not None:
 			gizmo = self._gizmo_type(gizmo)
-		self._group_cache.setdefault(group, {})[gizmo] = val
+		self._gate_cache.setdefault(gate, {})[gizmo] = val
 
-	def clear_cache(self, *, clear_group_caches=True, **kwargs) -> None:
+	def clear_cache(self, *, clear_gate_caches=True, **kwargs) -> None:
 		"""
-		Clears the cache and optionally the group caches.
+		Clears the cache and optionally the gate caches.
 
 		Args:
-			clear_group_caches (bool): Whether to clear the group caches. Defaults to True.
+			clear_gate_caches (bool): Whether to clear the gate caches. Defaults to True.
 		"""
 		super().clear_cache(**kwargs)
-		if clear_group_caches:
-			self._group_cache.clear()
+		if clear_gate_caches:
+			self._gate_cache.clear()
 
 
 

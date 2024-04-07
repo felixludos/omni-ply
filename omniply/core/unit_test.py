@@ -522,7 +522,7 @@ def test_selection():
 	assert ctx['y'] == 2
 
 
-def test_group_cache():
+def test_gate_cache():
 	"""
 	This function tests the functionality of the 'tool' decorator, the 'Context' class, the 'Scope' class, and the '_Kit1' instance.
 
