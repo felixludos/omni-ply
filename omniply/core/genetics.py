@@ -131,7 +131,7 @@ class GeneticGadget(GeneticBase, GadgetBase):
 
 class GeneticGaggle(GaggleBase, AbstractGenetic):
 	def genes(self, gizmo: str) -> AbstractGene:
-		for vendor in self._vendors(gizmo):
+		for vendor in self._gadgets(gizmo):
 			if isinstance(vendor, AbstractGenetic):
 				yield from vendor.genes(gizmo)
 

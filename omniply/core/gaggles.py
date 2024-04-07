@@ -24,8 +24,9 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 	"""
 
 	_gadgets_table: dict[str, list[AbstractGadget]]
+	_gadgets_list: list[AbstractGadget]
 
-	def __init__(self, *args, gadgets_table: Optional[Mapping] = None, **kwargs):
+	def __init__(self, *args, **kwargs):
 		"""
 		Initializes a new instance of the GaggleBase class.
 
@@ -34,10 +35,9 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 			gadgets_table (Optional[Mapping]): A dictionary of gadgets. If not provided, defauls to an empty dictionary.
 			kwargs: Arbitrary keyword arguments.
 		"""
-		if gadgets_table is None:
-			gadgets_table = {}
 		super().__init__(*args, **kwargs)
-		self._gadgets_table = gadgets_table
+		self._gadgets_table = {}
+		self._gadgets_list = []
 
 	def gizmos(self) -> Iterator[str]:
 		"""
@@ -81,19 +81,29 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 			Iterator[AbstractGadget]: An iterator over the gadgets that can produce the given gizmo.
 		"""
 		if gizmo is None:
-			for gadget in chain.from_iterable(map(reversed, self._gadgets_table.values())):
-				if isinstance(gadget, AbstractGaggle):
-					yield from gadget.vendors(gizmo)
-				else:
-					yield gadget
+			yield from reversed(self._gadgets_list)
 		else:
 			if gizmo not in self._gadgets_table:
 				raise self._MissingGadgetError(gizmo)
-			for gadget in reversed(self._gadgets_table[gizmo]):
-				if isinstance(gadget, AbstractGaggle):
-					yield from gadget.vendors(gizmo)
-				else:
-					yield gadget
+			yield from reversed(self._gadgets_table[gizmo])
+
+
+	def _gadgets(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
+		"""
+		Private method that returns all known subgadgets that can produce the given gizmo.
+
+		Args:
+			gizmo (Optional[str]): The name of the gizmo to check. If not provided, all gadgets are returned.
+
+		Returns:
+			Iterator[AbstractGadget]: An iterator over the gadgets that can produce the given gizmo.
+		"""
+		for vendor in self._vendors(gizmo):
+			if isinstance(vendor, AbstractGaggle):
+				yield from vendor.gadgets(gizmo)
+			else:
+				yield vendor
+
 
 	_AssemblyFailedError = AssemblyError
 	def grab_from(self, ctx: AbstractGig, gizmo: str) -> Any:
@@ -112,7 +122,7 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 			MissingGadgetError: If no gadget can produce the gizmo.
 		"""
 		failures = OrderedDict()
-		for gadget in self._vendors(gizmo):
+		for gadget in self._gadgets(gizmo):
 			try:
 				return gadget.grab_from(ctx, gizmo)
 			except self._GadgetFailure as e:
@@ -206,7 +216,7 @@ class LoopyGaggle(GaggleBase):
 			MissingGadgetError: If no gadget can produce the gizmo.
 		"""
 		failures = OrderedDict()
-		itr = self._grabber_stack.setdefault(gizmo, self._vendors(gizmo))
+		itr = self._grabber_stack.setdefault(gizmo, self._gadgets(gizmo))
 		for gadget in itr:
 			try:
 				out = gadget.grab_from(ctx, gizmo)
@@ -264,6 +274,7 @@ class MutableGaggle(GaggleBase):
 					if gadget in self._gadgets_table[gizmo]:
 						self._gadgets_table[gizmo].remove(gadget)
 			self._gadgets_table.setdefault(gizmo, []).extend(reversed(gadgets))
+		self._gadgets_list.extend(reversed(gadgets))
 		return self
 
 	def exclude(self, *gadgets: AbstractGadget) -> Self:
@@ -280,6 +291,8 @@ class MutableGaggle(GaggleBase):
 			for gizmo in gadget.gizmos():
 				if gizmo in self._gadgets_table and gadget in self._gadgets_table[gizmo]:
 					self._gadgets_table[gizmo].remove(gadget)
+			if gadget in self._gadget_list:
+				self._gadgets_list.remove(gadget)
 		return self
 
 class CraftyGaggle(GaggleBase, InheritableCrafty):
@@ -311,6 +324,7 @@ class CraftyGaggle(GaggleBase, InheritableCrafty):
 				if isinstance(skill, AbstractGadget):
 					for gizmo in skill.gizmos():
 						gizmos.setdefault(gizmo, []).append(skill)
+					self._gadgets_list.append(skill) # O-N (in order of appearance)
 				else:
 					self._process_auxiliary_skill(skill)
 			for gizmo, skills in gizmos.items():

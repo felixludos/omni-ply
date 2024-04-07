@@ -253,6 +253,11 @@ class AbstractGang(AbstractGig):
 ### exotic animals
 
 
+class AbstractGenerous(AbstractGig):
+	def gabel(self):
+		'''duplicates this game, all the tools should be included, but not the cache'''
+		raise NotImplementedError
+
 
 
 class AbstractConsistentGig(AbstractGig):

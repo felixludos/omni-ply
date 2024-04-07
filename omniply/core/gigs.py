@@ -6,7 +6,7 @@ from .abstract import (AbstractGadget, AbstractGaggle, AbstractGig, AbstractGang
 					   AbstractConsistentGig)
 from .errors import GadgetFailure, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
-from .gaggles import MutableGaggle, MultiGadgetBase
+from .gaggles import GaggleBase, MutableGaggle, MultiGadgetBase
 
 
 class GigBase(MultiGadgetBase, GadgetBase, AbstractGig):
@@ -194,6 +194,7 @@ class CacheGig(GigBase, UserDict):
 		val = self._cache_miss(ctx, gizmo)
 		self[gizmo] = val  # cache packaged val
 		return val
+
 
 
 class GroupCache(CacheGig):

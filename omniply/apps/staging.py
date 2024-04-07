@@ -69,7 +69,7 @@ class Sensitive(AbstractStaged):
 
 class StagedGaggle(GaggleBase, Staged):
 	def _stage(self, plan: AbstractPlan):
-		for gadget in self._vendors():
+		for gadget in self._gadgets():
 			if isinstance(gadget, Staged):
 				gadget.stage(plan)
 		return super()._stage(plan)
