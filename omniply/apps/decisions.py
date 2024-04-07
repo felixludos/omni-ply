@@ -1,20 +1,15 @@
-from typing import Iterator, Any, Iterable, Mapping, Self, Union
+from typing import Iterator, Any, Iterable, Mapping, Self, Union, Callable
 import random
 from omnibelt import filter_duplicates
 
 from ..core.abstract import AbstractGadget, AbstractGaggle, AbstractGame
 from ..core.gadgets import SingleGadgetBase
-from ..core.gaggles import GaggleBase
-
+from ..core.genetics import AbstractGenetic, GeneticBase
+from ..core.gaggles import GaggleBase, MultiGadgetBase
 
 
 
 class AbstractDecision(AbstractGaggle):
-	def gizmos(self) -> Iterator[str]:
-		yield self.choice_gizmo
-		yield from super().gizmos()
-
-
 	@property
 	def choice_gizmo(self):
 		raise NotImplementedError
@@ -37,6 +32,17 @@ class AbstractGadgetDecision(AbstractDecision):
 
 
 
+class AbstractDecidable:
+	def certificate(self) -> Iterator[str]:
+		'''returns all the choices made (ie. that are cached)'''
+		raise NotImplementedError
+
+
+	def consider(self, target: str, prior: dict[str, Any]) -> Iterator[AbstractGame]:
+		raise NotImplementedError
+
+
+
 class NoOptionsError(Exception):
 	pass
 
@@ -44,10 +50,15 @@ class NoOptionsError(Exception):
 CHOICE = Union[str, int]
 
 
-class DecisionBase(AbstractDecision):
-	def __init__(self, *, choice_gizmo: str = None, **kwargs):
+class DecisionBase(MultiGadgetBase, AbstractDecision):
+	def __init__(self, *, choice_gizmo: str, **kwargs):
 		super().__init__(**kwargs)
 		self._choice_gizmo = choice_gizmo
+
+
+	def gizmos(self) -> Iterator[str]:
+		yield from super().gizmos()
+		yield self.choice_gizmo
 
 
 	@property
@@ -78,7 +89,7 @@ class DecisionBase(AbstractDecision):
 
 
 
-class SimpleDecision(SingleGadgetBase, DecisionBase, AbstractDynamicDecision):
+class SimpleDecision(DecisionBase, SingleGadgetBase, GeneticBase, AbstractDynamicDecision):
 	def __init__(self, gizmo: str, choices: Iterable[Any] | Mapping[str, Any] = None, *,
 				 choice_gizmo: str = None, **kwargs):
 		if choice_gizmo is None:
@@ -89,6 +100,10 @@ class SimpleDecision(SingleGadgetBase, DecisionBase, AbstractDynamicDecision):
 			choices = {i: choice for i, choice in enumerate(choices)}
 		super().__init__(gizmo=gizmo, choice_gizmo=choice_gizmo, **kwargs)
 		self._choices = dict(choices)
+
+
+	def _genetic_information(self, gizmo: str):
+		return {**super()._genetic_information(gizmo), 'parents': ()}
 
 
 	def choices(self, gizmo: str = None) -> Iterator[str]:
@@ -110,8 +125,7 @@ class SimpleDecision(SingleGadgetBase, DecisionBase, AbstractDynamicDecision):
 
 
 class GadgetDecisionBase(DecisionBase, AbstractGadgetDecision):
-	def __init__(self, choices: Iterable[AbstractGadget] | Mapping[str, AbstractGadget] = None, *,
-				 choice_gizmo: str = None, **kwargs):
+	def __init__(self, choices: Iterable[AbstractGadget] | Mapping[str, AbstractGadget] = None, **kwargs):
 		if choices is None:
 			choices = {}
 		if not isinstance(choices, Mapping):
@@ -124,9 +138,18 @@ class GadgetDecisionBase(DecisionBase, AbstractGadgetDecision):
 				self._option_table.setdefault(gizmo, []).append(choice)
 
 
+	def gizmos(self) -> Iterator[str]:
+		yield from filter_duplicates(*(self.consequence(choice).gizmos() for choice in self.choices()))
+		yield self.choice_gizmo
+
+
 	def _commit(self, ctx: 'AbstractGame', choice: CHOICE, gizmo: str) -> Any:
 		'''after a choice has been selected, this method is called to determine the final result.'''
 		return self._choices[choice].grab_from(ctx, gizmo)
+
+
+	def consequence(self, choice: CHOICE) -> AbstractGadget:
+		return self._choices[choice]
 
 
 	def choices(self, gizmo: str = None) -> Iterator[str]:
@@ -169,62 +192,89 @@ class SelfSelectingDecision(GadgetDecisionBase):
 
 
 
-from ..core.genetics import AbstractGenetic
-
-
-
-
-class AbstractDecidable:
-	def certificate(self) -> Iterator[str]:
-		'''returns all the choices made (ie. that are cached)'''
-		raise NotImplementedError
-
-
-	def consider(self, target: str, prior: dict[str, Any]) -> Iterator[AbstractGame]:
-		raise NotImplementedError
-
-
 class NaiveConsiderationBase(AbstractDecidable):
 	def _create_case(self, cache: dict[str, Any]) -> AbstractGame:
 		raise NotImplementedError
 
 
+	# def _consider(self, *, targets: Iterable[str], cache: dict[str, Any],
+	# 			  get_gadgets: Callable[[str], Iterator[AbstractGadget]],
+	# 			  resolved: set[str]) -> Iterator[AbstractGame]:
+	# 	todo = list(targets)
+	# 	# for gizmo in todo:
+	# 	while len(todo):
+	# 		gizmo = todo.pop() # targets
+	# 		if gizmo in resolved: # already resolved or cached
+	# 			continue
+	#
+	# 		for gadget in get_gadgets(gizmo):
+	# 			while isinstance(gadget, AbstractGadgetDecision) and gadget.choice_gizmo in cache:
+	# 				# decision has already been made, follow the consequence
+	# 				gadget = gadget.consequence(cache[gadget.choice_gizmo])
+	# 			else:
+	# 				if isinstance(gadget, AbstractDecision):
+	# 					if gadget.choice_gizmo in cache:
+	# 						break
+	# 					# iterate through choices and then check this gizmo as resolved
+	# 					choices = list(gadget.choices(gizmo)) # technically optional to check that choices exist
+	# 					assert len(choices), f'No choices available for decision to produce {gizmo}'
+	# 					# resolved.add(gizmo) # prevent this decision from getting expanded again
+	# 					for choice in choices:
+	# 						cache[gadget.choice_gizmo] = choice
+	# 						yield from self._consider(targets=todo, resolved=resolved.copy(), get_gadgets=get_gadgets, cache=cache)
+	# 					return # skip base case yield
+	#
+	# 			# expand gadget to find required parents and continue search (while)
+	# 			assert isinstance(gadget, AbstractGenetic), f'{gadget} has unknown genetics'
+	#
+	# 			gene = next(gadget.genes(gizmo))
+	# 			if gizmo in gene.parents:
+	# 				raise NotImplementedError(f'Loopy case not supported yet')
+	# 			todo.extend(parent for parent in gene.parents if parent not in resolved)
+	# 			break
+	# 		else:
+	# 			raise NotImplementedError(f'No gadget found to produce {gizmo}')
+	#
+	# 	# create context with the given prior
+	# 	yield self._create_case(cache)
+
+
+
 	def _consider(self, *, targets: Iterable[str], cache: dict[str, Any],
-				  available: Mapping[str, Iterator[AbstractGadget]],
+				  get_gadgets: Callable[[str], Iterator[AbstractGadget]],
 				  resolved: set[str]) -> Iterator[AbstractGame]:
 		todo = list(targets)
-		while len(todo):
-			gizmo = todo.pop() # targets
+		for gizmo in todo:
+		# while len(todo):
+			# gizmo = todo.pop() # targets
 			if gizmo in resolved: # already resolved or cached
 				continue
 
-			for gadget in available.get(gizmo, []):
+			for gadget in get_gadgets(gizmo):
 				while isinstance(gadget, AbstractGadgetDecision) and gadget.choice_gizmo in cache:
 					# decision has already been made, follow the consequence
 					gadget = gadget.consequence(cache[gadget.choice_gizmo])
 				else:
 					if isinstance(gadget, AbstractDecision):
+						if gadget.choice_gizmo in cache:
+							break
 						# iterate through choices and then check this gizmo as resolved
 						choices = list(gadget.choices(gizmo)) # technically optional to check that choices exist
 						assert len(choices), f'No choices available for decision to produce {gizmo}'
-						resolved.add(gizmo) # prevent this decision from getting expanded again
+						# resolved.add(gizmo) # prevent this decision from getting expanded again
 						for choice in choices:
 							cache[gadget.choice_gizmo] = choice
-							yield from self._consider(targets=todo, resolved=resolved, available=available, cache=cache)
+							yield from self._consider(targets=todo, resolved=resolved.copy(), get_gadgets=get_gadgets, cache=cache.copy())
 						return # skip base case yield
 
 				# expand gadget to find required parents and continue search (while)
 				assert isinstance(gadget, AbstractGenetic), f'{gadget} has unknown genetics'
 
 				gene = next(gadget.genes(gizmo))
+				if gizmo in gene.parents:
+					raise NotImplementedError(f'Loopy case not supported yet')
 				todo.extend(parent for parent in gene.parents if parent not in resolved)
-				if gizmo not in todo:
-					# gizmo's parents will be processed, mark gizmo as resolved
-					resolved.add(gizmo)
-					break
-				# loopy case: gizmo requires itself to be resolved, so resolve that now
-				todo.remove(gizmo)
-
+				break
 			else:
 				raise NotImplementedError(f'No gadget found to produce {gizmo}')
 
@@ -233,10 +283,35 @@ class NaiveConsiderationBase(AbstractDecidable):
 
 
 
-class DecidableBase(GaggleBase, NaiveConsiderationBase):
-	def consider(self, *targets: str, given: Mapping[str, Any] = None) -> Iterator[AbstractGame]:
+
+from ..core import Context
+
+from .simple import DictGadget
+
+
+
+class GadgetDecision(DynamicDecision, SelfSelectingDecision, GadgetDecisionBase):
+	pass
+
+
+
+class Controller(Context, NaiveConsiderationBase):
+	def certificate(self) -> dict[str, CHOICE]:
+		return {gizmo: self[gizmo] for gizmo in self.cached()
+				if isinstance(decision := next(self._gadgets(gizmo)), AbstractDecision)
+				and gizmo == decision.choice_gizmo}
+
+
+	def _create_case(self, cache: dict[str, Any]) -> AbstractGame:
+		case = self.gabel()
+		case.data.update(cache)
+		# case.include(DictGadget(cache.copy()))
+		return case
+
+	def consider(self, *targets: str) -> Iterator[AbstractGame]:
+		given = {gizmo: self[gizmo] for gizmo in self.cached()}
 		yield from self._consider(targets=targets, resolved=set(given.keys()), cache=dict(given),
-								  available={gizmo: self.gadgets(gizmo) for gizmo in self.gizmos()})
+								  get_gadgets=self._vendors)
 
 
 

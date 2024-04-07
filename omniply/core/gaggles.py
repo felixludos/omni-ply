@@ -264,6 +264,7 @@ class MutableGaggle(GaggleBase):
 		Returns:
 			Self: this gaggle.
 		"""
+		self._gadgets_list.extend(reversed(gadgets))
 		new = {}
 		for gadget in gadgets:
 			for gizmo in gadget.gizmos():
@@ -274,7 +275,6 @@ class MutableGaggle(GaggleBase):
 					if gadget in self._gadgets_table[gizmo]:
 						self._gadgets_table[gizmo].remove(gadget)
 			self._gadgets_table.setdefault(gizmo, []).extend(reversed(gadgets))
-		self._gadgets_list.extend(reversed(gadgets))
 		return self
 
 	def exclude(self, *gadgets: AbstractGadget) -> Self:

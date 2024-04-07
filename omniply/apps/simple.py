@@ -36,7 +36,6 @@ class DictGadget(GeneticGadget):
 	def _genetic_information(self, gizmo: str):
 		info = super()._genetic_information(gizmo)
 		info['parents'] = []
-		info['siblings'] = []
 		return info
 
 
