@@ -89,6 +89,38 @@ def test_gadget_decision():
 
 
 
+def test_consider_target():
+
+	ctx = Controller(
+		SimpleDecision('A', [1, 2, 3]),
+		SimpleDecision('B', [4, 5]),
+	)
+
+	cases = []
+	for case in ctx.consider('A'):
+		cases.append(case)
+
+	assert len(cases) == 3
+
+
+
+# def test_consider_dynamic_target():
+#
+# 	ctx = Controller(
+# 		SimpleDecision('A', [1, 2, 3]),
+# 		SimpleDecision('B', [4, 5]),
+# 	)
+#
+# 	trigger = True
+# 	cases = []
+# 	for case in ctx.consider('A'):
+# 		if trigger:
+# 			case['B']
+# 			trigger = False
+# 		cases.append(case)
+#
+# 	assert len(cases) == 6
+
 
 
 

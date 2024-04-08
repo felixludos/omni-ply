@@ -200,6 +200,7 @@ class NaiveConsiderationBase(AbstractDecidable):
 	def _consider(self, *, targets: Iterable[str], cache: dict[str, Any],
 				  get_gadgets: Callable[[str], Iterator[AbstractGadget]],
 				  resolved: set[str]) -> Iterator[AbstractGame]:
+		'''top-down - requires guarantee that only the targets will be grabbed'''
 		todo = list(targets)
 		for gizmo in todo:
 		# while len(todo):
