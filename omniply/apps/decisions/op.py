@@ -22,7 +22,7 @@ class OldController(Context, NaiveConsiderationBase):
 	def consider(self, *targets: str) -> Iterator[AbstractGame]:
 		given = {gizmo: self[gizmo] for gizmo in self.cached()}
 		yield from self._consider(targets=targets, resolved=set(given.keys()), cache=dict(given),
-								  get_gadgets=self._vendors)
+								  get_gadgets=self._gadgets)
 
 
 

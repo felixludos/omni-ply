@@ -4,7 +4,7 @@ from collections import OrderedDict
 from omnibelt import filter_duplicates
 from omnibelt.crafts import InheritableCrafty
 
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGenerous
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGame
 from .errors import logger, GadgetFailure, MissingGadget, AssemblyError
 from .gadgets import GadgetBase, SingleGadgetBase, SingleFunctionGadget, AutoSingleFunctionGadget
 
@@ -68,24 +68,29 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 		Returns:
 			Iterator[AbstractGadget]: An iterator over the gadgets that can produce the given gizmo.
 		"""
-		yield from self._vendors(gizmo)
-
-	def _vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
-		"""
-		Private method that returns all known subgadgets that can produce the given gizmo.
-
-		Args:
-			gizmo (Optional[str]): The name of the gizmo to check. If not provided, all gadgets are returned.
-
-		Returns:
-			Iterator[AbstractGadget]: An iterator over the gadgets that can produce the given gizmo.
-		"""
 		if gizmo is None:
 			yield from reversed(self._gadgets_list)
 		else:
 			if gizmo not in self._gadgets_table:
 				raise self._MissingGadgetError(gizmo)
 			yield from reversed(self._gadgets_table[gizmo])
+
+	# def _vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
+	# 	"""
+	# 	Private method that returns all known subgadgets that can produce the given gizmo.
+	#
+	# 	Args:
+	# 		gizmo (Optional[str]): The name of the gizmo to check. If not provided, all gadgets are returned.
+	#
+	# 	Returns:
+	# 		Iterator[AbstractGadget]: An iterator over the gadgets that can produce the given gizmo.
+	# 	"""
+	# 	if gizmo is None:
+	# 		yield from reversed(self._gadgets_list)
+	# 	else:
+	# 		if gizmo not in self._gadgets_table:
+	# 			raise self._MissingGadgetError(gizmo)
+	# 		yield from reversed(self._gadgets_table[gizmo])
 
 
 	def _gadgets(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
@@ -98,7 +103,7 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 		Returns:
 			Iterator[AbstractGadget]: An iterator over the gadgets that can produce the given gizmo.
 		"""
-		for vendor in self._vendors(gizmo):
+		for vendor in self.vendors(gizmo):
 			if isinstance(vendor, AbstractGaggle):
 				yield from vendor.gadgets(gizmo)
 			else:
@@ -136,16 +141,16 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 
 
 
-class GenerousGaggle(GaggleBase, AbstractGenerous):
-	def gathering(self, gizmo: str = None) -> Iterator[AbstractGadget]:
-		yield from self._vendors(gizmo)
+# class GenerousGaggle(GaggleBase, AbstractGenerous):
+# 	def gathering(self, gizmo: str = None) -> Iterator[AbstractGadget]:
+# 		yield from self._vendors(gizmo)
 
 
 
 class MultiGadgetBase(AbstractGaggle):
 	"""
-	MultiGadgetBase is a special kind of gaggle that hides all sub-gadgets from being accessed through `gadgets()`
-	and `vendors()`. Instead, it presents itself as a gadget that can produce all the products of the sub-gadgets.
+	MultiGadgetBase is a special kind of gaggle that hides all sub-gadgets from being accessed through `gadgets()`.
+	Instead, it presents itself as a gadget that can produce all the products of the sub-gadgets.
 
 	Generally, if you know before runtime what gizmos a gadget can produce, then it should just be a gadget, however,
 	if you want to be able to dynamically add sub-gadgets, while still preventing delegation, then you can use this.
@@ -166,20 +171,20 @@ class MultiGadgetBase(AbstractGaggle):
 		"""
 		yield self
 
-	def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
-		"""
-		Lists all known sub-gadgets and sub-gaggles in this multi-gadget that can produce the given gizmo.
-		Since this is a multi-gadget, it doesn't delegate to sub-gadgets, and instead yields itself.
-
-		Args:
-			gizmo (Optional[str]): If specified, yields only the gadgets that can produce this gizmo. In this case, it
-			checks if this multi-gadget can produce the gizmo.
-
-		Returns:
-			Iterator[AbstractGadget]: An iterator over the known gadgets that can directly produce the given gizmo. Since
-			this is a multi-gadget, it yields itself.
-		"""
-		yield self
+	# def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
+	# 	"""
+	# 	Lists all known sub-gadgets and sub-gaggles in this multi-gadget that can produce the given gizmo.
+	# 	Since this is a multi-gadget, it doesn't delegate to sub-gadgets, and instead yields itself.
+	#
+	# 	Args:
+	# 		gizmo (Optional[str]): If specified, yields only the gadgets that can produce this gizmo. In this case, it
+	# 		checks if this multi-gadget can produce the gizmo.
+	#
+	# 	Returns:
+	# 		Iterator[AbstractGadget]: An iterator over the known gadgets that can directly produce the given gizmo. Since
+	# 		this is a multi-gadget, it yields itself.
+	# 	"""
+	# 	yield self
 
 
 
