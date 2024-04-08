@@ -165,7 +165,7 @@ class SelfSelectingDecision(GadgetDecisionBase):
 # 	@choice
 # 	def single_element(self, elements):
 # 		return elements if len(elements) else ''
-# 	@single_element.validator
+# 	@single_element.condition
 # 	def _check_single_element(self, elements):
 # 		return len(elements) <= 1
 #
@@ -175,7 +175,7 @@ class SelfSelectingDecision(GadgetDecisionBase):
 # 			aggregator = self._aggregator
 # 		fixed = [elements[idx] for idx in order]
 # 		return f'{", ".join(fixed[:-1])} {aggregator} {fixed[-1]}'
-# 	@multi_element.validator
+# 	@multi_element.condition
 # 	def _check_multi_element(self, elements):
 # 		return len(elements) > 1
 
