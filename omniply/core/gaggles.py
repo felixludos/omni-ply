@@ -75,23 +75,6 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 				raise self._MissingGadgetError(gizmo)
 			yield from reversed(self._gadgets_table[gizmo])
 
-	# def _vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
-	# 	"""
-	# 	Private method that returns all known subgadgets that can produce the given gizmo.
-	#
-	# 	Args:
-	# 		gizmo (Optional[str]): The name of the gizmo to check. If not provided, all gadgets are returned.
-	#
-	# 	Returns:
-	# 		Iterator[AbstractGadget]: An iterator over the gadgets that can produce the given gizmo.
-	# 	"""
-	# 	if gizmo is None:
-	# 		yield from reversed(self._gadgets_list)
-	# 	else:
-	# 		if gizmo not in self._gadgets_table:
-	# 			raise self._MissingGadgetError(gizmo)
-	# 		yield from reversed(self._gadgets_table[gizmo])
-
 
 	def _gadgets(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
 		"""
