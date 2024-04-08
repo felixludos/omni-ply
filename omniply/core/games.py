@@ -396,8 +396,3 @@ class ConsistentGame(TraceGame, AbstractConsistentGame):
 
 
 
-
-
-
-
-

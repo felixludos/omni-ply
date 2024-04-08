@@ -253,9 +253,13 @@ class AbstractGate(AbstractGame):
 ### exotic animals
 
 
-class AbstractGenerous(AbstractGame):
-	def gabel(self):
-		'''duplicates this game, all the tools should be included, but not the cache'''
+class AbstractGenerous:
+	# def gabel(self):
+	# 	'''duplicates this game, all the tools should be included, but not the cache'''
+	# 	raise NotImplementedError
+
+	def gathering(self, gizmo: str = None) -> Iterator[AbstractGadget]:
+		'''returns all the gadgets known to this object, generally used to make shallow copies'''
 		raise NotImplementedError
 
 

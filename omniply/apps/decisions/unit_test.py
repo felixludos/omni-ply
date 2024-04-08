@@ -1,22 +1,22 @@
 from typing import Any, Mapping, Iterator
-from .. import AbstractGame
-from ..core import ToolKit, Context, tool
-from .decisions import GadgetDecision, SimpleDecision, Controller
-from .simple import DictGadget
+from ... import AbstractGame
+from ...core import ToolKit, Context, tool
+from .op import GadgetDecision, SimpleDecision, OldController
+from ..simple import DictGadget
 
 
 def test_decisions():
 
 	decision = SimpleDecision('A', [1, 2, 3])
 
-	ctx = Controller(decision)
-
-	assert ctx['A'] in [1, 2, 3]
+	for _ in range(100):
+		ctx = OldController(decision)
+		assert ctx['A'] in [1, 2, 3]
 
 
 def test_consideration():
 
-	ctx = Controller(
+	ctx = OldController(
 		SimpleDecision('A', [1, 2, 3]),
 		SimpleDecision('B', [4, 5]),
 	)
@@ -45,7 +45,7 @@ def test_gadget_decision():
 		return -B
 
 
-	ctx = Controller(
+	ctx = OldController(
 		GadgetDecision([from_a, from_b], choice_gizmo='my_choice'),
 		SimpleDecision('A', [1, 2, 3]),
 		SimpleDecision('B', [4, 5]),
@@ -91,7 +91,7 @@ def test_gadget_decision():
 
 def test_consider_target():
 
-	ctx = Controller(
+	ctx = OldController(
 		SimpleDecision('A', [1, 2, 3]),
 		SimpleDecision('B', [4, 5]),
 	)
@@ -104,24 +104,43 @@ def test_consider_target():
 
 
 
-# def test_consider_dynamic_target():
-#
-# 	ctx = Controller(
-# 		SimpleDecision('A', [1, 2, 3]),
-# 		SimpleDecision('B', [4, 5]),
-# 	)
-#
-# 	trigger = True
-# 	cases = []
-# 	for case in ctx.consider('A'):
-# 		if trigger:
-# 			case['B']
-# 			trigger = False
-# 		cases.append(case)
-#
-# 	assert len(cases) == 6
+def skiptest_consider_dynamic_target():
+	# NOTE: OldController will fail this test because it's top-down, not bottom-up
 
+	ctx = OldController(
+		SimpleDecision('A', [1, 2, 3]),
+		SimpleDecision('B', [4, 5]),
+	)
 
+	wait = 0
+	cases = []
+	for case in ctx.consider('A'):
+		if wait == 0:
+			case['B'] # adds 'B' as a target
+		cases.append(case)
+		wait -= 1
+
+	assert len(cases) == 6
+
+	wait = 1
+	cases = []
+	for case in ctx.consider('A'):
+		if wait == 0:
+			case['B'] # adds 'B' as a target
+		cases.append(case)
+		wait -= 1
+
+	assert len(cases) == 5
+
+	wait = 2
+	cases = []
+	for case in ctx.consider('A'):
+		if wait == 0:
+			case['B'] # adds 'B' as a target
+		cases.append(case)
+		wait -= 1
+
+	assert len(cases) == 4
 
 
 

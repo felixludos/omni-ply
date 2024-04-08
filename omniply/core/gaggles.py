@@ -4,7 +4,7 @@ from collections import OrderedDict
 from omnibelt import filter_duplicates
 from omnibelt.crafts import InheritableCrafty
 
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGame
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGenerous
 from .errors import logger, GadgetFailure, MissingGadget, AssemblyError
 from .gadgets import GadgetBase, SingleGadgetBase, SingleFunctionGadget, AutoSingleFunctionGadget
 
@@ -133,6 +133,12 @@ class GaggleBase(GadgetBase, AbstractGaggle):
 		if failures:
 			raise self._AssemblyFailedError(failures)
 		raise self._MissingGadgetError(gizmo)
+
+
+
+class GenerousGaggle(GaggleBase, AbstractGenerous):
+	def gathering(self, gizmo: str = None) -> Iterator[AbstractGadget]:
+		yield from self._vendors(gizmo)
 
 
 
