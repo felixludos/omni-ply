@@ -9,8 +9,8 @@ from .chains import ConsiderableDecision, DeciderBase, NaiveConsiderationBase
 class OldController(Context, NaiveConsiderationBase):
 	def certificate(self) -> dict[str, CHOICE]:
 		return {gizmo: self[gizmo] for gizmo in self.cached()
-				if isinstance(decision := next(self._gadgets(gizmo)), AbstractDecision)
-				and gizmo == decision.choice_gizmo}
+				if any(gizmo == decision.choice_gizmo for decision in self._gadgets(gizmo)
+					   if isinstance(decision, AbstractDecision))}
 
 
 	def _create_case(self, cache: dict[str, Any]) -> AbstractGame:
