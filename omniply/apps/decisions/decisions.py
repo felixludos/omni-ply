@@ -27,7 +27,7 @@ class DecisionBase(MultiGadgetBase, AbstractDecision):
 	def _choose(self, ctx: 'AbstractGame') -> str:
 		'''this method is called to determine the choice to be made.'''
 		rng = getattr(ctx, 'rng', random)
-		options = list(self.choices())
+		options = list(self.choices(ctx))
 		if len(options) == 0:
 			raise self._NoOptionsError(f'No options available for decision: {self}')
 		return rng.choice(options)
@@ -43,6 +43,12 @@ class DecisionBase(MultiGadgetBase, AbstractDecision):
 	def _commit(self, ctx: 'AbstractGame', choice: CHOICE, gizmo: str) -> Any:
 		'''after a choice has been selected, this method is called to determine the final result.'''
 		raise NotImplementedError
+
+
+# TODO: enable setting a weight to each of the choices!
+# class WeightedDecision(DecisionBase):
+# 	pass
+
 
 
 
