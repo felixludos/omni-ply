@@ -226,6 +226,7 @@ def test_large_decision():
 
 	random.seed(11)
 	manual_picks = list(gen.cover(num_picks))
+	assert manual_picks == [118588, 146740, 122067, 118445, 133127]
 
 	ctx = Controller(gen)
 
@@ -242,7 +243,7 @@ def test_large_decision():
 		cases.append(case)
 		assert len(cases) <= 5
 
-	assert all(len(combo) == K for combo in combos)
+	assert all(len(combo) == K and min(combo) >= 0 and max(combo) <= N-1 for combo in combos)
 	assert auto_picks == manual_picks
 	assert auto_picks[0] != auto_picks[1]
 	assert combos[0] != combos[1]

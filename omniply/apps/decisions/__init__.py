@@ -1,3 +1,3 @@
-from .op import GadgetDecision, SimpleDecision, Permutation, Combination
+from .op import GadgetDecision, SimpleDecision, Permutation, Combination, Controller
 
 
