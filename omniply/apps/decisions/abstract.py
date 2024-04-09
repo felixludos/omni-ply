@@ -10,9 +10,28 @@ class AbstractDecision(AbstractGaggle):
 		raise NotImplementedError
 
 
-	def choices(self, ctx: 'AbstractGame' = None, gizmo: str = None) -> Iterator[CHOICE]:
+	def choices(self, ctx: 'AbstractGame' = None) -> Iterator[CHOICE]:
 		raise NotImplementedError
 
+
+
+class AbstractIndexDecision(AbstractDecision):
+	def count(self, ctx: 'AbstractGame' = None) -> int:
+		'''how many choices are available'''
+		raise NotImplementedError
+
+
+	def choices(self, ctx: 'AbstractGame' = None) -> Iterator[str]:
+		'''list all choices'''
+		yield from range(self.count(ctx))
+
+
+	def cover(self, sampling: int, ctx: 'AbstractGame' = None, gizmo: str = None) -> Iterator[int]:
+		'''
+		sample a "representative" subset of choices from the total set of choices
+		(can be uniformly random, if you don't have any better ideas)
+		'''
+		raise NotImplementedError
 
 
 class AbstractGadgetDecision(AbstractDecision):
@@ -30,10 +49,6 @@ class AbstractCase(AbstractGame):
 
 class AbstractChain:
 	'''the iterator'''
-	def _create_case(self, prior: dict[str, Any]) -> AbstractGame:
-		raise NotImplementedError
-
-
 	@property
 	def current(self) -> str:
 		raise NotImplementedError
@@ -57,5 +72,8 @@ class AbstractDecidable:
 	def consider(self, *targets: str) -> Iterator[AbstractGame]:
 		raise NotImplementedError
 
+
+	def create_case(self, cache: dict[str, Any] = None, chain: AbstractChain = None) -> AbstractCase:
+		raise NotImplementedError
 
 

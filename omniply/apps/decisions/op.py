@@ -1,32 +1,34 @@
 from .imports import *
 
-from .abstract import AbstractDecision, AbstractGadgetDecision, CHOICE
+from .abstract import AbstractDecision, AbstractGadgetDecision, CHOICE, AbstractCase
 from .decisions import LargeDecision, SimpleDecisionBase, DynamicDecision, SelfSelectingDecision, GadgetDecisionBase
-from .chains import ConsiderableDecision, DeciderBase, NaiveConsiderationBase
+from .chains import (ConsiderableDecision, DeciderBase, NaiveConsiderationBase, CertificateGaggle,
+					 Chain, SimpleCase, CarefulDecider)
 
 
 
-class OldController(Context, NaiveConsiderationBase):
-	def certificate(self) -> dict[str, CHOICE]:
-		return {gizmo: self[gizmo] for gizmo in self.cached()
-				if any(gizmo == decision.choice_gizmo for decision in self._gadgets(gizmo)
-					   if isinstance(decision, AbstractDecision))}
-
-
+class _OldController(Context, CertificateGaggle, NaiveConsiderationBase):
 	def _create_case(self, cache: dict[str, Any]) -> AbstractGame:
 		case = self.gabel()
 		case.data.update(cache)
 		# case.include(DictGadget(cache.copy()))
 		return case
 
-	def consider(self, *targets: str) -> Iterator[AbstractGame]:
-		given = {gizmo: self[gizmo] for gizmo in self.cached()}
-		yield from self._consider(targets=targets, resolved=set(given.keys()), cache=dict(given),
-								  get_gadgets=self._gadgets)
+
+
+class Controller(Context, CarefulDecider, CertificateGaggle):
+	def create_case(self, cache: dict[str, Any] = None, chain: Chain = None) -> AbstractCase:
+		return super().create_case(cache, chain=chain).extend(list(self.vendors()))
 
 
 
-class GadgetDecision(ConsiderableDecision, DynamicDecision, SelfSelectingDecision, GadgetDecisionBase):
+class Case(SimpleCase, Controller):
+	pass
+Controller._Case = Case
+
+
+
+class GadgetDecision(ConsiderableDecision, DynamicDecision):
 	pass
 
 
@@ -45,7 +47,7 @@ class SimpleDecision(ConsiderableDecision, SimpleDecisionBase):
 		return {**super()._genetic_information(gizmo), 'parents': ()}
 
 
-	def choices(self, gizmo: str = None) -> Iterator[str]:
+	def choices(self, ctx: 'AbstractGame' = None, gizmo: str = None) -> Iterator[str]:
 		yield from self._choices.keys()
 
 

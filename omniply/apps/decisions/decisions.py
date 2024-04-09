@@ -1,6 +1,6 @@
 from .imports import *
 
-from .abstract import AbstractDecision, AbstractGadgetDecision, CHOICE
+from .abstract import AbstractDecision, AbstractIndexDecision, AbstractGadgetDecision, CHOICE
 from .errors import NoOptionsError
 
 
@@ -45,22 +45,13 @@ class DecisionBase(MultiGadgetBase, AbstractDecision):
 
 
 
-class LargeDecision(DecisionBase):
+class LargeDecision(DecisionBase, AbstractIndexDecision):
 	'''
 	expects choices to always be integers from [0, self.count())
 	'''
-	def count(self, ctx: 'AbstractGame' = None, gizmo: str = None) -> int:
-		'''how many choices are available'''
-		raise NotImplementedError
-
-	def choices(self, ctx: 'AbstractGame' = None, gizmo: str = None) -> Iterator[str]:
-		'''list all choices'''
-		yield from range(self.count(ctx, gizmo))
-
 	def cover(self, sampling: int, ctx: 'AbstractGame' = None, gizmo: str = None) -> Iterator[int]:
-		'''sample a subset of choices from the total set of choices'''
 		for _ in range(sampling):
-			yield from self._choose(ctx)
+			yield self._choose(ctx)
 
 	def _choose(self, ctx: 'AbstractGame') -> int:
 		'''this method is called to determine the choice to be made.'''
@@ -92,10 +83,6 @@ class GadgetDecisionBase(DecisionBase, AbstractGadgetDecision):
 			choices = {i: choice for i, choice in enumerate(choices)}
 		super().__init__(**kwargs)
 		self._choices = dict(choices)
-		self._option_table = {}
-		for choice, option in self._choices.items():
-			for gizmo in option.gizmos():
-				self._option_table.setdefault(gizmo, []).append(choice)
 
 
 	def gizmos(self) -> Iterator[str]:
@@ -112,33 +99,24 @@ class GadgetDecisionBase(DecisionBase, AbstractGadgetDecision):
 		return self._choices[choice]
 
 
-	def choices(self, gizmo: str = None) -> Iterator[str]:
-		yield from self._choices.keys() if gizmo is None else self._option_table.get(gizmo, ())
-
-
-
-class DynamicDecision(GadgetDecisionBase):
-	def add_choice(self, option: AbstractGadget, choice: CHOICE = None):
-		if choice is None:
-			choice = str(len(self._choices))
-		assert choice not in self._choices, f'Choice {choice!r} already exists, specify unique choice name.'
-		self._choices[choice] = option
-		for gizmo in option.gizmos():
-			self._option_table.setdefault(gizmo, []).append(choice)
+	def choices(self, ctx: 'AbstractGame' = None) -> Iterator[str]:
+		yield from self._choices.keys()
 
 
 
 class SelfSelectingDecision(GadgetDecisionBase):
-	_waiting_gizmo = None
+	def __init__(self, choices: Iterable[AbstractGadget] | Mapping[str, AbstractGadget] = None, **kwargs):
+		super().__init__(choices=choices, **kwargs)
+		self._waiting_gizmo = None
+		self._option_table = {}
+		for choice, option in self._choices.items():
+			for gizmo in option.gizmos():
+				self._option_table.setdefault(gizmo, []).append(choice)
 
 
-	def _choose(self, ctx: 'AbstractGame') -> str:
-		'''this method is called to determine the choice to be made.'''
-		rng = getattr(ctx, 'rng', random)
-		options = list(self.choices() if self._waiting_gizmo is None else self.choices(self._waiting_gizmo))
-		if len(options) == 0:
-			raise self._NoOptionsError(f'No options available for decision: {self}')
-		return rng.choice(options)
+	def choices(self, ctx: 'AbstractGame' = None) -> Iterator[str]:
+		yield from super().choices(ctx) if self._waiting_gizmo is None \
+			else self._option_table.get(self._waiting_gizmo, ())
 
 
 	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
@@ -150,6 +128,16 @@ class SelfSelectingDecision(GadgetDecisionBase):
 			self._waiting_gizmo = prev
 		return out
 
+
+
+class DynamicDecision(SelfSelectingDecision):
+	def add_choice(self, option: AbstractGadget, choice: CHOICE = None):
+		if choice is None:
+			choice = str(len(self._choices))
+		assert choice not in self._choices, f'Choice {choice!r} already exists, specify unique choice name.'
+		self._choices[choice] = option
+		for gizmo in option.gizmos():
+			self._option_table.setdefault(gizmo, []).append(choice)
 
 
 
