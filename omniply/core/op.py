@@ -49,7 +49,7 @@ class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle):
 		__init__(self, *args, **kwargs): Initializes a new instance of the ToolKit class.
 	"""
 
-	def __init__(self, *args, **kwargs):
+	def __init__(self, *tools: AbstractGadget, **kwargs):
 		"""
 		Initializes a new instance of the ToolKit class.
 
@@ -59,7 +59,8 @@ class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle):
 			args: Variable length argument list.
 			kwargs: Arbitrary keyword arguments.
 		"""
-		super().__init__(*args, **kwargs)
+		super().__init__(**kwargs)
+		self.extend(tools) # note that you can add tools before crafts, but only if they are passed here!
 		self._process_crafts()
 
 
