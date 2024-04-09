@@ -1,6 +1,7 @@
 from .imports import *
 
-from .abstract import AbstractDecision, AbstractIndexDecision, AbstractGadgetDecision, CHOICE
+from .abstract import (AbstractDecision, AbstractIndexDecision, AbstractGadgetDecision, CHOICE,
+					   AbstractCountableDecision)
 from .errors import NoOptionsError
 
 
@@ -45,20 +46,24 @@ class DecisionBase(MultiGadgetBase, AbstractDecision):
 
 
 
-class LargeDecision(DecisionBase, AbstractIndexDecision):
-	'''
-	expects choices to always be integers from [0, self.count())
-	'''
+class CountableDecisionBase(DecisionBase, AbstractCountableDecision):
 	def cover(self, sampling: int, ctx: 'AbstractGame' = None, gizmo: str = None) -> Iterator[int]:
 		for _ in range(sampling):
 			yield self._choose(ctx)
 
+
+
+class LargeDecision(CountableDecisionBase, AbstractIndexDecision):
+	'''
+	expects choices to always be integers from [0, self.count())
+	'''
 	def _choose(self, ctx: 'AbstractGame') -> int:
 		'''this method is called to determine the choice to be made.'''
 		rng = getattr(ctx, 'rng', random)
 		N = self.count(ctx)
 		assert N > 0, f'No options available for decision: {self}'
 		return rng.randint(0, N - 1)
+
 
 
 

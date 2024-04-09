@@ -15,15 +15,10 @@ class AbstractDecision(AbstractGaggle):
 
 
 
-class AbstractIndexDecision(AbstractDecision):
+class AbstractCountableDecision(AbstractDecision):
 	def count(self, ctx: 'AbstractGame' = None) -> int:
 		'''how many choices are available'''
 		raise NotImplementedError
-
-
-	def choices(self, ctx: 'AbstractGame' = None) -> Iterator[str]:
-		'''list all choices'''
-		yield from range(self.count(ctx))
 
 
 	def cover(self, sampling: int, ctx: 'AbstractGame' = None, gizmo: str = None) -> Iterator[int]:
@@ -32,6 +27,13 @@ class AbstractIndexDecision(AbstractDecision):
 		(can be uniformly random, if you don't have any better ideas)
 		'''
 		raise NotImplementedError
+
+
+
+class AbstractIndexDecision(AbstractCountableDecision):
+	def choices(self, ctx: 'AbstractGame' = None) -> Iterator[str]:
+		'''list all choices'''
+		yield from range(self.count(ctx))
 
 
 class AbstractGadgetDecision(AbstractDecision):

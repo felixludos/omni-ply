@@ -1,7 +1,7 @@
 from .imports import *
 
 from .abstract import AbstractDecision, AbstractGadgetDecision, CHOICE, AbstractCase
-from .decisions import LargeDecision, SimpleDecisionBase, DynamicDecision, SelfSelectingDecision, GadgetDecisionBase
+from .decisions import LargeDecision, SimpleDecisionBase, DynamicDecision, CountableDecisionBase
 from .chains import (ConsiderableDecision, DeciderBase, NaiveConsiderationBase, CertificateGaggle,
 					 Chain, SimpleCase, CarefulDecider)
 
@@ -33,7 +33,7 @@ class GadgetDecision(ConsiderableDecision, DynamicDecision):
 
 
 
-class SimpleDecision(ConsiderableDecision, SimpleDecisionBase):
+class SimpleDecision(ConsiderableDecision, CountableDecisionBase, SimpleDecisionBase):
 	def __init__(self, gizmo: str, choices: Iterable[Any] | Mapping[str, Any] = None, **kwargs):
 		if choices is None:
 			choices = {}

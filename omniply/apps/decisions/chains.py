@@ -3,7 +3,7 @@ from .imports import *
 from ...core.games import CacheGame, GaggleBase
 
 from .abstract import (AbstractDecidable, AbstractChain, AbstractCase, AbstractDecision, AbstractGadgetDecision,
-					   AbstractIndexDecision, CHOICE)
+					   AbstractIndexDecision, CHOICE, AbstractCountableDecision)
 from .errors import IgnoreCase
 
 
@@ -114,7 +114,7 @@ class CarefulChain(Chain):
 
 	def _decision_sampling(self, decision: AbstractDecision, case: AbstractCase) -> Iterator[CHOICE]:
 		'''default sampling strategy'''
-		if (self._limit is not None and isinstance(decision, AbstractIndexDecision)
+		if (self._limit is not None and isinstance(decision, AbstractCountableDecision)
 				and decision.count(case) > self._limit):
 			yield from decision.cover(self._limit, case)
 		else:
