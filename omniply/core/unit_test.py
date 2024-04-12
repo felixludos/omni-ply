@@ -433,13 +433,9 @@ def test_nested_tools():
 	# The 'Context' class is used to create a context with the '_Kit3' instance.
 	ctx = Context(kit)
 
-	# Asserts that the context correctly maps 'd' to 11.
-	assert ctx['d'] == 11
-	# Asserts that the context correctly maps 'c' to 2.
-	assert ctx['c'] == 2
-	# Asserts that the context correctly maps 'b' to 1.
-	assert ctx['b'] == 1
-	# Asserts that the context correctly maps 'a' to 1.
+	assert ctx['d'] == 12
+	assert ctx['c'] == 12
+	assert ctx['b'] == 2
 	assert ctx['a'] == 1
 
 
@@ -458,7 +454,7 @@ def test_scope():
 	kit = _Kit1()
 
 	# The 'Scope' class is used to create a scope with the '_Kit1' instance and a gizmo mapping from 'y' to 'a'.
-	scope = Scope(kit, gap={'y': 'a'})
+	scope = Scope(kit, gate={'y': 'a'})
 
 	# Asserts that the gizmos of the scope are correctly identified.
 	assert list(scope.gizmos()) == ['a', 'z', 'w']
@@ -475,7 +471,7 @@ def test_scope():
 	assert ctx['a'] == 2
 
 	# The 'Context' class is used to create a new context with a new scope, which has a gizmo mapping from 'y' to 'a' and 'x' to 'b'.
-	ctx = Context(Scope(kit, gap={'y': 'a', 'x': 'b'}))
+	ctx = Context(Scope(kit, gate={'y': 'a', 'x': 'b'}))
 
 	# Asserts that the gizmos of the new scope are correctly identified.
 	assert list(ctx.gizmos()) == ['a', 'z', 'w']
@@ -501,7 +497,7 @@ def test_selection():
 	kit = _Kit1()
 
 	# The 'Selection' class is used to create a selection with the '_Kit1' instance and a gizmo mapping from 'y' to 'a'.
-	scope = Selection(kit, gap=['y'])
+	scope = Selection(kit, gate=['y'])
 
 	# Asserts that the gizmos of the selection are correctly identified.
 	assert list(scope.gizmos()) == ['y']
@@ -556,7 +552,7 @@ def test_gate_cache():
 	assert ctx['a'] == 1  # Asserts that the context correctly maps 'a' to 1.
 	assert counter == 1  # Asserts that the counter is not incremented.
 
-	ctx = Context(Scope(f, gap={'a': 'b'}))  # The 'Scope' class is used to create a scope with the function 'f' and a gizmo mapping from 'a' to 'b'.
+	ctx = Context(Scope(f, gate={'a': 'b'}))  # The 'Scope' class is used to create a scope with the function 'f' and a gizmo mapping from 'a' to 'b'.
 
 	assert not ctx.gives('a')  # Asserts that 'a' is not grabable from the context.
 	assert ctx.gives('b')  # Asserts that 'b' is grabable from the context.
@@ -584,7 +580,7 @@ def test_gate_cache():
 		"""
 		return 10 * a
 
-	ctx = Context(Scope(f, g, gap={'a': 'b'}))  # The 'Scope' class is used to create a scope with the functions 'f' and 'g' and a gizmo mapping from 'a' to 'b'.
+	ctx = Context(Scope(f, g, gate={'a': 'b'}))  # The 'Scope' class is used to create a scope with the functions 'f' and 'g' and a gizmo mapping from 'a' to 'b'.
 
 	assert list(ctx.gizmos()) == ['b', 'x']  # Asserts that the gizmos of the context are correctly identified.
 
@@ -733,7 +729,7 @@ def test_genetics():
 
 	assert len(genomes) == 2
 	assert genomes[1].name == 'c'
-	assert genomes[1].parents == ('b',)
+	assert genomes[1].parents == ()
 	assert genomes[1].siblings is None
 
 	genome = next(kit.genes('d'))

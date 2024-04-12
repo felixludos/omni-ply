@@ -18,20 +18,20 @@ class GateBase(MultiGadgetBase, GaggleBase, AbstractGate):
 
 	_current_context: Optional[AbstractGame]
 
-	def __init__(self, *args, gap: Optional[dict[str, str]] = None, **kwargs):
+	def __init__(self, *args, gate: Optional[dict[str, str]] = None, **kwargs):
 		"""
 		Initializes a new instance of the GateBase class.
 
 		Args:
 			args: Variable length argument list.
-			gap (Optional[dict[str, str]]): A dictionary of gizmo mappings. If not provided, an empty dictionary will be used.
+			gate (Optional[dict[str, str]]): A dictionary of gizmo mappings. If not provided, an empty dictionary will be used.
 			kwargs: Arbitrary keyword arguments.
 		"""
-		if gap is None:
-			gap = {}
+		if gate is None:
+			gate = {}
 		super().__init__(*args, **kwargs)
-		self._raw_gap = gap # internal gizmos -> external gizmos
-		self._raw_reverse_gap = None
+		self._raw_gate = gate # internal gizmos -> external gizmos
+		self._raw_reverse_gate = None
 		self._game_stack = []
 
 	def _gizmos(self) -> Iterator[str]:
@@ -61,7 +61,7 @@ class GateBase(MultiGadgetBase, GaggleBase, AbstractGate):
 		Returns:
 			dict[str, str]: The internal to external gizmo mapping.
 		"""
-		return self._raw_gap
+		return self._raw_gate
 
 	@internal2external.setter
 	def internal2external(self, value: dict[str, str]):
@@ -71,8 +71,8 @@ class GateBase(MultiGadgetBase, GaggleBase, AbstractGate):
 		Args:
 			value (dict[str, str]): The new internal to external gizmo mapping.
 		"""
-		self._raw_gap = value
-		self._raw_reverse_gap = None
+		self._raw_gate = value
+		self._raw_reverse_gate = None
 
 	@property
 	def external2internal(self) -> dict[str, str]:
@@ -82,9 +82,9 @@ class GateBase(MultiGadgetBase, GaggleBase, AbstractGate):
 		Returns:
 			dict[str, str]: The external to internal gizmo mapping.
 		"""
-		if self._raw_reverse_gap is None:
-			self._raw_reverse_gap = self._infer_external2internal(self._raw_gap, self._gizmos())
-		return self._raw_reverse_gap
+		if self._raw_reverse_gate is None:
+			self._raw_reverse_gate = self._infer_external2internal(self._raw_gate, self._gizmos())
+		return self._raw_reverse_gate
 
 	@staticmethod
 	def _infer_external2internal(raw: dict[str, str], products: Iterator[str]) -> dict[str, str]:
@@ -243,27 +243,27 @@ class SelectiveGate(GateBase):
 
 	Args:
 		args: Variable length argument list.
-		gap (dict[str, str] | list[str] | None): A dictionary or list of gizmo mappings. If not provided, an empty dictionary will be used.
+		gate (dict[str, str] | list[str] | None): A dictionary or list of gizmo mappings. If not provided, an empty dictionary will be used.
 		kwargs: Arbitrary keyword arguments.
 	"""
 
-	def __init__(self, *args, gap: dict[str, str] | list[str] | None = None, **kwargs):
+	def __init__(self, *args, gate: dict[str, str] | list[str] | None = None, **kwargs):
 		"""
 		Initializes a new instance of the SelectiveGate class.
 
-		If the gap argument is a list, it is converted to a dictionary with the same keys and values.
-		If the gap argument is a dictionary, it is processed to ensure that all values are not None.
+		If the gate argument is a list, it is converted to a dictionary with the same keys and values.
+		If the gate argument is a dictionary, it is processed to ensure that all values are not None.
 
 		Args:
 			args: Variable length argument list.
-			gap (dict[str, str] | list[str] | None): A dictionary or list of gizmo mappings. If not provided, an empty dictionary will be used.
+			gate (dict[str, str] | list[str] | None): A dictionary or list of gizmo mappings. If not provided, an empty dictionary will be used.
 			kwargs: Arbitrary keyword arguments.
 		"""
-		if isinstance(gap, list):
-			gap = {gizmo: gizmo for gizmo in gap}
-		if isinstance(gap, dict):
-			gap = {gizmo: gizmo if ext is None else ext for gizmo, ext in gap.items()}
-		super().__init__(*args, gap=gap, **kwargs)
+		if isinstance(gate, list):
+			gate = {gizmo: gizmo for gizmo in gate}
+		if isinstance(gate, dict):
+			gate = {gizmo: gizmo if ext is None else ext for gizmo, ext in gate.items()}
+		super().__init__(*args, gate=gate, **kwargs)
 
 	def gizmos(self) -> Iterator[str]:
 		"""

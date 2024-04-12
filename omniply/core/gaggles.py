@@ -258,17 +258,18 @@ class MutableGaggle(GaggleBase):
 		Returns:
 			Self: this gaggle.
 		"""
+		gadgets = list(gadgets)
 		self._gadgets_list.extend(reversed(gadgets))
 		new = {}
 		for gadget in gadgets:
 			for gizmo in gadget.gizmos():
 				new.setdefault(gizmo, []).append(gadget)
-		for gizmo, gadgets in new.items():
+		for gizmo, group in new.items():
 			if gizmo in self._gadgets_table:
-				for gadget in gadgets:
+				for gadget in group:
 					if gadget in self._gadgets_table[gizmo]:
 						self._gadgets_table[gizmo].remove(gadget)
-			self._gadgets_table.setdefault(gizmo, []).extend(reversed(gadgets))
+			self._gadgets_table.setdefault(gizmo, []).extend(reversed(group))
 		return self
 
 	def exclude(self, *gadgets: AbstractGadget) -> Self:
@@ -312,19 +313,21 @@ class CraftyGaggle(GaggleBase, InheritableCrafty):
 
 		# convert crafts to skills and add in O-N (N-O) order to table
 		for crafts in reversed(history.values()): # O-N
-			gizmos = {}
 			for craft in reversed(crafts): # N-O (in order of precedence)
-				skill = craft.as_skill(self) # TODO: convert as_skill to a generator to enable multiple skills per craft
-				if isinstance(skill, AbstractGadget):
-					for gizmo in skill.gizmos():
-						gizmos.setdefault(gizmo, []).append(skill)
-					self._gadgets_list.append(skill) # O-N (in order of appearance)
-				else:
-					self._process_auxiliary_skill(skill)
-			for gizmo, skills in gizmos.items():
-				self._gadgets_table.setdefault(gizmo, []).extend(reversed(skills)) # O-N (in order of appearance)
+				# TODO: convert as_skill to a generator to enable multiple skills per craft
+				# (not super important since crafts can emit any number of sub-crafts, so resolve this upstream)
+				skill = craft.as_skill(self)
+				self._process_skill(skill)
 
 
-	def _process_auxiliary_skill(self, skill):
-		pass
+	def _process_skill(self, skill):
+		self._gadgets_list.append(skill)
+		for gizmo in skill.gizmos():
+			self._gadgets_table.setdefault(gizmo, []).append(skill)
+
+
+
+class MutableCrafty(MutableGaggle, CraftyGaggle):
+	def _process_skill(self, skill):
+		self.include(skill)
 
