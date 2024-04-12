@@ -2,7 +2,7 @@ from typing import Optional, Any, Iterator, TypeVar, Generic, Union, Callable, I
 from itertools import chain
 from collections import OrderedDict
 from omnibelt import filter_duplicates
-from omnibelt.crafts import InheritableCrafty
+from omnibelt.crafts import InheritableCrafty, AbstractSkill
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGame
 from .errors import logger, GadgetFailure, MissingGadget, AssemblyError
@@ -258,7 +258,7 @@ class MutableGaggle(GaggleBase):
 		Returns:
 			Self: this gaggle.
 		"""
-		gadgets = list(gadgets)
+		# gadgets = list(gadgets)
 		self._gadgets_list.extend(reversed(gadgets))
 		new = {}
 		for gadget in gadgets:
@@ -320,7 +320,7 @@ class CraftyGaggle(GaggleBase, InheritableCrafty):
 				self._process_skill(skill)
 
 
-	def _process_skill(self, skill):
+	def _process_skill(self, skill: AbstractSkill):
 		self._gadgets_list.append(skill)
 		for gizmo in skill.gizmos():
 			self._gadgets_table.setdefault(gizmo, []).append(skill)
