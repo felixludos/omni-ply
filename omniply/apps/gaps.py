@@ -171,6 +171,37 @@ def test_gauge():
 	assert ctx.grab('b', None) is None
 
 
+def test_gapped_tools():
+
+	class Kit(ToolKit):
+		@tool.from_context('x', 'y')
+		def f(self, game):
+			return game[self.gap('a')], game[self.gap('b')] + game[self.gap('c')]
+		@f.parents
+		def _f_parents(self):
+			return map(self.gap, ['a', 'b', 'c'])
+
+
+	kit = Kit(gauge={'a': 'z'})
+
+	assert list(kit.gizmos()) == ['x', 'y']
+
+	ctx = Context(kit)
+
+	ctx.update({'z': 1, 'b': 2, 'c': 3})
+
+	assert ctx['x'] == 1 and ctx['y'] == 5
+
+	gene = next(kit.genes('x'))
+
+	assert gene.parents == ('z', 'b', 'c')
+
+
+
+
+
+
+
 
 
 
