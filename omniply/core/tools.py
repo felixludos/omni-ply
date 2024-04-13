@@ -82,19 +82,25 @@ class ToolCraftBase(FunctionGadget, CraftBase):
 
 
 
+class ToolSkill(ParentedSkill, MIMOGadgetBase, SkillBase):
+	"""
+	The _ToolSkill class is a nested class that inherits from FunctionGadget and ToolSkill.
+	"""
+	_Gene = Gene
+
+	def genes(self, gizmo: str) -> Iterator['AbstractGene']:
+		siblings = list(self.gizmos())
+		if len(siblings) == 1:
+			siblings = None
+		else:
+			siblings = tuple(sibling if sibling != gizmo else None for sibling in self.gizmos())
+		yield self._Gene(gizmo, self, parents=self.get_parents(), siblings=siblings, endpoint=self._fn)
+
+
+
 class ToolCraft(Parentable, ToolCraftBase, MIMOGadgetBase):
-	class _ToolSkill(ParentedSkill, MIMOGadgetBase, SkillBase):
-		"""
-		The _ToolSkill class is a nested class that inherits from FunctionGadget and ToolSkill.
-		"""
-		_Gene = Gene
-		def genes(self, gizmo: str) -> Iterator['AbstractGene']:
-			siblings = list(self.gizmos())
-			if len(siblings) == 1:
-				siblings = None
-			else:
-				siblings = tuple(sibling if sibling != gizmo else None for sibling in self.gizmos())
-			yield self._Gene(gizmo, self, parents=self.get_parents(), siblings=siblings, endpoint=self._fn)
+	_ToolSkill = ToolSkill
+
 
 
 class AutoToolCraft(AutoMIMOFunctionGadget, ToolCraftBase):
