@@ -2,7 +2,7 @@
 
 from ..core import AbstractGadget, AbstractGame, AbstractGaggle
 from ..core.gaggles import GaggleBase
-from ..core.gadgets import AbstractGenetic
+from ..core.genetics import AbstractGenetic
 
 
 
