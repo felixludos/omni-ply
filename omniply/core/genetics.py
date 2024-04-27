@@ -144,6 +144,12 @@ class AutoFunctionGadget(FunctionGadget, AbstractGenetic):
 		super().__init__(gizmo=gizmo, fn=fn, **kwargs)
 		self._arg_map = arg_map
 
+
+	def gizmos(self) -> Iterator[str]:
+		for gizmo in super().gizmos():
+			yield self.gap(gizmo)
+
+
 	@cache
 	def _extract_missing_genes(self, fn=None, args=None, kwargs=None):
 		if fn is None:
@@ -238,11 +244,6 @@ class MIMOGadgetBase(FunctionGadget, AbstractGenetic):
 
 
 class AutoMIMOFunctionGadget(MIMOGadgetBase, AutoFunctionGadget):
-	# def __init__(self, fn: Callable = None, gizmos: Iterable[str] = None, gizmo: str = None, **kwargs):
-	# 	assert (gizmo is None) != (gizmos is None), f'Cannot specify both gizmo and gizmos: {gizmo}, {gizmos}'
-	# 	super().__init__(fn=fn, gizmo=tuple(gizmos) if gizmo is None else gizmo, **kwargs)
-
-
 	def genes(self, gizmo: str) -> Iterator[AbstractGene]:
 		parents = [self._arg_map.get(param.name, param.name) for param in self._extract_missing_genes()]
 		siblings = self._multi_output_order(gizmo)
