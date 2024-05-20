@@ -1,4 +1,4 @@
-from typing import Iterator, Optional, Any, Union
+from typing import Iterator, Optional, Any, Union, Iterable, Self
 from omnibelt import unspecified_argument
 
 
@@ -278,6 +278,27 @@ class AbstractConsistentGame(AbstractGame):
 
 
 
+class AbstractMutable:
+	def include(self, *gadgets: AbstractGadget) -> Self:
+		"""
+		Adds given gadgets in the order that is given, which means subsequent `grab` would use the first provided
+		gadget before trying the next.
+
+		Args:
+			gadgets (AbstractGadget): The gadgets to be added.
+
+		Returns:
+			Self: this gaggle.
+		"""
+		return self.extend(gadgets)
+
+
+	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
+		raise NotImplementedError
+
+
+	def exclude(self, *gadgets: AbstractGadget) -> Self:
+		raise NotImplementedError
 
 
 

@@ -4,7 +4,7 @@ from collections import OrderedDict
 from omnibelt import filter_duplicates
 from omnibelt.crafts import InheritableCrafty, AbstractSkill
 
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGame
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractMutable
 from .errors import logger, GadgetFailure, MissingGadget, AssemblyError
 from .gadgets import GadgetBase, SingleGadgetBase, SingleFunctionGadget, AutoSingleFunctionGadget
 
@@ -229,23 +229,10 @@ class LoopyGaggle(GaggleBase):
 			raise self._AssemblyFailedError(failures)
 		raise self._MissingGadgetError(gizmo)
 
-class MutableGaggle(GaggleBase):
+class MutableGaggle(GaggleBase, AbstractMutable):
 	"""
 	The MutableGaggle class is a mix-in for custom gaggles to dynamically add and remove subgadgets.
 	"""
-
-	def include(self, *gadgets: AbstractGadget) -> Self:
-		"""
-		Adds given gadgets in the order that is given, which means subsequent `grab` would use the first provided
-		gadget before trying the next.
-
-		Args:
-			gadgets (AbstractGadget): The gadgets to be added.
-
-		Returns:
-			Self: this gaggle.
-		"""
-		return self.extend(gadgets)
 
 	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
 		"""
