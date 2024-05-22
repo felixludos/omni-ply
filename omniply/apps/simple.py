@@ -45,6 +45,10 @@ class DictGadget(GeneticGadget):
 
 
 class Table(GeneticGadget):
+	'''
+	note that table does not call load() automatically,
+	that has to be done manually or in a subclass (eg. with staging)
+	'''
 	_index_gizmo = 'index'
 	_index_attribute = None
 
@@ -65,7 +69,6 @@ class Table(GeneticGadget):
 	def load(self):
 		if not self.is_loaded:
 			self.data = self._load_data()
-			self._columns = tuple(self.data)
 			self._loaded_data = self.data is not None
 		return self
 
@@ -76,6 +79,8 @@ class Table(GeneticGadget):
 
 	@property
 	def columns(self) -> list[str]:
+		if self._columns is None and self.is_loaded:
+			self._columns = tuple(self.data)
 		return self._columns
 
 
@@ -86,13 +91,13 @@ class Table(GeneticGadget):
 
 
 	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
-		self.load()
+		# self.load()
 		index = ctx.grab(self._index_gizmo) if self._index_attribute is None else getattr(ctx, self._index_attribute)
 		return self.data[gizmo][index]
 
 
 	def gizmos(self) -> Iterator[str]:
-		self.load()
+		# self.load()
 		yield from self.columns
 
 

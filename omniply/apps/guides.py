@@ -30,13 +30,20 @@ class AbstractGuru:
 
 
 class AbstractMogul:
-	def guide(self, guide: AbstractGuru = None) -> AbstractGuru:
+	def guide(self) -> AbstractGuru:
 		'''passing a guide will extend'''
 		raise NotImplementedError
 
 
 	def __iter__(self):
 		return self.guide()
+
+
+
+class AbstractStackableMogul(AbstractMogul):
+	def guide(self, guide: AbstractGuru = None) -> AbstractGuru:
+		'''passing a guide will extend'''
+		raise NotImplementedError
 
 
 
@@ -84,7 +91,7 @@ class SimpleGuru(Generous):
 
 
 
-class MutableGuru(SimpleGuru):
+class MutableGuru(SimpleGuru, AbstractMutable):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._gadgets = []
@@ -145,7 +152,6 @@ class Guru(CountableGuru, MutableGuru):
 			except TypeError:
 				pass
 		return super()._geniefy(src)
-
 
 
 

@@ -27,10 +27,10 @@ class AbstractGapped(AbstractGauged):
 
 
 class Gauged(AbstractGauged):
-	def __init__(self, *, gauge: Mapping[str, str] = None, **kwargs):
+	def __init__(self, *args, gauge: Mapping[str, str] = None, **kwargs):
 		if gauge is None:
 			gauge = {}
-		super().__init__(**kwargs)
+		super().__init__(*args, **kwargs)
 		self._gauge = gauge
 
 
@@ -45,6 +45,12 @@ class Gapped(Gauged, AbstractGapped):
 	def gap(self, internal_gizmo: str) -> str:
 		'''Converts an internal gizmo to its external representation.'''
 		return self._gauge.get(internal_gizmo, internal_gizmo)
+
+
+
+class GappedCap(Gapped):
+	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
+		return super().grab_from(ctx, self.gap(gizmo))
 
 
 
@@ -127,6 +133,17 @@ class tool(_tool):
 	_ToolCraft = GappedAutoTool
 	class from_context(_tool.from_context):
 		_ToolCraft = GappedTool
+
+
+from .simple import DictGadget as _DictGadget, Table as _Table
+
+
+class DictGadget(GappedCap, _DictGadget): # TODO: unit test this and the GappedCap
+	pass
+
+
+class Table(GappedCap, _Table): # TODO: unit test this
+	pass
 
 
 
