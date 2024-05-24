@@ -27,11 +27,11 @@ class AbstractGapped(AbstractGauged):
 
 
 class Gauged(AbstractGauged):
-	def __init__(self, *args, gauge: Mapping[str, str] = None, **kwargs):
-		if gauge is None:
-			gauge = {}
+	def __init__(self, *args, gap: Mapping[str, str] = None, **kwargs):
+		if gap is None:
+			gap = {}
 		super().__init__(*args, **kwargs)
-		self._gauge = gauge
+		self._gauge = gap
 
 
 	def gauge_apply(self, gauge: GAUGE) -> Self:
@@ -76,6 +76,7 @@ class GaugedGaggle(MutableGaggle, Gauged):
 		return self
 
 
+
 class GaugedGame(CacheGame, GaugedGaggle):
 	def gauge_apply(self, gauge: GAUGE) -> Self:
 		super().gauge_apply(gauge)
@@ -84,6 +85,7 @@ class GaugedGame(CacheGame, GaugedGaggle):
 			del self.data[key]
 		self.data.update({gauge[key]: value for key, value in cached.items()})
 		return self
+
 
 
 class AutoFunctionGapped(AutoMIMOFunctionGadget, AbstractGapped):
@@ -103,7 +105,6 @@ class AutoFunctionGapped(AutoMIMOFunctionGadget, AbstractGapped):
 
 
 
-
 class GappedTool(ToolCraft):
 	class _ToolSkill(Gapped, ToolCraft._ToolSkill):
 		def gizmos(self) -> Iterable[str]:
@@ -120,7 +121,9 @@ class GappedAutoTool(AutoFunctionGapped, AutoToolCraft):
 
 
 class ToolKit(_ToolKit, Gapped, GaugedGaggle):
-	pass
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.gauge_apply(self._gauge)
 
 
 
@@ -139,13 +142,38 @@ from .simple import DictGadget as _DictGadget, Table as _Table
 
 
 class DictGadget(GappedCap, _DictGadget): # TODO: unit test this and the GappedCap
-	pass
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.gauge_apply(self._gauge)
+
+	def gauge_apply(self, gauge: GAUGE) -> Self:
+		super().gauge_apply(gauge)
+		for src in [self.data, *self._srcs]:
+			for key in list(src.keys()):
+				fix = gauge.get(key, key)
+				if fix != key:
+					src[fix] = src[key]
+					del src[key]
+		return self
 
 
 class Table(GappedCap, _Table): # TODO: unit test this
-	pass
+	def load(self):
+		trigger = not self.is_loaded
+		super().load()
+		if trigger:
+			self.gauge_apply(self._gauge)
+		return self
 
-
+	def gauge_apply(self, gauge: GAUGE) -> Self:
+		super().gauge_apply(gauge)
+		if self.is_loaded:
+			for key in list(self.data.keys()):
+				fix = gauge.get(key, key)
+				if fix != key:
+					self.data[fix] = self.data[key]
+					del self.data[key]
+		return self
 
 def test_gauge():
 
