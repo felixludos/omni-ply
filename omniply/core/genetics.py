@@ -198,6 +198,7 @@ class MIMOGadgetBase(FunctionGadget, AbstractGenetic):
 	# @cache # TODO: does this matter for performance?
 	def _multi_output_order(self, gizmo: str = None):
 		if isinstance(self._gizmo, tuple):
+			# return tuple(self._arg_map.get(param.name, param.name) for param in self._extract_missing_genes()]
 			return self._gizmo
 
 
@@ -250,6 +251,11 @@ class AutoMIMOFunctionGadget(MIMOGadgetBase, AutoFunctionGadget):
 		if siblings is not None:
 			siblings = tuple(sibling if sibling != gizmo else None for sibling in siblings)
 		yield self._Gene(gizmo, self, parents=tuple(parents), siblings=siblings, endpoint=self._fn)
+
+
+	def _multi_output_order(self, gizmo: str = None):
+		if isinstance(self._gizmo, tuple):
+			return tuple(self._arg_map.get(gizmo, gizmo) for gizmo in super()._multi_output_order(gizmo))
 
 
 

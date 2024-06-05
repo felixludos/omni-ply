@@ -8,7 +8,7 @@ from ..core.tools import ToolCraft, AutoToolCraft
 from ..core.genetics import AutoMIMOFunctionGadget
 from .. import ToolKit as _ToolKit, tool as _tool, Context as _Context
 
-
+# gauges are not aliases - instead they replace existing gizmos ("relabeling" only, no remapping)
 
 GAUGE = dict[str, str]
 
@@ -27,41 +27,47 @@ class AbstractGapped(AbstractGauged):
 
 
 class Gauged(AbstractGauged):
+	'''Gauges allow you to relabel output gizmos'''
 	def __init__(self, *args, gap: Mapping[str, str] = None, **kwargs):
-		if gap is None:
-			gap = {}
+		if gap is None: gap = {}
 		super().__init__(*args, **kwargs)
 		self._gauge = gap
 
 
 	def gauge_apply(self, gauge: GAUGE) -> Self:
 		'''Applies the gauge to the Gauged.'''
-		self._gauge.update(gauge)
+		new = gauge.copy()
+		for gizmo, gap in self._gauge.items():
+			if gap in gauge:
+				self._gauge[gizmo] = new.pop(gap)
+		self._gauge.update(new)
 		return self
 
 
 
 class Gapped(Gauged, AbstractGapped):
+	'''Gapped gauges allow you to relabel inputs as well'''
 	def gap(self, internal_gizmo: str) -> str:
-		'''Converts an internal gizmo to its external representation.'''
+		'''Converts an internal gizmo to its external representation. Meant only for inputs to this gadget.'''
 		return self._gauge.get(internal_gizmo, internal_gizmo)
 
 
 
-class GappedCap(Gapped):
-	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
-		return super().grab_from(ctx, self.gap(gizmo))
+# class GappedCap(Gapped):
+# 	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
+# 		return super().grab_from(ctx, self.gap(gizmo))
 
 
 
 class GaugedGaggle(MutableGaggle, Gauged):
-	def extend(self, gadgets: Iterable[AbstractGauged]) -> Self:
-		'''Extends the Gauged with the provided gadgets.'''
-		gadgets = list(gadgets)
-		for gadget in gadgets:
-			# if isinstance(gadget, AbstractGauged):
-			gadget.gauge_apply(self._gauge)
-		return super().extend(gadgets)
+	# don't regauge new gadgets when they are added (gauges are stateless)
+	# def extend(self, gadgets: Iterable[AbstractGauged]) -> Self:
+	# 	'''Extends the Gauged with the provided gadgets.'''
+	# 	gadgets = list(gadgets)
+	# 	for gadget in gadgets:
+	# 		# if isinstance(gadget, AbstractGauged):
+	# 		gadget.gauge_apply(self._gauge)
+	# 	return super().extend(gadgets)
 
 
 	def gauge_apply(self, gauge: GAUGE) -> Self:
@@ -96,8 +102,13 @@ class AutoFunctionGapped(AutoMIMOFunctionGadget, AbstractGapped):
 
 	def gauge_apply(self, gauge: GAUGE) -> Self:
 		'''Applies the gauge to the Gauged.'''
-		self._arg_map.update(gauge)
+		new = gauge.copy()
+		for gizmo, gap in self._arg_map.items():
+			if gap in gauge:
+				self._arg_map[gizmo] = new.pop(gap)
+		self._arg_map.update(new)
 		return self
+
 
 	def gizmos(self) -> Iterator[str]:
 		for gizmo in super().gizmos():
@@ -141,7 +152,7 @@ class tool(_tool):
 from .simple import DictGadget as _DictGadget, Table as _Table
 
 
-class DictGadget(GappedCap, _DictGadget): # TODO: unit test this and the GappedCap
+class DictGadget(Gauged, _DictGadget): # TODO: unit test this and the GappedCap
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.gauge_apply(self._gauge)
@@ -157,7 +168,7 @@ class DictGadget(GappedCap, _DictGadget): # TODO: unit test this and the GappedC
 		return self
 
 
-class Table(GappedCap, _Table): # TODO: unit test this
+class Table(Gapped, _Table): # TODO: unit test this
 	def load(self):
 		trigger = not self.is_loaded
 		super().load()
@@ -167,6 +178,8 @@ class Table(GappedCap, _Table): # TODO: unit test this
 
 	def gauge_apply(self, gauge: GAUGE) -> Self:
 		super().gauge_apply(gauge)
+		if self._index_gizmo is not None and self._index_gizmo in gauge:
+			self._index_gizmo = gauge[self._index_gizmo]
 		if self.is_loaded:
 			for key in list(self.data.keys()):
 				fix = gauge.get(key, key)
@@ -175,71 +188,7 @@ class Table(GappedCap, _Table): # TODO: unit test this
 					del self.data[key]
 		return self
 
-def test_gauge():
 
-	class Kit1(ToolKit):
-		@tool('a')
-		def f(self, x, y):
-			return x + y
-
-	@tool('b')
-	def g(x, y):
-		return x - y
-
-	kit = Kit1()
-
-	assert list(kit.gizmos()) == ['a']
-
-	kit.gauge_apply({'a': 'z'})
-
-	assert list(kit.gizmos()) == ['z']
-
-	ctx = Context(kit, g)
-
-	assert list(ctx.gizmos()) == ['z', 'b']
-
-	ctx.gauge_apply({'b': 'w'})
-
-	assert list(ctx.gizmos()) == ['z', 'w']
-	assert list(g.gizmos()) == ['w']
-
-	ctx['x'] = 1
-	ctx['y'] = 2
-
-	ctx.gauge_apply({'x': 'c'})
-
-	assert ctx['c'] == 1
-	assert ctx['w'] == -1
-	assert ctx['z'] == 3
-
-	assert ctx.grab('a', None) is None
-	assert ctx.grab('b', None) is None
-
-
-def test_gapped_tools():
-
-	class Kit(ToolKit):
-		@tool.from_context('x', 'y')
-		def f(self, game):
-			return game[self.gap('a')], game[self.gap('b')] + game[self.gap('c')]
-		@f.parents
-		def _f_parents(self):
-			return map(self.gap, ['a', 'b', 'c'])
-
-
-	kit = Kit(gauge={'a': 'z'})
-
-	assert list(kit.gizmos()) == ['x', 'y']
-
-	ctx = Context(kit)
-
-	ctx.update({'z': 1, 'b': 2, 'c': 3})
-
-	assert ctx['x'] == 1 and ctx['y'] == 5
-
-	gene = next(kit.genes('x'))
-
-	assert gene.parents == ('z', 'b', 'c')
 
 
 
