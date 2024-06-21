@@ -220,9 +220,10 @@ class CachableGate(GateBase):
 
 			# if it can't be found in my cache, check the cache using the external gizmo name
 			ext = self.gizmo_to(gizmo)
-			for parent in reversed(self._game_stack):
-				if isinstance(parent, GatedCache) and parent.is_cached(ext):
-					return parent.grab(ext)
+			if ext is not None:
+				for parent in reversed(self._game_stack):
+					if isinstance(parent, GatedCache) and parent.is_cached(ext):
+						return parent.grab(ext)
 
 		# if it can't be found in any cache, grab it from my gadgets
 		out = super()._grab(gizmo)
