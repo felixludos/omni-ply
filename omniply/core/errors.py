@@ -1,6 +1,6 @@
 import logging
 import yaml
-from typing import Optional
+from typing import Optional, Dict, List
 from collections import OrderedDict
 from .abstract import AbstractGadgetError, AbstractGadget
 
@@ -44,7 +44,7 @@ class MissingGadget(GadgetFailure, KeyError):
 
 class AssemblyError(GadgetFailure):
 	'''Error for when a gadget fails to grab a gizmo because the gizmo can't be assembled from the gadgets available'''
-	def __init__(self, failures: OrderedDict[GadgetFailure, AbstractGadget], *,
+	def __init__(self, failures: Dict[GadgetFailure, AbstractGadget], *,
 				 message: Optional[str] = None):
 		if message is None:
 			errors = [str(error) for error in failures]
@@ -69,7 +69,7 @@ class GrabError(AbstractGadgetError):
 
 
 class ApplicationAmbiguityError(ValueError):
-	def __init__(self, gizmo: str, options: list[str], *, message: Optional[str] = None):
+	def __init__(self, gizmo: str, options: List[str], *, message: Optional[str] = None):
 		if message is None:
 			message = f'{gizmo!r} cant choose between: {options}'
 		super().__init__(message)

@@ -1,4 +1,4 @@
-from typing import Optional, Any, Iterator, TypeVar, Generic, Union, Callable, Iterable, Mapping, Sequence, Self
+from typing import Optional, Any, Iterator, TypeVar, Generic, Union, Callable, Iterable, Mapping, Sequence
 from itertools import chain
 from collections import OrderedDict
 from omnibelt import filter_duplicates
@@ -8,7 +8,7 @@ from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractMuta
 from .errors import logger, GadgetFailure, MissingGadget, AssemblyError
 from .gadgets import GadgetBase, SingleGadgetBase, SingleFunctionGadget, AutoSingleFunctionGadget
 
-
+Self = TypeVar('Self')
 
 class GaggleBase(GadgetBase, AbstractGaggle):
 	"""
@@ -234,7 +234,7 @@ class MutableGaggle(GaggleBase, AbstractMutable):
 	The MutableGaggle class is a mix-in for custom gaggles to dynamically add and remove subgadgets.
 	"""
 
-	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
+	def extend(self: Self, gadgets: Iterable[AbstractGadget]) -> Self:
 		"""
 		Adds given gadgets in the iterator in the order that is given, which means subsequent `grab` would use the
 		first provided gadget before trying the next.
@@ -259,7 +259,7 @@ class MutableGaggle(GaggleBase, AbstractMutable):
 			self._gadgets_table.setdefault(gizmo, []).extend(reversed(group))
 		return self
 
-	def exclude(self, *gadgets: AbstractGadget) -> Self:
+	def exclude(self: Self, *gadgets: AbstractGadget) -> Self:
 		"""
 		Removes the given gadgets, if they are found.
 

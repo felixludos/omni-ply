@@ -1,4 +1,4 @@
-from typing import Iterator, Any, Iterable, Mapping, Self, Union, Callable
+from typing import Iterator, Any, Iterable, Mapping, Union, Callable
 import random, math
 from omnibelt import filter_duplicates
 

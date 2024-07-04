@@ -5,13 +5,14 @@
 # Iterator[Context] -> Guru
 
 
-from typing import Iterator, Iterable, Union, Any, Self
+from typing import Iterator, Iterable, Union, Any, TypeVar
 
 from .. import AbstractGadget
 from ..core import AbstractGame, Context
 from ..core.abstract import AbstractMutable
 from .simple import DictGadget
 
+Self = TypeVar('Self')
 
 
 class AbstractGuru:
@@ -106,7 +107,7 @@ class MutableGuru(SimpleGuru, AbstractMutable):
 		return self
 
 
-	def exclude(self, *gadgets: AbstractGadget) -> Self:
+	def exclude(self: Self, *gadgets: AbstractGadget) -> Self:
 		for gadget in gadgets:
 			self._gadgets.remove(gadget)
 		return self

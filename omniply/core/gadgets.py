@@ -1,4 +1,4 @@
-from typing import Iterator, Optional, Any, Iterable, Callable
+from typing import Iterator, Optional, Any, Iterable, Callable, Tuple, List, Dict
 from omnibelt import extract_function_signature, extract_missing_args
 from omnibelt.crafts import AbstractSkill, NestableCraft
 
@@ -168,7 +168,7 @@ class AutoSingleFunctionGadget(SingleFunctionGadget):
 
 	@staticmethod
 	def _extract_gizmo_args(fn: Callable, ctx: AbstractGame, *, args: Optional[tuple] = None,
-							kwargs: Optional[dict[str, Any]] = None) -> tuple[list[Any], dict[str, Any]]:
+							kwargs: Optional[Dict[str, Any]] = None) -> Tuple[List[Any], Dict[str, Any]]:
 		"""
 		Extracts the arguments for the function that this gadget uses to grab the gizmo. Any arguments that are gizmos
 		are grabbed from the gig.

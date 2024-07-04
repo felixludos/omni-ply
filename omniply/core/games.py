@@ -1,4 +1,4 @@
-from typing import Any, Optional, Iterator, Self, Iterable
+from typing import Any, Optional, Iterator, Iterable, TypeVar
 from collections import UserDict
 from omnibelt import filter_duplicates
 
@@ -8,6 +8,7 @@ from .errors import GadgetFailure, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
 from .gaggles import GaggleBase, MutableGaggle, MultiGadgetBase
 
+Self = TypeVar('Self')
 
 class GameBase(MultiGadgetBase, GadgetBase, AbstractGame):
 	"""
@@ -159,7 +160,7 @@ class CacheGame(GameBase, UserDict):
 		"""
 		yield from self.data.keys()
 
-	def clear_cache(self) -> Self:
+	def clear_cache(self: Self) -> Self:
 		"""
 		Clears the cache.
 		"""
@@ -347,13 +348,13 @@ class RollingGame(TraceGame, MutableGaggle):
 		return self
 
 
-	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
+	def extend(self: Self, gadgets: Iterable[AbstractGadget]) -> Self:
 		if len(self._partial_grabs):
 			self._rolling_stock.setdefault(self._partial_grabs[-1], []).extend(gadgets)
 		return super().extend(gadgets)
 
 
-	def exclude(self, *gadgets: AbstractGadget) -> Self:
+	def exclude(self: Self, *gadgets: AbstractGadget) -> Self:
 		for known in self._rolling_stock.values():
 			for gadget in gadgets:
 				if gadget in known:

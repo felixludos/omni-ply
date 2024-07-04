@@ -1,6 +1,8 @@
-from typing import Iterator, Optional, Any, Union, Iterable, Self
+from typing import Iterator, Optional, Any, Union, Iterable, TypeVar, Dict
 from omnibelt import unspecified_argument
 
+
+Self = TypeVar('Self')
 
 
 class AbstractGizmo:
@@ -269,7 +271,7 @@ class AbstractConsistentGame(AbstractGame):
 		raise NotImplementedError
 
 
-	def update_gadget_cache(self, gadget: AbstractGadget, cache: dict[str,Any] = None):
+	def update_gadget_cache(self, gadget: AbstractGadget, cache: Dict[str,Any] = None):
 		raise NotImplementedError
 
 
@@ -279,7 +281,7 @@ class AbstractConsistentGame(AbstractGame):
 
 
 class AbstractMutable:
-	def include(self, *gadgets: AbstractGadget) -> Self:
+	def include(self: Self, *gadgets: AbstractGadget) -> Self:
 		"""
 		Adds given gadgets in the order that is given, which means subsequent `grab` would use the first provided
 		gadget before trying the next.
@@ -293,11 +295,11 @@ class AbstractMutable:
 		return self.extend(gadgets)
 
 
-	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
+	def extend(self: Self, gadgets: Iterable[AbstractGadget]) -> Self:
 		raise NotImplementedError
 
 
-	def exclude(self, *gadgets: AbstractGadget) -> Self:
+	def exclude(self: Self, *gadgets: AbstractGadget) -> Self:
 		raise NotImplementedError
 
 

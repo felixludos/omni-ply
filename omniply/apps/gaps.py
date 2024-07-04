@@ -1,4 +1,4 @@
-from typing import Iterable, Self, Mapping, Any, Iterator
+from typing import Iterable, Mapping, Any, Iterator, TypeVar
 from collections import UserDict
 
 from .. import AbstractGadget, AbstractGaggle
@@ -10,11 +10,13 @@ from .. import ToolKit as _ToolKit, tool as _tool, Context as _Context
 
 # gauges are not aliases - instead they replace existing gizmos ("relabeling" only, no remapping)
 
+Self = TypeVar('Self')
+
 GAUGE = dict[str, str]
 
 
 class AbstractGauged(AbstractGadget):
-	def gauge_apply(self, gauge: GAUGE) -> Self:
+	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		raise NotImplementedError
 
 
@@ -34,7 +36,7 @@ class Gauged(AbstractGauged):
 		self._gauge = gap
 
 
-	def gauge_apply(self, gauge: GAUGE) -> Self:
+	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		'''Applies the gauge to the Gauged.'''
 		new = gauge.copy()
 		for gizmo, gap in self._gauge.items():
@@ -70,7 +72,7 @@ class GaugedGaggle(MutableGaggle, Gauged):
 	# 	return super().extend(gadgets)
 
 
-	def gauge_apply(self, gauge: GAUGE) -> Self:
+	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		'''Applies the gauge to the GaugedGaggle.'''
 		super().gauge_apply(gauge)
 		for gadget in self.vendors():
@@ -84,7 +86,7 @@ class GaugedGaggle(MutableGaggle, Gauged):
 
 
 class GaugedGame(CacheGame, GaugedGaggle):
-	def gauge_apply(self, gauge: GAUGE) -> Self:
+	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		super().gauge_apply(gauge)
 		cached = {key: value for key, value in self.data.items() if key in gauge}
 		for key, value in cached.items():
@@ -157,7 +159,7 @@ class DictGadget(Gauged, _DictGadget): # TODO: unit test this and the GappedCap
 		super().__init__(*args, **kwargs)
 		self.gauge_apply(self._gauge)
 
-	def gauge_apply(self, gauge: GAUGE) -> Self:
+	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		super().gauge_apply(gauge)
 		for src in [self.data, *self._srcs]:
 			for key in list(src.keys()):
@@ -176,7 +178,7 @@ class Table(Gapped, _Table): # TODO: unit test this
 			self.gauge_apply(self._gauge)
 		return self
 
-	def gauge_apply(self, gauge: GAUGE) -> Self:
+	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		super().gauge_apply(gauge)
 		if self._index_gizmo is not None and self._index_gizmo in gauge:
 			self._index_gizmo = gauge[self._index_gizmo]

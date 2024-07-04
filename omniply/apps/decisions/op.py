@@ -1,3 +1,4 @@
+from typing import TypeVar
 from .imports import *
 
 from .abstract import AbstractDecision, AbstractGadgetDecision, CHOICE, AbstractCase
@@ -5,7 +6,7 @@ from .decisions import LargeDecision, SimpleDecisionBase, DynamicDecision, Count
 from .chains import (ConsiderableDecision, DeciderBase, NaiveConsiderationBase, CertificateGaggle,
 					 Chain, SimpleCase, CarefulDecider)
 
-
+Self = TypeVar('Self')
 
 class _OldController(Context, CertificateGaggle, NaiveConsiderationBase):
 	def _create_case(self, cache: dict[str, Any]) -> AbstractGame:
@@ -51,7 +52,7 @@ class SimpleDecision(ConsiderableDecision, CountableDecisionBase, SimpleDecision
 		yield from self._choices.keys()
 
 
-	def add_choice(self, option: Any, choice: CHOICE = None) -> Self:
+	def add_choice(self: Self, option: Any, choice: CHOICE = None) -> Self:
 		if choice is None:
 			choice = len(self._choices)
 		assert choice not in self._choices, f'Choice {choice!r} already exists, specify unique choice name.'
