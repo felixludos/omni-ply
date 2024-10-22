@@ -1,61 +1,57 @@
 from .imports import *
 
-from .abstract import AbstractTrainer, AbstractDataset, AbstractGoal, AbstractBudget
-from .goals import Sized, Indexed, Goal, BudgetExceeded
-
-
+from .abstract import AbstractTrainer, AbstractDataset, AbstractBatch, AbstractPlanner
+from .planners import Indexed, BudgetExceeded
+from .batches import Batch
+from .datasets import Dataset
 
 
 
 class TrainerBase(AbstractTrainer):
-	def __init__(self, *, model, optimizer, planner: AbstractBudget, objective: str = 'loss', **kwargs):
+	def __init__(self, model, *, planner: AbstractPlanner = None, batch_size: int = None, **kwargs):
+		if planner is None:
+			planner = self._Planner()
 		super().__init__(**kwargs)
-		self._planner = planner
 		self._model = model
-		self._optimizer = optimizer
-		self._objective = objective
-
+		self._planner = planner
+		self._batch_size = batch_size
+		
 
 	def gadgetry(self) -> Iterator[AbstractGadget]:
 		'''gadgets to include in the batch'''
 		yield self._model
-		yield self._optimizer
+		yield self._planner
 
 
-	_Goal = Context
-	_Planner = Indexed
-	def _create_goal(self, src: AbstractDataset) -> AbstractGoal:
-		return self._Goal(self._budget)
-	
-
-	_Batch = Batch
-	def _create_batch(self, src: AbstractDataset, goal: AbstractGoal) -> AbstractGame:
-		return self._Batch(goal).extend(self.gadgetry()).include(src)
-
-
-	def fit_is_done(self, batch: AbstractGoal) -> bool:
+	def fit_is_done(self, batch: Batch) -> bool:
 		'''is the training done?'''
-		return self._budget.is_complete()
+		return False
 	
 
-	def fit_loop(self, src: AbstractDataset) -> Iterator[AbstractGame]:
+	_Planner = Indexed
+	_Batch = Batch
+	def fit_loop(self, src: Dataset) -> Iterator[Batch]:
 		'''train the model'''
 		self._planner.setup(src)
-		self._optimizer.setup(self._model)
 
-		goal = self._create_goal(src)
-		batch = self._create_batch(src, goal)
+		batch_size = src.suggest_batch_size() if self._batch_size is None else self._batch_size
+
 		try:
-			while not self.fit_is_done(batch):
-				batch = batch.new()
+			while True:
+				batch = self._Batch(self._planner.step(batch_size), planner=self._planner)
+				batch.include(src).extend(self.gadgetry())
+
 				yield self.learn(batch)
+				
+				if self.fit_is_done(batch):
+					break
 		except BudgetExceeded:
 			pass
 
 	
-	def learn(self, batch: AbstractGame) -> AbstractGame:
+	def learn(self, batch: Batch) -> Batch:
 		'''single optimization step'''
-		self._optimizer.step(batch)
+		raise NotImplementedError
 
 
 

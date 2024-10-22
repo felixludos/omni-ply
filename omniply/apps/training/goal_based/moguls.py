@@ -1,6 +1,6 @@
-from .imports import *
+from ..imports import *
 
-from .abstract import AbstractGuru, AbstractGod
+from ..abstract import AbstractGuru, AbstractGod
 
 
 #

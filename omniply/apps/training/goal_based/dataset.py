@@ -1,5 +1,5 @@
-from .imports import *
-from .abstract import AbstractMogul, AbstractDataset, AbstractGoal
+from ..imports import *
+from ..abstract import AbstractMogul, AbstractDataset, AbstractGoal
 from .goals import Indexed
 
 # Array = Union[list, np.ndarray, torch.Tensor]
@@ -73,7 +73,7 @@ class Dataset(AbstractDataset):
     
     pass
 
-
+a
 
 class Batch(Context, AbstractDataset):
     def __init__(self, meta: AbstractGoal):
