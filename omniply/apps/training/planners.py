@@ -39,7 +39,7 @@ class InfiniteIndexed(InfiniteUnindexed):
                  shuffle: bool = True, multi_epoch: bool = True, seed: int = None, 
                  **kwargs):
         if seed is None:
-            seed = random.randint(2**32)
+            seed = random.randint(1, 2**32-1)
         super().__init__(**kwargs)
         self._dataset_size = dataset_size
         self._shuffle = shuffle
@@ -56,7 +56,7 @@ class InfiniteIndexed(InfiniteUnindexed):
     @staticmethod
     def _increment_seed(seed: int) -> int:
         '''deterministically change the seed'''
-        return random.Random(seed).randint(2**32)
+        return random.Random(seed).randint(1, 2**32-1)
 
 
     def reset(self):
@@ -128,8 +128,6 @@ class Unindexed(InfiniteUnindexed):
         :param drop_last: if True, drop the last batch if the last batch partially exceeds the budget, otherwise return the partial batch (only has an effect if hard_budget is False) (note: the only way for the draw to return a different number of samples than requested is if drop_last is False)
         '''
         super().__init__(**kwargs)
-        if hard_budget or drop_last:
-            raise NotImplementedError('hard_budget and drop_last are not yet implemented')
         assert max_samples is None or max_samples > 0, 'max_samples must be positive'
         assert max_batches is None or max_batches > 0, 'max_batches must be positive'
         assert max_iterations is None or max_iterations > 0, 'max_iterations must be positive'
@@ -171,7 +169,7 @@ class Unindexed(InfiniteUnindexed):
 
 
 
-class Indexed(Unindexed):
+class Indexed(Unindexed, InfiniteIndexed):
     def __init__(self, dataset_size: int = None, *, max_epochs: int = None, **kwargs):
         super().__init__(dataset_size=dataset_size, **kwargs)
         assert max_epochs is None or max_epochs > 0, 'max_epochs must be positive'

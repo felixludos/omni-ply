@@ -133,7 +133,7 @@ def suggest_batch_sizes(dataset_size: int, *,
 
 
 
-class Dataset(AbstractDataset):
+class Dataset(ToolKit, AbstractDataset):
     _Planner = Indexed
     _Batch = Batch
     def iterate(self, batch_size: Optional[int] = None) -> Iterator[Batch]:
