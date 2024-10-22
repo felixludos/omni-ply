@@ -31,6 +31,7 @@ class AbstractGapped(AbstractGauged):
 class Gauged(AbstractGauged):
 	'''Gauges allow you to relabel output gizmos'''
 	def __init__(self, *args, gap: Mapping[str, str] = None, **kwargs):
+		'''gap: internal gizmo -> external gizmo'''
 		if gap is None: gap = {}
 		super().__init__(*args, **kwargs)
 		self._gauge = gap

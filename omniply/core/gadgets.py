@@ -88,7 +88,7 @@ class SingleFunctionGadget(SingleGadgetBase):
 
 	Attributes:
 		_gizmo (str): The gizmo that this gadget grabs.
-		_fn (Callable[[AbstractGig], Any]): The function that this gadget uses to grab the gizmo.
+		_fn (Callable[[AbstractGame], Any]): The function that this gadget uses to grab the gizmo.
 	"""
 
 	def __init__(self, gizmo: str, fn: Callable[[AbstractGame], Any], **kwargs):
@@ -97,7 +97,7 @@ class SingleFunctionGadget(SingleGadgetBase):
 
 		Args:
 			gizmo (str): The gizmo that this gadget produces.
-			fn (Callable[[AbstractGig], Any]): The function that this gadget uses to produce the gizmo.
+			fn (Callable[[AbstractGame], Any]): The function that this gadget uses to produce the gizmo.
 			**kwargs: Arbitrary keyword arguments for superclasses.
 		"""
 		super().__init__(gizmo=gizmo, **kwargs)
@@ -122,7 +122,7 @@ class SingleFunctionGadget(SingleGadgetBase):
 		Returns the function that this gadget uses to grab the gizmo.
 
 		Returns:
-			Callable[[AbstractGig], Any]: The function that this gadget uses to grab the gizmo.
+			Callable[[AbstractGame], Any]: The function that this gadget uses to grab the gizmo.
 		"""
 		return self._fn
 
@@ -135,7 +135,7 @@ class SingleFunctionGadget(SingleGadgetBase):
 			owner: The owner of the instance.
 
 		Returns:
-			Callable[[AbstractGig], Any]: The function that this gadget uses to grab the gizmo.
+			Callable[[AbstractGame], Any]: The function that this gadget uses to grab the gizmo.
 		"""
 		return self._fn.__get__(instance, owner)
 

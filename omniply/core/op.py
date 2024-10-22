@@ -90,9 +90,11 @@ class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggl
 		self.include(*gadgets)
 
 
-	def gabel(self):
+	def gabel(self, *args, **kwargs):
 		'''effectively a shallow copy, excluding the cache'''
-		return self.__class__(*self.vendors())
+		new = self.__class__(*args, **kwargs)
+		new.include(*self.vendors())
+		return new
 
 
 	def __getitem__(self, item):

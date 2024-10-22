@@ -1,35 +1,100 @@
+from typing import Union, Any, Iterator, Type, Self, Optional
 from .imports import *
 
 
+class AbstractBatch(AbstractGame):
+	def new(self, size: int = None) -> 'AbstractBatch':
+		'''create a copy of this batch with a new size'''
+		raise NotImplementedError
+	
+	@property	
+	def size(self) -> int:
+		'''size of the batch'''
+		raise NotImplementedError
 
-class AbstractGuru:
-	def gadgetry(self) -> Iterator[AbstractGadget]:
+
+
+class AbstractGoal(AbstractBatch):
+	'''a meta batch'''
+	def new(self, size: int = None) -> 'AbstractGoal':
+		'''create a copy of this goal with a new size'''
+		raise NotImplementedError
+
+
+	def is_achieved(self):
+		'''is the goal achieved?'''
 		raise NotImplementedError
 
 
 
 class AbstractGod:
-	'''source that can generate a stream of contexts given a base (mogul)'''
-	def grant(self, base: AbstractGuru | Iterable[AbstractGadget] = None) -> Iterator[AbstractGame]:
+	'''generates goals'''
+	def grant(self, cond: Optional[Any] = None, /, **settings: Any) -> Iterator[AbstractGame]:
+		'''generates goals'''
+		raise NotImplementedError
+	
+
+
+class AbstractDriver:
+	def gadgetry(self) -> Iterator[AbstractGadget]:
+		'''gadgets that should be included in the game'''
 		raise NotImplementedError
 
 
 
-class AbstractEvaluator(AbstractGuru):
-	def evaluate(self, src: AbstractGod) -> Any:
-		for ctx in src.grant(self):
-			yield self.eval_step(ctx)
+class AbstractMogul:
+	def iterate(self, cond: Optional[Any] = None, /, **settings: Any) -> Iterator[AbstractGame]:
+		raise NotImplementedError
+	
+
+	def __iter__(self):
+		return self.iterate()
+	
+
+	def __next__(self):
+		return next(self.iterate())
 
 
-	def eval_step(self, ctx: AbstractGame) -> AbstractGame:
+
+class AbstractGuru(AbstractMogul):
+	'''can use goals to create games'''
+	def iterate(self, cond: Union[AbstractGod, None] = None, /, **settings: Any) -> Iterator[AbstractGame]:
+		if isinstance(cond, AbstractGod):
+			for goal in cond.grant(self):
+				yield self.glean(goal)
+		raise NotImplementedError
+	
+
+	def glean(self, goal: AbstractGame) -> AbstractGame:
+		'''create a game using the meta (goal)'''
 		raise NotImplementedError
 
 
 
-class AbstractTrainer(AbstractEvaluator):
-	def fit(self, src: AbstractGod) -> Any:
-		for ctx in src.grant(self):
+class AbstractEvaluator(AbstractGod):
+	def evaluate_loop(self, src: AbstractMogul) -> Iterator[AbstractGame]:
+		for ctx in src.iterate(self):
+			yield self.score(ctx)
+
+
+	def evaluate(self, src: AbstractMogul) -> Any:
+		raise NotImplementedError
+
+
+	def score(self, ctx: AbstractGame) -> AbstractGame:
+		'''single evaluation step'''
+		raise NotImplementedError
+
+
+
+class AbstractTrainer(AbstractGod):
+	def fit_loop(self, src: AbstractMogul) -> Iterator[AbstractGame]:
+		for ctx in src.iterate(self):
 			yield self.learn(ctx)
+
+
+	def fit(self, src: AbstractMogul) -> Self:
+		raise NotImplementedError
 
 
 	def learn(self, ctx: AbstractGame) -> AbstractGame:
@@ -38,35 +103,16 @@ class AbstractTrainer(AbstractEvaluator):
 
 
 
-class AbstractGenie(AbstractGuru, AbstractGod):
-	def grant(self, base: 'AbstractGenius' = None) -> Iterator[AbstractGame]:
-		'''emits games from goals'''
-		if isinstance(base, AbstractGenius):
-			for goal in base.grant(base):
-				raise NotImplementedError
-		return super().grant(base)
-
-
-
-class AbstractGenius(AbstractGenie):
-	def grant(self, base: AbstractGod = None) -> Iterator[AbstractGame]:
-		'''emits goals for a genie to transform into games'''
+class AbstractDataset(AbstractGuru):
+	@property
+	def size(self) -> int:
 		raise NotImplementedError
+	
+
+	def __len__(self) -> int:
+		return self.size
 
 
-
-
-
-class GeniusBase(AbstractGenius):
-	_Goal = None
-
-
-	def grant(self, base: AbstractGuru | Iterator[AbstractGadget] = None) -> Iterator[AbstractGame]:
-		goal = self._Goal(base)
-		for progress in sprint:
-			yield progress
-			if progress.grab('stop', False):
-				break
-
-
+class AbstractBudget:
+	
 
