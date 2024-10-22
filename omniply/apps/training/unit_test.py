@@ -44,9 +44,10 @@ def test_dataset():
     print(toy.size)
 
     for batch in toy.iterate(3):
-        print(batch)
-        print(batch['index'])
+        # print(batch)
+        # print(batch['index'])
         print(batch['even'])
+        print(batch)
     
 
 
