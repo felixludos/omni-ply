@@ -131,7 +131,7 @@ def suggest_batch_sizes(dataset_size: int, *,
 
     assert target_batch_size is not None or target_iterations is not None, 'either target_batch_size or target_iterations must be provided'
     if target_batch_size is None:
-        target_batch_size = dataset_size // target_iterations
+        target_batch_size = max(int(math.sqrt(dataset_size)), dataset_size // target_iterations)
     assert 0 < target_batch_size <= dataset_size, 'target_batch_size must be in (0, dataset_size]' 
 
     factors = Counter(prime_factors(dataset_size))

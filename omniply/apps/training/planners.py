@@ -138,6 +138,17 @@ class Unindexed(InfiniteUnindexed):
 		self._drop_last = drop_last
 
 
+	def setup(self, src: AbstractDataset, *, max_samples: int = None, max_batches: int = None, 
+			  max_iterations: int = None, **kwargs):
+		if max_samples is not None:
+			self._max_samples = max_samples
+		if max_batches is not None:
+			self._max_batches = max_batches
+		if max_iterations is not None:
+			self._max_iterations = max_iterations
+		return super().setup(src, **kwargs)
+	
+
 	def remaining_samples(self) -> Optional[int]:
 		return self._max_samples - self._drawn_samples if self._max_samples is not None else None
 	
@@ -148,10 +159,10 @@ class Unindexed(InfiniteUnindexed):
 		return self._max_iterations - self._num_iterations if self._max_iterations is not None else None
 
 
-	def step(self, size: int) -> dict[str, Any]:
+	def step(self, batch_size: int) -> dict[str, Any]:
 		if self._max_iterations is not None and self._num_iterations >= self._max_iterations:
 			raise self._BudgetExceeded(f'max iterations reached: {self._max_iterations}')
-		return super().step(size)
+		return super().step(batch_size)
 	
 
 	def draw(self, n: int):
@@ -167,12 +178,27 @@ class Unindexed(InfiniteUnindexed):
 		return super().draw(n)
 
 
+	def iterate(self, src: AbstractDataset, batch_size: int) -> Iterator[dict[str, Any]]:
+		'''iterate over the dataset'''
+		self.setup(src)
+		try:
+			while True:
+				yield self.step(batch_size)
+		except BudgetExceeded:
+			pass
+
 
 class Indexed(Unindexed, InfiniteIndexed):
 	def __init__(self, dataset_size: int = None, *, max_epochs: int = None, **kwargs):
 		super().__init__(dataset_size=dataset_size, **kwargs)
 		assert max_epochs is None or max_epochs > 0, 'max_epochs must be positive'
 		self._max_epochs = max_epochs
+
+
+	def setup(self, src: AbstractDataset, *, max_epochs: int = None, **kwargs):
+		if max_epochs is not None:
+			self._max_epochs = max_epochs
+		return super().setup(src, **kwargs)
 
 
 	def remaining_epochs(self) -> Optional[int]:

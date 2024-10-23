@@ -100,12 +100,16 @@ class AbstractPlanner:
 		raise NotImplementedError
 
 
-	def step(self, size: int) -> dict[str, Any]:
+	def step(self, batch_size: int) -> dict[str, Any]:
 		'''creates a new batch for an iteration'''
-		return self.draw(size)
+		return self.draw(batch_size)
 
 
 	def draw(self, size: int) -> dict[str, Any]:
 		'''create the info for a new batch'''
+		raise NotImplementedError
+	
+	def iterate(self, src: AbstractDataset, batch_size: int) -> Iterator[dict[str, Any]]:
+		'''iterate over the dataset'''
 		raise NotImplementedError
 	
