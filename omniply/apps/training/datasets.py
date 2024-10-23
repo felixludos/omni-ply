@@ -5,7 +5,7 @@ from .planners import Indexed
 
 
 
-def prime_factors(n: int): # should probably be moved to omnibelt
+def prime_factors(n: int, /): # should probably be moved to omnibelt
     from sympy import nextprime
     # Handle edge case for n <= 1
     if n <= 1:
@@ -27,7 +27,7 @@ def prime_factors(n: int): # should probably be moved to omnibelt
 
 
 
-def closest_factors(A_factors, B_factors):
+def closest_factors(A_factors: Union[int, Iterable[int], dict[int, int]], B_factors: Union[int, list[int], dict[int, int]], /):
     """
     Generate factors of A in order such that they are closest to B.
 
@@ -40,6 +40,15 @@ def closest_factors(A_factors, B_factors):
     Yields:
     - factors of A in order, starting from those closest to B
     """
+
+    if isinstance(A_factors, int):
+        A_factors = prime_factors(A_factors)
+    if isinstance(B_factors, int):
+        B_factors = prime_factors(B_factors)
+    if not isinstance(A_factors, dict):
+        A_factors = Counter(A_factors)
+    if not isinstance(B_factors, list):
+        B_factors = Counter(B_factors)
 
     # Get the list of primes in A
     primes = list(A_factors.keys())

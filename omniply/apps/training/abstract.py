@@ -95,7 +95,7 @@ class AbstractTrainer:
 
 
 class AbstractPlanner:
-	def setup(self, src: AbstractDataset):
+	def setup(self, src: AbstractDataset) -> Optional[int]:
 		'''prepare the planner for a new dataset'''
 		raise NotImplementedError
 

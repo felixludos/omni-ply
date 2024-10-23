@@ -1,7 +1,7 @@
 from .imports import *
 
 from .datasets import Dataset
-
+from .trainers import TrainerBase
 
 
 
@@ -49,6 +49,16 @@ def test_dataset():
         print(batch['even'])
         print(batch)
     
+
+
+def test_trainer():
+    import numpy as np
+
+    class _Trainer(TrainerBase):
+        def learn(self, batch):
+            
+            return batch
+
 
 
     

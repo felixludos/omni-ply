@@ -15,12 +15,33 @@ class TrainerBase(AbstractTrainer):
 		self._model = model
 		self._planner = planner
 		self._batch_size = batch_size
-		
+		self._gadgetry = []
+
+
+	def include(self, *gadgets: AbstractGadget) -> Self:
+		'''include gadgets in the batch'''
+		self._gadgetry.extend(gadgets)
+		return self
+
+	
+	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
+		'''extend the batch with gadgets'''
+		self._gadgetry.extend(gadgets)
+		return self
+
+
+	def exclude(self, *gadgets: AbstractGadget) -> Self:
+		'''exclude gadgets from the batch'''
+		for gadget in gadgets:
+			self._gadgetry.remove(gadget)
+		return self
+
 
 	def gadgetry(self) -> Iterator[AbstractGadget]:
 		'''gadgets to include in the batch'''
 		yield self._model
 		yield self._planner
+		yield from self._gadgetry
 
 
 	def fit_is_done(self, batch: Batch) -> bool:
