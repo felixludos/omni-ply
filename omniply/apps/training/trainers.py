@@ -32,7 +32,7 @@ class TrainerBase(AbstractTrainer):
 		'''train the model'''
 		self._planner.setup(src, **settings) # TODO: convert this to be a context manager
 
-		batch_size = src.suggest_batch_size() if self._batch_size is None else self._batch_size
+		batch_size = 32 if self._batch_size is None else self._batch_size
 
 		try:
 			while True:
