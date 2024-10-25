@@ -21,7 +21,7 @@ class TrainerBase(AbstractTrainer):
 		yield from ()
 
 
-	def fit_is_done(self, batch: Batch) -> bool:
+	def _terminate_fit(self, batch: Batch) -> bool:
 		'''is the training done?'''
 		return False
 	
@@ -30,21 +30,26 @@ class TrainerBase(AbstractTrainer):
 	_Batch = Batch
 	def fit_loop(self, src: Dataset, **settings: Any) -> Iterator[Batch]:
 		'''train the model'''
-		self._planner.setup(src, **settings)
+		planner = self._planner.setup(src, **settings)
 
 		batch_size = 32 if self._batch_size is None else self._batch_size
 
-		num_itr = self._planner.expected_iterations(batch_size) # to get the total number of iterations
+		num_itr = planner.expected_iterations(batch_size) # to get the total number of iterations
 
-		for info in self._planner.generate(batch_size):
-			batch = self._Batch(info, planner=self._planner)
-			batch.include(src).extend(self.gadgetry())
+		for info in planner.generate(batch_size):
+			batch = self._Batch(info, planner=planner).include(src).extend(tuple(self.gadgetry()))
 
 			# Note: this runs the optimization step before yielding the batch
 			yield self.learn(batch)
 
-			if self.fit_is_done(batch):
+			if self._terminate_fit(batch):
 				break
+
+
+	def fit(self, src: Dataset) -> Self:
+		'''train the model'''
+		for batch in self.fit_loop(src): pass
+		return self
 
 	
 	def learn(self, batch: Batch) -> Batch:

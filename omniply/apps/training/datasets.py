@@ -16,6 +16,5 @@ class Dataset(ToolKit, AbstractDataset):
 
         for info in planner.generate(batch_size):
             batch = self._Batch(info, planner=planner)
-            batch.include(self)
-            yield batch
+            yield batch.include(self)
 
