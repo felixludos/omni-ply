@@ -15,6 +15,6 @@ class Dataset(ToolKit, AbstractDataset):
         planner = self._Planner(dataset_size=self.size, max_epochs=1, shuffle=False, hard_budget=True, drop_last=False)
 
         for info in planner.generate(batch_size):
-            batch = self._Batch(info, planner=planner)
+            batch = self._Batch(info, planner=planner, allow_draw=False)
             yield batch.include(self)
 
