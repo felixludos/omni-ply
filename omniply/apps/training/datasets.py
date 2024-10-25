@@ -13,12 +13,9 @@ class Dataset(ToolKit, AbstractDataset):
             batch_size = 1
         
         planner = self._Planner(dataset_size=self.size, max_epochs=1, shuffle=False, hard_budget=True, drop_last=False)
-        
-        try:
-            while True:
-                batch = self._Batch(planner.step(batch_size), planner=planner, allow_draw=False)
-                batch.include(self)
-                yield batch
-        except planner._BudgetExceeded:
-            pass
+
+        for info in planner.generate(batch_size):
+            batch = self._Batch(info, planner=planner)
+            batch.include(self)
+            yield batch
 

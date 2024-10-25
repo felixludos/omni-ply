@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Iterator, Type, Optional, Union, Self
+from typing import Any, Iterable, Iterator, Type, Optional, Union, Self, Dict, List
 from ...core.gaggles import AbstractGaggle, AbstractGame, AbstractGadget, LoopyGaggle, MutableGaggle
 from ...core import Scope
 from ..gaps import Context, ToolKit, tool

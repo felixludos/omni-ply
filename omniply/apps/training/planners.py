@@ -2,13 +2,16 @@ from .imports import *
 from .abstract import AbstractDataset, AbstractBatch, AbstractPlanner
 
 
-class InfiniteUnindexed(ToolKit, AbstractPlanner):
+
+class InfiniteUnindexed(AbstractPlanner):
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self.reset()
 
-	def setup(self, src: AbstractDataset) -> Optional[int]:
+
+	def setup(self, src: AbstractDataset) -> Self:
 		self.reset()
+		return self
 
 
 	def reset(self):
@@ -17,13 +20,13 @@ class InfiniteUnindexed(ToolKit, AbstractPlanner):
 		self._drawn_batches = 0
 
 
-	def step(self, size: int) -> dict[str, Any]:
+	def step(self, size: int) -> Dict[str, Any]:
 		info = super().step(size)
 		self._num_iterations += 1
 		return info
 		
 
-	def draw(self, n: int) -> dict[str, Any]:
+	def draw(self, n: int) -> Dict[str, Any]:
 		self._drawn_batches += 1
 		self._drawn_samples += n
 		return {'size': n, 
@@ -32,10 +35,19 @@ class InfiniteUnindexed(ToolKit, AbstractPlanner):
 				'drawn_samples': self._drawn_samples}
 
 
+	def generate(self, step_size: int) -> Iterator[Dict[str, Any]]:
+		while True:
+			yield self.step(step_size)
+
+
+	def expected_iterations(self, step_size):
+		return None
+
+
 
 class InfiniteIndexed(InfiniteUnindexed):
-	def __init__(self, dataset_size: int = None, *, 
-				 shuffle: bool = True, multi_epoch: bool = True, seed: int = None, 
+	def __init__(self, dataset_size: int = None, *, shuffle: bool = True, 
+			  	 multi_epoch: bool = True, seed: int = None, sort_indices: bool = True,
 				 **kwargs):
 		if seed is None:
 			seed = random.randint(1, 2**32-1)
@@ -43,11 +55,12 @@ class InfiniteIndexed(InfiniteUnindexed):
 		self._dataset_size = dataset_size
 		self._shuffle = shuffle
 		self._multi_epoch = multi_epoch
+		self._sort_indices = sort_indices
 		self._seed = seed
 		self.reset()
 
 
-	def setup(self, src: AbstractDataset):
+	def setup(self, src: AbstractDataset) -> Self:
 		self._dataset_size = src.size
 		return super().setup(src)
 	
@@ -90,10 +103,12 @@ class InfiniteIndexed(InfiniteUnindexed):
 		
 		indices = self._order[self._offset:self._offset + n]
 		self._offset += n
+		if self._sort_indices:
+			indices.sort()
 		return indices
 
 	
-	def draw(self, n: int) -> dict[str, Any]:
+	def draw(self, n: int) -> Dict[str, Any]:
 		assert n > 0, 'cannot draw zero samples' # otherwise some batches can have degenerate seeds
 		seed = self._seed
 		offset = self._offset
@@ -104,11 +119,6 @@ class InfiniteIndexed(InfiniteUnindexed):
 						 'epoch_seed': seed, 'epoch_offset': offset})
 		return info
 	
-
-	@tool('seed')
-	def get_seed(self, epoch_seed: int, epoch_offset: int) -> int:
-		return int(hashlib.md5(f'{epoch_seed},{epoch_offset}'.encode()).hexdigest(), 16) % (2**32)
-
 
 
 class BudgetExceeded(Exception):
@@ -159,7 +169,7 @@ class Unindexed(InfiniteUnindexed):
 		return self._max_iterations - self._num_iterations if self._max_iterations is not None else None
 
 
-	def step(self, batch_size: int) -> dict[str, Any]:
+	def step(self, batch_size: int) -> Dict[str, Any]:
 		if self._max_iterations is not None and self._num_iterations >= self._max_iterations:
 			raise self._BudgetExceeded(f'max iterations reached: {self._max_iterations}')
 		return super().step(batch_size)
@@ -178,14 +188,24 @@ class Unindexed(InfiniteUnindexed):
 		return super().draw(n)
 
 
-	def iterate(self, src: AbstractDataset, batch_size: int) -> Iterator[dict[str, Any]]:
-		'''iterate over the dataset'''
-		self.setup(src)
+	def generate(self, step_size: int) -> Iterator[Dict[str, Any]]:
 		try:
-			while True:
-				yield self.step(batch_size)
+			yield from super().generate(step_size)
 		except BudgetExceeded:
 			pass
+
+
+	def expected_iterations(self, step_size: int) -> Optional[int]:
+		if self._max_iterations is not None:
+			return self._max_iterations - self._num_iterations
+		if self._max_batches is not None:
+			batches_per_iteration = (self._drawn_batches // self._num_iterations) if self._num_iterations > 0 else 1
+			return (self._max_batches - self._drawn_batches) * batches_per_iteration
+		if self._max_samples is not None:
+			remaining = self._max_samples - self._drawn_samples
+			return (remaining // step_size) + (1 if (remaining % step_size > 0 and not (self._hard_budget and self._drop_last)) else 0)
+		return None
+		
 
 
 class Indexed(Unindexed, InfiniteIndexed):
@@ -221,5 +241,11 @@ class Indexed(Unindexed, InfiniteIndexed):
 		return idx
 	
 
-
+	def expected_iterations(self, step_size: int) -> Optional[int]:
+		num = super().expected_iterations(step_size)
+		if num is None and self._max_epochs is not None:
+			remaining = self._max_epochs * self._dataset_size - self._drawn_samples
+			return (remaining // step_size) + (1 if (remaining % step_size > 0 and not (self._hard_budget and self._drop_last)) else 0)
+		return num
+		
 

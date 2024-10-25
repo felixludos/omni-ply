@@ -18,7 +18,7 @@ class TrainerBase(AbstractTrainer):
 
 	def gadgetry(self) -> Iterator[AbstractGadget]:
 		'''gadgets to include in the batch'''
-		yield self._planner
+		yield from ()
 
 
 	def fit_is_done(self, batch: Batch) -> bool:
@@ -30,21 +30,21 @@ class TrainerBase(AbstractTrainer):
 	_Batch = Batch
 	def fit_loop(self, src: Dataset, **settings: Any) -> Iterator[Batch]:
 		'''train the model'''
-		self._planner.setup(src, **settings) # TODO: convert this to be a context manager
+		self._planner.setup(src, **settings)
 
 		batch_size = 32 if self._batch_size is None else self._batch_size
 
-		try:
-			while True:
-				batch = self._Batch(self._planner.step(batch_size), planner=self._planner)
-				batch.include(src).extend(list(self.gadgetry()))
+		num_itr = self._planner.expected_iterations(batch_size) # to get the total number of iterations
 
-				yield self.learn(batch)
-				
-				if self.fit_is_done(batch):
-					break
-		except BudgetExceeded:
-			pass
+		for info in self._planner.generate(batch_size):
+			batch = self._Batch(info, planner=self._planner)
+			batch.include(src).extend(self.gadgetry())
+
+			# Note: this runs the optimization step before yielding the batch
+			yield self.learn(batch)
+
+			if self.fit_is_done(batch):
+				break
 
 	
 	def learn(self, batch: Batch) -> Batch:
@@ -80,7 +80,6 @@ class DynamicTrainerBase(TrainerBase):
 
 	def gadgetry(self) -> Iterator[AbstractGadget]:
 		'''gadgets to include in the batch'''
-		yield from super().gadgetry()
 		yield from self._gadgetry
 
 

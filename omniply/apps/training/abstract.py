@@ -64,8 +64,7 @@ class AbstractBatch(AbstractDataset, AbstractGame): # AbstractMogul
 
 class AbstractEvaluator:
 	def evaluate_loop(self, src: AbstractDataset) -> Iterator[AbstractBatch]:
-		for ctx in src.iterate(self):
-			yield self.score(ctx)
+		raise NotImplementedError
 
 
 	def evaluate(self, src: AbstractDataset) -> Any:
@@ -80,8 +79,7 @@ class AbstractEvaluator:
 
 class AbstractTrainer:
 	def fit_loop(self, src: AbstractDataset) -> Iterator[AbstractBatch]:
-		for ctx in src.iterate(self):
-			yield self.learn(ctx)
+		raise NotImplementedError
 
 
 	def fit(self, src: AbstractDataset) -> Self:
@@ -95,21 +93,30 @@ class AbstractTrainer:
 
 
 class AbstractPlanner:
-	def setup(self, src: AbstractDataset) -> Optional[int]:
+	def setup(self, src: AbstractDataset) -> Self:
 		'''prepare the planner for a new dataset'''
 		raise NotImplementedError
 
 
-	def step(self, batch_size: int) -> dict[str, Any]:
-		'''creates a new batch for an iteration'''
-		return self.draw(batch_size)
+	def step(self, size: int) -> Dict[str, Any]:
+		'''creates new batch info for an iteration'''
+		return self.draw(size)
 
 
-	def draw(self, size: int) -> dict[str, Any]:
+	def draw(self, size: int) -> Dict[str, Any]:
 		'''create the info for a new batch'''
 		raise NotImplementedError
 	
-	def iterate(self, src: AbstractDataset, batch_size: int) -> Iterator[dict[str, Any]]:
-		'''iterate over the dataset'''
+	
+	def generate(self, step_size: int) -> Iterator[Dict[str, Any]]:
+		'''generate batch infos with given step size'''
 		raise NotImplementedError
 	
+
+	def expected_iterations(self, step_size: int) -> Optional[int]:
+		'''
+		expected number of iterations for given batch size
+		None means infinite or unknown
+		'''
+		raise NotImplementedError
+
