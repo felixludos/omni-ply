@@ -43,13 +43,14 @@ class AbstractDataset:
 	def size(self) -> Optional[int]:
 		raise NotImplementedError
 	
-
-	# def __len__(self) -> int:
-	# 	return self.size
-
-
+	
 
 class AbstractBatch(AbstractDataset, AbstractGame): # AbstractMogul
+	def gadgetry(self) -> Iterator[AbstractGadget]:
+		'''all vendors except for the batch specific info'''
+		raise NotImplementedError
+
+
 	def new(self, size: int = None) -> 'AbstractBatch':
 		'''fork this batch, optionally with a new size'''
 		raise NotImplementedError
