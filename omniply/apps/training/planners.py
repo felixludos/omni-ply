@@ -98,7 +98,10 @@ class InfiniteIndexed(InfiniteUnindexed):
 			indices = self._order[self._offset:]
 			self._order = None
 			if self._multi_epoch:
-				return np.concatenate((indices, self._draw_indices(n - len(indices))))
+				out = np.concatenate((indices, self._draw_indices(n - len(indices))))
+				if self._sort_indices:
+					out.sort()
+				return out
 			return indices
 		
 		indices = self._order[self._offset:self._offset + n]
