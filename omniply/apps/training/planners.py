@@ -57,6 +57,7 @@ class InfiniteIndexed(InfiniteUnindexed):
 		self._multi_epoch = multi_epoch
 		self._sort_indices = sort_indices
 		self._seed = seed
+		self._initial_seed = seed
 		self.reset()
 
 
@@ -98,14 +99,11 @@ class InfiniteIndexed(InfiniteUnindexed):
 			indices = self._order[self._offset:]
 			self._order = None
 			if self._multi_epoch:
-				out = np.concatenate((indices, self._draw_indices(n - len(indices))))
-				if self._sort_indices:
-					out.sort()
-				return out
-			return indices
+				indices = np.concatenate((indices, self._draw_indices(n - len(indices))))
+		else:
+			indices = self._order[self._offset:self._offset + n]
+			self._offset += n
 		
-		indices = self._order[self._offset:self._offset + n]
-		self._offset += n
 		if self._sort_indices:
 			indices.sort()
 		return indices
@@ -118,8 +116,8 @@ class InfiniteIndexed(InfiniteUnindexed):
 		idx = self._draw_indices(n)
 		info = super().draw(n)
 		if idx is not None:
-			info.update({'index': idx, 'epochs': self._drawn_epochs,
-						 'epoch_seed': seed, 'epoch_offset': offset})
+			info.update({'index': idx, 'epochs': self._drawn_epochs, 
+				'initial_seed': self._initial_seed, 'epoch_seed': seed, 'epoch_offset': offset})
 		return info
 	
 

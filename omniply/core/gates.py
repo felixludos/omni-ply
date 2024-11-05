@@ -164,7 +164,10 @@ class GateBase(MultiGadgetBase, GaggleBase, AbstractGate):
 			if len(self._game_stack) == 0 or ctx is self._game_stack[-1]:
 				raise
 			# default to parent/s
-			out = self._game_stack[-1].grab(self.gizmo_to(gizmo))
+			ext = self.gizmo_to(gizmo)
+			if ext is None:
+				ext = gizmo
+			out = self._game_stack[-1].grab(ext)
 
 		if len(self._game_stack) and ctx is self._game_stack[-1]:
 			self._game_stack.pop()
