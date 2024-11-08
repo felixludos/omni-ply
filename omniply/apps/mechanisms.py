@@ -321,6 +321,143 @@ def test_break_chain():
 	assert ctx['e'] == 101
 
 
+
+class FullMechanism(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, AbstractGate):
+	def __init__(self, content: Iterable[AbstractGadget] = (), *, insulate_out: bool = True, insulate_in: bool = True,
+				 relabel_out: Mapping[str, str] = None, relabel_in: Mapping[str, str] = None, **kwargs):
+		'''
+		insulated: if True, only exposed gizmos are grabbed from parent contexts
+		'''
+		if relabel_out is None:
+			relabel_out = {}
+		if relabel_in is None:
+			relabel_in = {}
+		super().__init__(**kwargs)
+		self.extend(content)
+		self._relabel_out = relabel_out # internal gizmos -> external gizmos
+		self._relabel_in = relabel_in
+		self._reverse_relabel_out = {v: k for k, v in relabel_out.items()}
+		self._game_stack = []
+		self._insulate_out = insulate_out
+		self._insulate_in = insulate_in
+
+	# TODO: make sure to update relabels when gadgets are added or removed
+
+	def gizmo_to(self, gizmo: str) -> Optional[str]:
+		'''internal -> exposed'''
+		# TODO: maybe fix this
+		if gizmo in self._relabel_out:
+			return self._relabel_out.get(gizmo)
+		return self._relabel_in.get(gizmo)
+
+
+	def _gizmos(self) -> Iterator[str]:
+		"""
+		Lists gizmos produced by self using internal names.
+
+		Returns:
+			Iterator[str]: An iterator over the gizmos.
+		"""
+		yield from super().gizmos()
+
+
+	def exposed(self) -> Iterator[str]:
+		yield from self._relabel_out.keys()
+		yield from self._relabel_in.keys()
+
+
+	def gizmos(self) -> Iterator[str]:
+		if self._insulate_out:
+			yield from self._relabel_out.values()
+		else:
+			for gizmo in self._gizmos():
+				yield self._relabel_out.get(gizmo, gizmo)
+
+
+	_GateCacheMiss = KeyError
+	def _grab(self, gizmo: str) -> Any:
+		"""
+		Tries to grab a gizmo from the gate. If the gizmo is not found in the gate's cache, it checks the cache using
+		the external gizmo name. If it still can't be found in any cache, it grabs it from the gate's gadgets.
+
+		Args:
+			gizmo (str): The name of the gizmo to grab.
+
+		Returns:
+			Any: The grabbed gizmo.
+		"""
+		if len(self._game_stack):
+			# check cache (if one exists)
+			for parent in reversed(self._game_stack):
+				if isinstance(parent, GatedCache):
+					try:
+						return parent.check_gate_cache(self, gizmo)
+					except self._GateCacheMiss:
+						pass
+
+			# if it can't be found in my cache, check the cache using the external gizmo name
+			ext = self._relabel_out.get(gizmo)
+			if ext is not None:
+				for parent in reversed(self._game_stack):
+					if isinstance(parent, GatedCache) and parent.is_cached(ext):
+						return parent.grab(ext)
+
+		# if it can't be found in any cache, grab it from my gadgets
+		out = super().grab_from(self, gizmo)
+
+		# update my cache
+		if len(self._game_stack):
+			for parent in reversed(self._game_stack):
+				if isinstance(parent, GatedCache):
+					parent.update_gate_cache(self, gizmo, out)
+					break
+
+		return out
+
+
+	def grab_from(self, ctx: AbstractGame, gizmo: str) -> Any:
+		"""
+		Tries to grab a gizmo from the context.
+
+		Args:
+			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
+			gizmo (str): The name of the gizmo to grab.
+
+		Returns:
+			Any: The grabbed gizmo.
+		"""
+		if ctx is None or ctx is self: # internal grab
+			fixed = self._relabel_in.get(gizmo, gizmo)
+			try:
+				out = self._grab(fixed)
+			except self._GadgetFailure:
+				# default to parent/s
+				if self._insulate_in and gizmo not in self._relabel_in:
+					raise
+				for parent in reversed(self._game_stack):
+					try:
+						out = parent.grab(fixed)
+					except self._GadgetFailure:
+						pass
+					else:
+						break
+				else:
+					raise
+
+		else: # grab from external context
+			self._game_stack.append(ctx)
+			gizmo = self._reverse_relabel_out.get(gizmo, gizmo)
+			out = self._grab(gizmo)
+
+
+		if len(self._game_stack) and ctx is self._game_stack[-1]:
+			self._game_stack.pop()
+
+		return out
+
+
+
+
 def test_rebuild_chain():
 	from .gaps import ToolKit, tool, Context
 	from .simple import DictGadget
@@ -336,10 +473,14 @@ def test_rebuild_chain():
 
 	src = Tester()
 
-	resp = FullMechanism(src, relabel_out={'lat': 'response'}, relabel_inp={'obs': 'rec', 'lat': 'probe'})
-	ctx = Context(src, resp, DictGadget({'obs': 1, 'probe': 10}))
+	resp = FullMechanism([src], relabel_out={'lat': 'response'}, relabel_in={'obs': 'rec', 'lat': 'probe'})
+	resp2 = FullMechanism([src], relabel_out={'lat': 'resp2', 'rec': 'prec'},
+						  relabel_in={'obs': 'rec', 'lat': 'probe2'})
+	ctx = Context(src, resp, resp2, DictGadget({'obs': 1, 'probe': 10, 'probe2': 100}))
 
 	assert ctx['rec'] == -2
 	assert ctx['response'] == -9
+	assert ctx['resp2'] == -99
+	assert ctx['prec'] == -100
 
 
