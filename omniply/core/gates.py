@@ -174,21 +174,6 @@ class GateBase(MultiGadgetBase, GaggleBase, AbstractGate):
 
 		return out
 
-	# def _grab_from_fallback(self, error: Exception, ctx: Optional[AbstractGame], gizmo: str) -> Any:
-	# 	assert ctx is self, f'{ctx} != {self}'
-	# 	if len(self._game_stack):
-	# 		return super()._grab_from_fallback(error, self._game_stack[-1], self.gizmo_to(gizmo))
-	# 	raise error from error
-	#
-	#
-	# def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
-	# 	if ctx is not None and ctx is not self:
-	# 		self._game_stack.append(ctx)
-	# 		gizmo = self.gizmo_from(gizmo) # convert to internal gizmo
-	# 	out = super().grab_from(self, gizmo)
-	# 	if len(self._game_stack) and ctx is self._game_stack[-1]:
-	# 		self._game_stack.pop()
-	# 	return out
 
 
 class CachableGate(GateBase):
