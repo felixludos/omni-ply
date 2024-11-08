@@ -145,7 +145,7 @@ class FullMechanism(MechanismBase):
 			relabel_in = {k: k for k in relabel_in}
 		if isinstance(relabel_out, list):
 			relabel_out = {k: k for k in relabel_out}
-		super().__init__(content=content, **kwargs)
+		super().__init__(content=content, relabel_in=relabel_in, relabel_out=relabel_out, **kwargs)
 
 
 
