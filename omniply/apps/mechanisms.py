@@ -135,13 +135,16 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 
 
 
-
-
-
 class FullMechanism(MechanismBase):
-	def __init__(self, content: Union[AbstractGadget, list[AbstractGadget], tuple], **kwargs):
+	def __init__(self, content: Union[AbstractGadget, list[AbstractGadget], tuple],
+				 relabel_in: dict[str, str] | list[str] = None,
+				 relabel_out: dict[str, str] | list[str] = None, **kwargs):
 		if not isinstance(content, (list, tuple)):
 			content = [content]
+		if isinstance(relabel_in, list):
+			relabel_in = {k: k for k in relabel_in}
+		if isinstance(relabel_out, list):
+			relabel_out = {k: k for k in relabel_out}
 		super().__init__(content=content, **kwargs)
 
 
