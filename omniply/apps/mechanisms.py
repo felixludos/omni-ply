@@ -8,19 +8,19 @@ from ..core.games import GatedCache
 
 class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, AbstractGate):
 	def __init__(self, content: Iterable[AbstractGadget] = (), *, insulate_out: bool = True, insulate_in: bool = True,
-				 relabel_out: Mapping[str, str] = None, relabel_in: Mapping[str, str] = None, **kwargs):
+				 select: Mapping[str, str] = None, apply: Mapping[str, str] = None, **kwargs):
 		'''
 		insulated: if True, only exposed gizmos are grabbed from parent contexts
 		'''
-		if relabel_out is None:
-			relabel_out = {}
-		if relabel_in is None:
-			relabel_in = {}
+		if select is None:
+			select = {}
+		if apply is None:
+			apply = {}
 		super().__init__(**kwargs)
 		self.extend(content)
-		self._relabel_out = relabel_out # internal gizmos -> external gizmos
-		self._relabel_in = relabel_in
-		self._reverse_relabel_out = {v: k for k, v in relabel_out.items()}
+		self._select_map = select # internal gizmos -> external gizmos
+		self._apply_map = apply
+		self._reverse_select_map = {v: k for k, v in select.items()}
 		self._game_stack = []
 		self._insulate_out = insulate_out
 		self._insulate_in = insulate_in
@@ -29,7 +29,7 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 
 	def gizmo_to(self, gizmo: str) -> Optional[str]:
 		'''internal -> exposed'''
-		return self._relabel_out.get(gizmo) if self._insulate_out else self._relabel_out.get(gizmo, gizmo)
+		return self._select_map.get(gizmo) if self._insulate_out else self._select_map.get(gizmo, gizmo)
 
 
 	def _gizmos(self) -> Iterator[str]:
@@ -43,13 +43,13 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 
 
 	def exposed(self) -> Iterator[str]:
-		yield from self._relabel_in.keys()
+		yield from self._apply_map.keys()
 
 
 	def gizmos(self) -> Iterator[str]:
 		for gizmo in self._gizmos():
-			if not self._insulate_out or gizmo in self._relabel_out:
-				yield self._relabel_out.get(gizmo, gizmo)
+			if not self._insulate_out or gizmo in self._select_map:
+				yield self._select_map.get(gizmo, gizmo)
 
 
 	_GateCacheMiss = KeyError
@@ -74,7 +74,7 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 						pass
 
 			# if it can't be found in my cache, check the cache using the external gizmo name
-			ext = self._relabel_out.get(gizmo)
+			ext = self._select_map.get(gizmo)
 			if ext is not None:
 				for parent in reversed(self._game_stack):
 					if isinstance(parent, GatedCache) and parent.is_cached(ext):
@@ -105,12 +105,12 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 			Any: The grabbed gizmo.
 		"""
 		if ctx is None or ctx is self: # internal grab
-			fixed = self._relabel_in.get(gizmo, gizmo)
+			fixed = self._apply_map.get(gizmo, gizmo)
 			try:
 				out = self._grab(fixed)
 			except self._GadgetFailure:
 				# default to parent/s
-				if self._insulate_in and gizmo not in self._relabel_in:
+				if self._insulate_in and gizmo not in self._apply_map:
 					raise
 				for parent in reversed(self._game_stack):
 					try:
@@ -124,7 +124,7 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 
 		else: # grab from external context
 			self._game_stack.append(ctx)
-			gizmo = self._reverse_relabel_out.get(gizmo, gizmo)
+			gizmo = self._reverse_select_map.get(gizmo, gizmo)
 			out = self._grab(gizmo)
 
 
@@ -135,21 +135,25 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 
 
 
-class FullMechanism(MechanismBase):
+class Mechanism(MechanismBase):
 	def __init__(self, content: Union[AbstractGadget, list[AbstractGadget], tuple],
-				 relabel_in: dict[str, str] | list[str] = None,
-				 relabel_out: dict[str, str] | list[str] = None, **kwargs):
+				 apply: dict[str, str] | list[str] = None,
+				 select: dict[str, str] | list[str] = None, **kwargs):
+		'''
+		apply: map for inputs
+		select: relabels for outputs
+		'''
 		if not isinstance(content, (list, tuple)):
 			content = [content]
-		if isinstance(relabel_in, list):
-			relabel_in = {k: k for k in relabel_in}
-		if isinstance(relabel_out, list):
-			relabel_out = {k: k for k in relabel_out}
-		super().__init__(content=content, relabel_in=relabel_in, relabel_out=relabel_out, **kwargs)
+		if isinstance(apply, list):
+			apply = {k: k for k in apply}
+		if isinstance(select, list):
+			select = {k: k for k in select}
+		super().__init__(content=content, apply=apply, select=select, **kwargs)
 
 
 
-class Mechanism(FullMechanism):
+class SimpleMechanism(Mechanism):
 	def __init__(self, content: Union[AbstractGadget, list[AbstractGadget], tuple], *,
 				 insulate_in = None, insulate_out = None,
 				 relabel = None, request = None, insulate = True, **kwargs):
@@ -157,14 +161,14 @@ class Mechanism(FullMechanism):
 			content = [content]
 		if relabel is None:
 			relabel = {}
-		relabel_out = relabel if request is None else {k: v for k, v in relabel.items() if k in request}
-		relabel_in = relabel
+		select = relabel if request is None else {k: v for k, v in relabel.items() if k in request}
+		apply = relabel
 		if insulate_in is None:
 			insulate_in = insulate
 		if insulate_out is None:
 			insulate_out = insulate
 		super().__init__(content=content, insulate_in=insulate_in, insulate_out=insulate_out,
-						 relabel_out=relabel_out, relabel_in=relabel_in, **kwargs)
+						 select=select, apply=apply, **kwargs)
 
 
 
@@ -183,7 +187,7 @@ def test_simple_mechanism():
 
 	ctx = Context(obj, DictGadget({'in1': 10, 'in2': 7, 'alt': 1}))
 
-	ctx.include(Mechanism(obj, relabel={'out': 'out2', 'in2': 'alt'}, insulate=False))
+	ctx.include(SimpleMechanism(obj, relabel={'out': 'out2', 'in2': 'alt'}, insulate=False))
 
 	gizmos = list(ctx.gizmos())
 	assert 'out' in gizmos, f'out not in {gizmos}'
@@ -222,7 +226,7 @@ def test_insulated_mechanism():
 
 	ctx.clear()
 
-	mech = Mechanism(obj, relabel={'out': 'out2', 'in2': 'alt'}, insulate_in=False)
+	mech = SimpleMechanism(obj, relabel={'out': 'out2', 'in2': 'alt'}, insulate_in=False)
 
 	ctx.include(mech)
 
@@ -241,7 +245,7 @@ def test_insulated_mechanism():
 	def other_alt():
 		return 5
 
-	mech = Mechanism(obj, relabel={'out': 'out2', 'in2': 'alt2', 'in1': 'alt2'})
+	mech = SimpleMechanism(obj, relabel={'out': 'out2', 'in2': 'alt2', 'in1': 'alt2'})
 
 	ctx = Context(mech, other_alt)
 
@@ -262,12 +266,12 @@ def test_chain():
 
 	src = Tester()
 
-	obj = Mechanism(src, relabel={'b': 'c', 'd': 'd'}, insulate_in=False)
+	obj = SimpleMechanism(src, relabel={'b': 'c', 'd': 'd'}, insulate_in=False)
 	ctx = Context(obj, DictGadget({'a': 1}))
 	assert ctx['d'] == -2
 
 	# This works but is worse as it requires the 'b': 'b' to make b visible externally
-	obj = Mechanism(src, relabel={'c': 'b', 'b': 'b', 'd': 'd'}, insulate_in=False)
+	obj = SimpleMechanism(src, relabel={'c': 'b', 'b': 'b', 'd': 'd'}, insulate_in=False)
 	ctx = Context(obj, DictGadget({'a': 2}))
 	assert ctx['d'] == -3
 
@@ -286,14 +290,13 @@ def test_multi_chain():
 
 	src = Tester(gap={'b': 'c'})
 
-	obj = Mechanism(src, relabel={'d': 'e', 'c': 'alt'}, request=['d'])
-	obj2 = Mechanism(src, relabel={'c': 'f', 'a': 'alt'})
+	obj = SimpleMechanism(src, relabel={'d': 'e', 'c': 'alt'}, request=['d'])
+	obj2 = SimpleMechanism(src, relabel={'c': 'f', 'a': 'alt'})
 	ctx = Context(obj, obj2, src, DictGadget({'a': 1, 'alt': -4}))
 
 	assert ctx['d'] == -2
 	assert ctx['e'] == 4
 	assert ctx['f'] == -3
-
 
 def test_break_chain():
 	from .gaps import ToolKit, tool, Context
@@ -310,16 +313,14 @@ def test_break_chain():
 
 	src = Tester()
 
-	obj = Mechanism(src, relabel={'c': 'd', 'b': 'other'}, request=['c'])
-	obj2 = Mechanism(src, relabel={'b': 'e', 'a': 'other2', 'c': 'f'})
+	obj = SimpleMechanism(src, relabel={'c': 'd', 'b': 'other'}, request=['c'])
+	obj2 = SimpleMechanism(src, relabel={'b': 'e', 'a': 'other2', 'c': 'f'})
 	ctx = Context(obj, obj2, src, DictGadget({'a': 1, 'other': 10, 'other2': 100}))
 
 	assert ctx['c'] == -2
 	assert ctx['d'] == -10
 	assert ctx['f'] == -101
 	assert ctx['e'] == 101
-
-
 
 def test_rebuild_chain():
 	from .gaps import ToolKit, tool, Context
@@ -336,9 +337,9 @@ def test_rebuild_chain():
 
 	src = Tester()
 
-	resp = FullMechanism([src], relabel_out={'lat': 'response'}, relabel_in={'obs': 'rec', 'lat': 'probe'})
-	resp2 = FullMechanism([src], relabel_out={'lat': 'resp2', 'rec': 'prec'},
-						  relabel_in={'obs': 'rec', 'lat': 'probe2'})
+	resp = Mechanism([src], select={'lat': 'response'}, relabel_in={'obs': 'rec', 'lat': 'probe'})
+	resp2 = Mechanism([src], select={'lat': 'resp2', 'rec': 'prec'},
+					  relabel_in={'obs': 'rec', 'lat': 'probe2'})
 	ctx = Context(src, resp, resp2, DictGadget({'obs': 1, 'probe': 10, 'probe2': 100}))
 
 	assert ctx['rec'] == -2
