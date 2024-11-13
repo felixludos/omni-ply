@@ -9,7 +9,10 @@ logger = logging.getLogger('omniply')
 
 
 class GadgetFailure(AbstractGadgetError):
-	'''General error for when a gadget fails to grab a gizmo'''
+	'''
+	General error for when a gadget fails to grab a gizmo,
+	but automatic recovery is possible by trying the remaining gadgets
+	'''
 	def __init__(self, message: Optional[str] = None):
 		super().__init__(message)
 		self.message = message
@@ -28,20 +31,6 @@ class GadgetFailure(AbstractGadgetError):
 
 
 
-class MissingGadget(GadgetFailure, KeyError):
-	'''Error for when a gadget fails to grab a gizmo because the gadget can't find it'''
-	def __init__(self, gizmo: str, *, message: Optional[str] = None):
-		if message is None:
-			message = gizmo
-		super().__init__(message)
-		self.gizmo = gizmo
-
-	@property
-	def description(self) -> str:
-		return f'missing gadget for {self.gizmo!r}'
-
-
-
 class AssemblyError(GadgetFailure):
 	'''Error for when a gadget fails to grab a gizmo because the gizmo can't be assembled from the gadgets available'''
 	def __init__(self, failures: Dict[GadgetFailure, AbstractGadget], *,
@@ -53,8 +42,30 @@ class AssemblyError(GadgetFailure):
 		self.failures = failures
 
 
+class GadgetError(AbstractGadgetError):
+	'''
+	this error means something that should've worked didn't,
+	so no automatic recovery (by trying the remaining gadgets)
+	'''
+	def __init__(self, message: Optional[str] = None):
+		super().__init__(message)
+		self.message = message
 
-class GrabError(AbstractGadgetError):
+	def __hash__(self):
+		return hash(repr(self))
+
+
+	def __eq__(self, other):
+		return repr(self) == repr(other)
+
+
+	@property
+	def description(self) -> str:
+		return str(self)
+
+
+
+class GrabError(GadgetError):
 	def __init__(self, gizmo: str, error: AbstractGadgetError, *, message: Optional[str] = None):
 		if message is None:
 			message = f'{gizmo!r} failed due to: {error.description}'
@@ -62,9 +73,19 @@ class GrabError(AbstractGadgetError):
 		self.error = error
 		self.gizmo = gizmo
 
+
+
+class MissingGadget(GadgetError, KeyError):
+	'''Error for when a gadget fails to grab a gizmo because the gadget can't find it'''
+	def __init__(self, gizmo: str, *, message: Optional[str] = None):
+		if message is None:
+			message = gizmo
+		super().__init__(message)
+		self.gizmo = gizmo
+
 	@property
 	def description(self) -> str:
-		return str(self)
+		return f'missing gadget for {self.gizmo!r}'
 
 
 
