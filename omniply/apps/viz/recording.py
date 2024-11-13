@@ -266,15 +266,16 @@ class EventRecorder(RecorderBase):
 		_no_value = object()
 
 		def __init__(self, gizmo=None, gadget=None, outcome=None, value=_no_value, error=None,
-					 relabel=None, relabel_type=None, start=None, end=None):
+					 internal=None, external=None, router=None, start=None, end=None):
 			super().__init__()
 			self.gizmo = gizmo
 			self.gadget = gadget
 			self.outcome = outcome
 			self.value = value
 			self.error = error
-			self.relabel = relabel
-			self.relabel_type = relabel_type
+			self.internal = internal
+			self.external = external
+			self.router = router
 			self.followup = None
 			self.children = []
 			self.parent = None
@@ -301,12 +302,15 @@ class EventRecorder(RecorderBase):
 		@tool('value')
 		def get_value(self):
 			return self.value
-		@tool('relabel')
-		def get_relabel(self):
-			return self.relabel
-		@tool('relabel_type')
-		def get_relabel_type(self):
-			return self.relabel_type
+		@tool('internal')
+		def get_internal(self):
+			return self.internal
+		@tool('external')
+		def get_external(self):
+			return self.external
+		@tool('router')
+		def get_router(self):
+			return self.router
 		@tool('has_value')
 		def has_value(self):
 			return self.value is not self._no_value
@@ -348,20 +352,35 @@ class EventRecorder(RecorderBase):
 		stack = []
 
 		for event_type, *event in log:
-			if event_type == 'attempt':
+
+			if event_type == 'relabel':
+				external, internal, typ, ts = event
+				if typ == 'external':
+					node = cls._EventNode(gizmo=internal, external=external, start=ts)
+					assert stack and stack[-1].gizmo == external, f'Attempted gizmo {external!r} does not match relabel {stack[-1].gizmo!r}'
+					stack[-1].router = node
+					node.origin = stack[-1]
+				elif typ == 'internal':
+					node = cls._EventNode(gizmo=external, internal=internal, start=ts)
+					parent = stack[-1].children if stack else root_nodes
+					if stack: node.parent = stack[-1]
+					parent.append(node)
+				else:
+					raise ValueError(f'Invalid relabel type: {typ}')
+				stack.append(node)
+
+			elif event_type == 'attempt':
 				# _, gizmo, gadget = event
 				gizmo, gadget, ts = event
-				if stack and stack[-1].relabel is not None and stack[-1].gadget is None:
-					assert stack[-1].gizmo == gizmo, f'Attempted gizmo {gizmo!r} does not match relabel {stack[-1].gizmo!r}'
+				if stack and stack[-1].gizmo == gizmo and (stack[-1].internal is not None or stack[-1].external is not None):
+					assert stack[-1].gadget is None, f'Attempted gizmo {gizmo!r} already has a gadget {stack[-1].gadget!r}'
+					# assert stack[-1].gizmo == gizmo, f'Attempted gizmo {gizmo!r} does not match relabel {stack[-1].gizmo!r}'
 					stack[-1].gadget = gadget
-					stack[-1].start = ts
+					# stack[-1].start = ts # NOTE: overwrites start time from relabel event
 				else:
 					node = cls._EventNode(gizmo=gizmo, gadget=gadget, start=ts)
 					parent = stack[-1].children if stack else root_nodes
-					if stack and stack[-1].relabel == gizmo:
-						stack[-1].relabel = node
-						node.origin = stack[-1]
-					elif len(parent) and parent[-1].gizmo == gizmo and parent[-1].outcome == 'failure':
+					if len(parent) and parent[-1].gizmo == gizmo and parent[-1].outcome == 'failure':
 						assert parent[-1].followup is None
 						parent[-1].followup = node
 						node.origin = parent[-1]
@@ -370,26 +389,26 @@ class EventRecorder(RecorderBase):
 						parent.append(node)
 					stack.append(node)
 
-			elif event_type == 'relabel':
-				external, internal, typ, ts = event
-				if typ == 'internal':
-					node = cls._EventNode(gizmo=external, relabel=internal, start=ts)
-					parent = stack[-1].children if stack else root_nodes
-					if stack: node.parent = stack[-1]
-					parent.append(node)
-					stack.append(node)
-				elif typ == 'external':
-					assert len(stack) > 0, f'No active attempt for relabel event: {event}'
-					assert stack[-1].gizmo == external, f'Attempted gizmo {external!r} does not match relabel {stack[-1].gizmo!r}'
-					assert stack[-1].relabel is None, f'Attempted gizmo {external!r} already has a relabel {stack[-1].relabel!r}'
-					stack[-1].relabel = internal
-				else:
-					raise ValueError(f'Invalid relabel type: {typ}')
+			# elif event_type == 'relabel':
+			# 	external, internal, typ, ts = event
+			# 	if typ == 'internal':
+			# 		node = cls._EventNode(gizmo=external, internal=internal, start=ts)
+			# 		parent = stack[-1].children if stack else root_nodes
+			# 		if stack: node.parent = stack[-1]
+			# 		parent.append(node)
+			# 		stack.append(node)
+			# 	elif typ == 'external':
+			# 		assert len(stack) > 0, f'No active attempt for relabel event: {event}'
+			# 		assert stack[-1].gizmo == external, f'Attempted gizmo {external!r} does not match relabel {stack[-1].gizmo!r}'
+			# 		assert stack[-1].relabel is None, f'Attempted gizmo {external!r} already has a relabel {stack[-1].relabel!r}'
+			# 		stack[-1].relabel = internal
+			# 	else:
+			# 		raise ValueError(f'Invalid relabel type: {typ}')
 
 			elif event_type == 'cached':
 				gizmo, value, ts = event
-				if stack and stack[-1].relabel is not None and stack[-1].outcome is None:
-					assert stack[-1].gizmo == gizmo, f'Attempted gizmo {gizmo!r} does not match relabel {stack[-1].gizmo!r}'
+				if stack and stack[-1].gizmo == gizmo and stack[-1].outcome is None:
+					# assert stack[-1].gizmo == gizmo, f'Attempted gizmo {gizmo!r} does not match relabel {stack[-1].gizmo!r}'
 					stack[-1].outcome = 'cached'
 					stack[-1].end = ts
 					stack[-1].value = value
@@ -477,8 +496,8 @@ class EventRecorder(RecorderBase):
 			yield from cls.view_tree_structure(node.followup, prefix, is_first, False,
 										   width=width, printer=printer)
 
-		if isinstance(node.relabel, cls._EventNode):
-			yield from cls.view_tree_structure(node.relabel, child_prefix, False, True,
+		if node.router:
+			yield from cls.view_tree_structure(node.router, child_prefix, False, True,
 										   width=width, printer=printer)
 
 
@@ -511,28 +530,25 @@ class EventRecorder(RecorderBase):
 		def gadget_filepath(self, module):
 			return getattr(module, '__file__', None)
 
-		@tool('is_relabel')
-		def check_is_relabel(self, origin, gizmo):
-			if origin is not None:
-				return (isinstance(origin.relabel, EventRecorder._EventNode)
-						and origin.relabel.gizmo == gizmo)
-			return False
 
 		@tool('title')
-		def render_title(self, structure_prefix, gizmo, outcome, is_relabel, relabel, gadget):
+		def render_title(self, structure_prefix, gizmo, outcome, internal, external, gadget):
 			colors = {'success': 'green', 'failure': 'red', None: 'red',
 					  'cached': 'blue', 'missing': 'red'}
 			name = colorize(gizmo, color=colors.get(outcome, "yellow"))
 			alt = None
-			if is_relabel:
+			if external is not None:
 				name = f'({name})'
-			elif isinstance(relabel, str):
-				alt = relabel
+			elif internal is not None:
+				alt = internal
 			ungapper = getattr(gadget, 'gap_invert', None)
 			if ungapper is not None:
 				alt = ungapper(alt or gizmo) or alt
 			if alt is not None:
-				name = f'{name} ({alt})'
+				# use left arrow characters like: ←
+				# name = f'{name} ({alt})'
+				# name = f'({alt}) → {name}'
+				name = f'{name} (← {alt})'
 			return f'{structure_prefix}{name}'
 
 		@tool('safe_title')
@@ -550,8 +566,8 @@ class EventRecorder(RecorderBase):
 			return ''
 
 		@tool('status')
-		def render_status(self, duration, is_relabel):
-			return report_time(duration) if not is_relabel and duration is not None and duration > 0 else ''
+		def render_status(self, duration, external=None):
+			return report_time(duration) if external is None and duration is not None and duration > 0 else ''
 
 		def _cap_string(self, raw, length=50, first_line=False):
 			assert length > 3, f'length must be at least 3: {length}'
@@ -560,13 +576,13 @@ class EventRecorder(RecorderBase):
 			return full[:length-3] + '...' if len(full) > length else full
 
 		@tool('info')
-		def render_info(self, has_value, value, error, is_relabel):
+		def render_info(self, has_value, value, error, external=None):
 			if not has_value:
 				if error is not None:
 					msg = f'{error.__class__.__name__}: {error}' if isinstance(error, Exception) else f'Error: {error}'
 					return colorize(msg, color='red')
 				return ''
-			if is_relabel:
+			if external is not None:
 				return ''
 			full = self._cap_string(str(value))
 			return f'"{full}"' if isinstance(value, str) else full
@@ -764,7 +780,47 @@ def test_mech_recording():
 	print(ctx.report())
 
 
-# def test_
+def test_double_mech_recording():
+	from ...core import tool, ToolKit
+	from ..simple import DictGadget
+
+	class Tester1(ToolKit):
+		@tool('hidden')
+		def f(self):
+			return 5
+
+		@tool('a')
+		def g(self, x):
+			return 50 - x
+
+	class Tester2(ToolKit):
+		@tool('b')
+		def h(self):
+			return 100
+
+		@tool('c')
+		def h(self, b):
+			return b - 10
+
+	mech1 = Mechanism(Tester1(), select={'a': 'y', 'hidden': 'b'}, apply={'x': 'b'})
+	mech2 = Mechanism(Tester2(), select={'c': 'out'}, apply={'b': 'y'})
+	ctx = Context(mech1, mech2)
+
+	print()
+	ctx.record()
+
+	assert list(ctx.gizmos()) == ['b', 'y', 'out']
+
+	assert ctx.grab('out') == 35
+
+	print(ctx.report())
+
+	ctx.clear_cache()
+	print()
+	# ctx.record()
+	# assert ctx.grab('d') == 0
+	# print(ctx.report())
+
 
 
 
