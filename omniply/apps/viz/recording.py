@@ -9,6 +9,9 @@ from ...core.games import CacheGame, GameBase, GatedCache
 
 from .util import report_time, SPECIAL_CHARACTER
 
+from ..mechanisms import MechanismBase, Mechanism as _Mechanism
+
+
 
 class AbstractRecorder:
 	def attempt(self, gizmo: str, gadget: 'AbstractGadget'):
@@ -155,9 +158,6 @@ class RecordingCached(CacheGame, RecordableBase):
 		val = self._cache_miss(ctx, gizmo)
 		self[gizmo] = val  # cache packaged val
 		return val
-
-
-from ..mechanisms import MechanismBase, Mechanism as _Mechanism
 
 
 class RecordingMechanism(MechanismBase, RecordingGaggle):

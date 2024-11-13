@@ -27,7 +27,7 @@ class TrainerBase(AbstractTrainer):
 	
 
 	_Planner = Indexed
-	_Batch = Batch
+	_Batch = None #Batch
 	def fit_loop(self, src: Dataset, **settings: Any) -> Iterator[Batch]:
 		'''train the model'''
 		planner = self._planner.setup(src, **settings)
@@ -36,8 +36,9 @@ class TrainerBase(AbstractTrainer):
 
 		num_itr = planner.expected_iterations(batch_size) # to get the total number of iterations
 
+		batch_cls = self._Batch or getattr(src, '_Batch', None) or Batch
 		for info in planner.generate(batch_size):
-			batch = self._Batch(info, planner=planner).include(src).extend(tuple(self.gadgetry()))
+			batch = batch_cls(info, planner=planner).include(src).extend(tuple(self.gadgetry()))
 
 			# Note: this runs the optimization step before yielding the batch
 			yield self.learn(batch)
