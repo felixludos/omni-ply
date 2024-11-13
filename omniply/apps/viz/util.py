@@ -1,6 +1,25 @@
+import re
 
+SPECIAL_CHARACTER = '𐑀'
 
+# def strip_ansi_codes(s):
+#     ansi_escape = re.compile(r'''
+#         \x1b    # ESC character
+#         \[      # Start of CSI (Control Sequence Introducer)
+#         [0-?]*  # Parameter bytes
+#         [ -/]*  # Intermediate bytes
+#         [@-~]   # Final byte
+#     ''', re.VERBOSE)
+#     return ansi_escape.sub('', s)
 
+def strip_ansi_codes(s):
+    ansi_escape = re.compile(r'''
+        \x1b    # ESC character
+        \[      # Start of CSI
+        [0-9;]* # Parameter bytes
+        [A-Za-z]# Command letter
+    ''', re.VERBOSE)
+    return ansi_escape.sub('', s)
 
 def report_time(t):
 	# https://chatgpt.com/c/6732e473-b504-8005-a431-f6c863623545

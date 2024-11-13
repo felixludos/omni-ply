@@ -5,9 +5,9 @@ from tabulate import tabulate
 import logging, time
 from ...core import Context as _Context, ToolKit, tool, AbstractGadget
 from ...core.gaggles import LoopyGaggle
-from ...core.games import CacheGame, GameBase
+from ...core.games import CacheGame, GameBase, GatedCache
 
-from .util import report_time
+from .util import report_time, SPECIAL_CHARACTER
 
 
 class AbstractRecorder:
@@ -38,11 +38,17 @@ class AbstractRecordable:
 	def reset(self):
 		raise NotImplementedError
 
+	# def record_relabel(self, external: str, internal: str):
+	# 	raise NotImplementedError
+
 
 
 class RecorderBase:
 	def __init__(self):
 		self._log = []
+
+	def relabel(self, external: str, internal: str, typ: str = ''):
+		self._log.append(('relabel', external, internal, typ, time.time()))
 
 	def attempt(self, gizmo: str, gadget: 'AbstractGadget'):
 		self._log.append(('attempt', gizmo, gadget, time.time()))
@@ -74,6 +80,11 @@ class RecordableBase(AbstractRecordable):
 			record = self._Recorder()
 		self._active_recording = record
 		return self
+
+
+	# def record_relabel(self, external: str, internal: str):
+	# 	if self._active_recording:
+	# 		self._active_recording.relabel(external, internal)
 
 
 	def report(self, **kwargs):
@@ -146,18 +157,124 @@ class RecordingCached(CacheGame, RecordableBase):
 		return val
 
 
+from ..mechanisms import MechanismBase, Mechanism as _Mechanism
+
+
+class RecordingMechanism(MechanismBase, RecordingGaggle):
+	def _grab(self, gizmo: str) -> Any:
+		"""
+		Tries to grab a gizmo from the gate. If the gizmo is not found in the gate's cache, it checks the cache using
+		the external gizmo name. If it still can't be found in any cache, it grabs it from the gate's gadgets.
+
+		Args:
+			gizmo (str): The name of the gizmo to grab.
+
+		Returns:
+			Any: The grabbed gizmo.
+		"""
+		if len(self._game_stack):
+			# check cache (if one exists)
+			for parent in reversed(self._game_stack):
+				if isinstance(parent, GatedCache):
+					try:
+						out = parent.check_gate_cache(self, gizmo)
+					except self._GateCacheMiss:
+						pass
+					else:
+						if self._active_recording:
+							self._active_recording.cached(gizmo, out)
+						return out
+
+			# if it can't be found in my cache, check the cache using the external gizmo name
+			ext = self._select_map.get(gizmo)
+			if ext is not None:
+				for parent in reversed(self._game_stack):
+					if isinstance(parent, GatedCache) and parent.is_cached(ext):
+						return parent.grab(ext)
+
+		# if it can't be found in any cache, grab it from my gadgets
+		out = super(MechanismBase, self).grab_from(self, gizmo)
+
+		# update my cache
+		if len(self._game_stack):
+			for parent in reversed(self._game_stack):
+				if isinstance(parent, GatedCache):
+					parent.update_gate_cache(self, gizmo, out)
+					break
+
+		return out
+
+
+	def grab_from(self, ctx: 'AbstractRecordable', gizmo: str) -> Any:
+		"""
+		Tries to grab a gizmo from the context.
+
+		Args:
+			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
+			gizmo (str): The name of the gizmo to grab.
+
+		Returns:
+			Any: The grabbed gizmo.
+		"""
+		if ctx is None or ctx is self: # internal grab
+			fixed = self._apply_map.get(gizmo, gizmo)
+			if self._active_recording:
+				self._active_recording.relabel(fixed, gizmo, 'internal')
+			try:
+				out = self._grab(fixed)
+			except self._GadgetFailure:
+				# default to parent/s
+				if self._insulate_in and gizmo not in self._apply_map:
+					raise
+				for parent in reversed(self._game_stack):
+					try:
+						out = parent.grab(fixed)
+					except self._GadgetFailure:
+						pass
+					else:
+						break
+				else:
+					raise
+
+		else: # grab from external context
+			self._game_stack.append(ctx)
+			rec = getattr(ctx, '_active_recording', None)
+			if rec is not None:
+				self._active_recording = rec
+			prev = gizmo
+			gizmo = self._reverse_select_map.get(gizmo, gizmo)
+			if self._active_recording:
+				self._active_recording.relabel(prev, gizmo, 'external')
+			out = self._grab(gizmo)
+
+
+		if len(self._game_stack) and ctx is self._game_stack[-1]:
+			if (len(self._game_stack) == 1
+					and self._active_recording is getattr(self._game_stack[-1], '_active_recording', None)):
+				self._active_recording = None
+			self._game_stack.pop()
+
+		return out
+
+
+class Mechanism(_Mechanism, RecordingMechanism):
+	pass
+
 
 class EventRecorder(RecorderBase):
 	class _EventNode(ToolKit):
 		_no_value = object()
 
-		def __init__(self, gizmo=None, gadget=None, outcome=None, value=_no_value, error=None, start=None, end=None):
+		def __init__(self, gizmo=None, gadget=None, outcome=None, value=_no_value, error=None,
+					 relabel=None, relabel_type=None, start=None, end=None):
 			super().__init__()
 			self.gizmo = gizmo
 			self.gadget = gadget
 			self.outcome = outcome
 			self.value = value
 			self.error = error
+			self.relabel = relabel
+			self.relabel_type = relabel_type
 			self.followup = None
 			self.children = []
 			self.parent = None
@@ -184,6 +301,12 @@ class EventRecorder(RecorderBase):
 		@tool('value')
 		def get_value(self):
 			return self.value
+		@tool('relabel')
+		def get_relabel(self):
+			return self.relabel
+		@tool('relabel_type')
+		def get_relabel_type(self):
+			return self.relabel_type
 		@tool('has_value')
 		def has_value(self):
 			return self.value is not self._no_value
@@ -228,23 +351,54 @@ class EventRecorder(RecorderBase):
 			if event_type == 'attempt':
 				# _, gizmo, gadget = event
 				gizmo, gadget, ts = event
-				node = cls._EventNode(gizmo=gizmo, gadget=gadget, start=ts)
-				parent = stack[-1].children if stack else root_nodes
-				if len(parent) and parent[-1].gizmo == gizmo and parent[-1].outcome == 'failure':
-					assert parent[-1].followup is None
-					parent[-1].followup = node
-					node.origin = parent[-1]
+				if stack and stack[-1].relabel is not None and stack[-1].gadget is None:
+					assert stack[-1].gizmo == gizmo, f'Attempted gizmo {gizmo!r} does not match relabel {stack[-1].gizmo!r}'
+					stack[-1].gadget = gadget
+					stack[-1].start = ts
 				else:
+					node = cls._EventNode(gizmo=gizmo, gadget=gadget, start=ts)
+					parent = stack[-1].children if stack else root_nodes
+					if stack and stack[-1].relabel == gizmo:
+						stack[-1].relabel = node
+						node.origin = stack[-1]
+					elif len(parent) and parent[-1].gizmo == gizmo and parent[-1].outcome == 'failure':
+						assert parent[-1].followup is None
+						parent[-1].followup = node
+						node.origin = parent[-1]
+					else:
+						if stack: node.parent = stack[-1]
+						parent.append(node)
+					stack.append(node)
+
+			elif event_type == 'relabel':
+				external, internal, typ, ts = event
+				if typ == 'internal':
+					node = cls._EventNode(gizmo=external, relabel=internal, start=ts)
+					parent = stack[-1].children if stack else root_nodes
 					if stack: node.parent = stack[-1]
 					parent.append(node)
-				stack.append(node)
+					stack.append(node)
+				elif typ == 'external':
+					assert len(stack) > 0, f'No active attempt for relabel event: {event}'
+					assert stack[-1].gizmo == external, f'Attempted gizmo {external!r} does not match relabel {stack[-1].gizmo!r}'
+					assert stack[-1].relabel is None, f'Attempted gizmo {external!r} already has a relabel {stack[-1].relabel!r}'
+					stack[-1].relabel = internal
+				else:
+					raise ValueError(f'Invalid relabel type: {typ}')
 
 			elif event_type == 'cached':
 				gizmo, value, ts = event
-				node = cls._EventNode(gizmo=gizmo, outcome='cached', value=value, start=ts, end=ts)
-				parent = stack[-1].children if stack else root_nodes
-				if stack: node.parent = stack[-1]
-				parent.append(node)
+				if stack and stack[-1].relabel is not None and stack[-1].outcome is None:
+					assert stack[-1].gizmo == gizmo, f'Attempted gizmo {gizmo!r} does not match relabel {stack[-1].gizmo!r}'
+					stack[-1].outcome = 'cached'
+					stack[-1].end = ts
+					stack[-1].value = value
+					stack.pop()
+				else:
+					node = cls._EventNode(gizmo=gizmo, outcome='cached', value=value, start=ts, end=ts)
+					parent = stack[-1].children if stack else root_nodes
+					if stack: node.parent = stack[-1]
+					parent.append(node)
 
 			elif event_type == 'success':
 				gizmo, gadget, value, ts = event
@@ -278,7 +432,7 @@ class EventRecorder(RecorderBase):
 
 
 	@classmethod
-	def view_tree_structure(cls, node: _EventNode, prefix='', is_first=True, is_last=True, is_followup=False, *,
+	def view_tree_structure(cls, node: _EventNode, prefix='', is_first=True, is_last=True, *,
 							width=4, printer: Callable[[_EventNode], str] = None):
 		if printer is None:
 			printer = lambda node: node.gizmo
@@ -294,6 +448,7 @@ class EventRecorder(RecorderBase):
 		else:
 			connector = '├' + '─' * (width - 2) + ' '
 		# Print the attempt
+
 		yield prefix + connector + printer(node)
 
 		# Prepare the new prefix for child nodes
@@ -311,7 +466,11 @@ class EventRecorder(RecorderBase):
 										   width=width, printer=printer)
 
 		if node.followup:
-			yield from cls.view_tree_structure(node.followup, prefix, is_first, False, True,
+			yield from cls.view_tree_structure(node.followup, prefix, is_first, False,
+										   width=width, printer=printer)
+
+		if isinstance(node.relabel, cls._EventNode):
+			yield from cls.view_tree_structure(node.relabel, child_prefix, False, True,
 										   width=width, printer=printer)
 
 
@@ -344,33 +503,64 @@ class EventRecorder(RecorderBase):
 		def gadget_filepath(self, module):
 			return getattr(module, '__file__', None)
 
+		@tool('is_relabel')
+		def check_is_relabel(self, origin, gizmo):
+			if origin is not None:
+				return (isinstance(origin.relabel, EventRecorder._EventNode)
+						and origin.relabel.gizmo == gizmo)
+			return False
+
 		@tool('title')
-		def render_title(self, structure_prefix, gizmo, outcome):
+		def render_title(self, structure_prefix, gizmo, outcome, is_relabel, relabel, gadget):
 			colors = {'success': 'green', 'failure': 'red', 'cached': 'blue', 'missing': 'red'}
-			return f'{structure_prefix}{colorize(gizmo, color=colors.get(outcome, "yellow"))}'
+			name = colorize(gizmo, color=colors.get(outcome, "yellow"))
+			alt = None
+			if is_relabel:
+				name = f'({name})'
+			elif isinstance(relabel, str):
+				alt = relabel
+			ungapper = getattr(gadget, 'gap_invert', None)
+			if ungapper is not None:
+				alt = ungapper(alt or gizmo) or alt
+			if alt is not None:
+				name = f'{name} ({alt})'
+			return f'{structure_prefix}{name}'
+
+		@tool('safe_title')
+		def render_safe_title(self, title):
+			'''this is useful as tabulate removes padding'''
+			return title.replace(' ', SPECIAL_CHARACTER)
 
 		@tool('pretty_name')
-		def render_pretty_name(self, name):
+		def render_pretty_name(self, name, gadget):
 			if name is not None:
 				terms = name.split('.')
 				return '.'.join([*terms[:-1], colorize(terms[-1], color='magenta')])
+			if gadget is not None:
+				return self._cap_string(str(gadget), length=30, first_line=True)
 			return ''
 
 		@tool('status')
-		def render_status(self, duration):
-			return report_time(duration) if duration is not None and duration > 0 else ''
+		def render_status(self, duration, is_relabel):
+			return report_time(duration) if not is_relabel and duration is not None and duration > 0 else ''
+
+		def _cap_string(self, raw, length=50, first_line=False):
+			assert length > 3, f'length must be at least 3: {length}'
+			full = raw.split('\n', 1)[0] if first_line else raw.replace('\n', '\\n')
+			full = full.replace('\t', '\\t')
+			return full[:length-3] + '...' if len(full) > length else full
 
 		@tool('info')
-		def render_info(self, has_value, value, error):
+		def render_info(self, has_value, value, error, is_relabel):
 			if not has_value:
 				if error is not None:
 					msg = f'{error.__class__.__name__}: {error}' if isinstance(error, Exception) else f'Error: {error}'
 					return colorize(msg, color='red')
 				return ''
-			full = str(value)
-			full = full.replace('\n', '\\n').replace('\t', '\\t')
-			raw = full[:47] + '...' if len(full) > 50 else full
-			return f'"{raw}"' if isinstance(value, str) else raw
+			if is_relabel:
+				return ''
+			full = self._cap_string(str(value))
+			return f'"{full}"' if isinstance(value, str) else full
 
 
 	def report(self, owner: AbstractRecordable, *, columns: Iterable[str] = None, width: int = 4,
@@ -380,6 +570,7 @@ class EventRecorder(RecorderBase):
 		if self._EventViewer is not None:
 			workers.append(self._EventViewer())
 
+		log = self._log
 		roots = self.process_log(self._log)
 
 		all_nodes = []
@@ -396,12 +587,25 @@ class EventRecorder(RecorderBase):
 		if ret_ctx:
 			return rows
 		if columns is None:
-			columns = ['title', 'status', 'pretty_name', 'info']
+			columns = ['safe_title', # used to keep leading whitespace of structure_prefix
+					   'status', 'pretty_name', 'info']
 
 		table = [[row.grab(column) for column in columns] for row in rows]
 
+		# widths = [None] * len(columns)
+		# for row in table:
+		# 	for i, cell in enumerate(row):
+		# 		if widths[i] is None or len(cell) > widths[i]:
+		# 			widths[i] = wcswidth(cell)
+		# lines = []
+		# for row in table:
+		# 	line = '  '.join(cell.ljust(width) for cell, width in zip(row, widths))
+		# 	lines.append(line)
+		# return '\n'.join(lines)
+
 		# tabulate with minimal formatting
-		return tabulate(table, tablefmt='plain')
+		return tabulate(table, tablefmt='plain').replace(SPECIAL_CHARACTER, ' ')
+
 
 
 
@@ -412,7 +616,7 @@ class Context(_Context, RecordingCached, GameBase, RecordingGaggle):
 
 def test_recording():
 
-	from ...core import tool, ToolKit
+	from ..gaps import tool, ToolKit
 	from ...core import GadgetFailure, MissingGadget, GrabError
 
 	class Tester(ToolKit):
@@ -432,7 +636,7 @@ def test_recording():
 	def i():
 		raise GadgetFailure
 
-	ctx = Context(i, Tester())
+	ctx = Context(i, Tester(gap={'a': 'x'}))
 
 	ctx['d'] = 5
 
@@ -442,7 +646,7 @@ def test_recording():
 
 	ctx.clear_cache()
 
-	assert ctx.grab('a') == 10
+	assert ctx.grab('x') == 10
 	assert ctx.grab('b') == 20
 
 	try:
@@ -450,7 +654,7 @@ def test_recording():
 	except GrabError:
 		pass
 
-	assert ctx.grab('a') == 10
+	assert ctx.grab('x') == 10
 
 	report = ctx.report(ret_ctx=True)
 
@@ -459,7 +663,6 @@ def test_recording():
 	pretty = ctx.report()
 	print(pretty)
 	print()
-
 
 
 def test_loopy():
@@ -487,6 +690,43 @@ def test_loopy():
 	print(pretty)
 	print()
 
+
+def test_mech_recording():
+
+	from ...core import tool, ToolKit
+	from ...core import GadgetFailure, MissingGadget, GrabError
+
+	class Tester(ToolKit):
+		@tool('a')
+		def f(self):
+			return 10
+
+		@tool('b')
+		def g(self, a):
+			return a + 4
+
+		@tool('c')
+		def h(self, a, b):
+			return b - a
+
+	src = Tester()
+	mech = Mechanism(src, select={'c': 'd'}, apply={'b': 'a'})
+	ctx = Context(src, mech)
+
+	print()
+	ctx.record()
+
+	assert ctx.grab('c') == 4
+
+	print(ctx.report())
+
+	ctx.clear_cache()
+	print()
+	ctx.record()
+
+	assert ctx.grab('d') == 0
+
+	print(ctx.report())
 
 
 

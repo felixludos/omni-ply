@@ -27,6 +27,11 @@ class AbstractGapped(AbstractGauged):
 		raise NotImplementedError
 
 
+	def gap_invert(self, external_gizmo: str) -> str:
+		'''Converts an external gizmo to its internal representation (only when its unambiguous).'''
+		raise NotImplementedError
+
+
 
 class Gauged(AbstractGauged):
 	'''Gauges allow you to relabel output gizmos'''
@@ -53,6 +58,13 @@ class Gapped(Gauged, AbstractGapped):
 	def gap(self, internal_gizmo: str) -> str:
 		'''Converts an internal gizmo to its external representation. Meant only for inputs to this gadget.'''
 		return self._gauge.get(internal_gizmo, internal_gizmo)
+
+	def gap_invert(self, external_gizmo: str) -> str:
+		inv = {}
+		for k, v in self._gauge.items():
+			inv.setdefault(v, []).append(k)
+		if external_gizmo in inv and len(inv[external_gizmo]) == 1:
+			return inv[external_gizmo][0]
 
 
 
@@ -101,6 +113,14 @@ class AutoFunctionGapped(AutoMIMOFunctionGadget, AbstractGapped):
 	def gap(self, internal_gizmo: str) -> str:
 		'''Converts an internal gizmo to its external representation.'''
 		return self._arg_map.get(internal_gizmo, internal_gizmo)
+
+
+	def gap_invert(self, external_gizmo: str) -> str:
+		inv = {}
+		for k, v in self._arg_map.items():
+			inv.setdefault(v, []).append(k)
+		if external_gizmo in inv and len(inv[external_gizmo]) == 1:
+			return inv[external_gizmo][0]
 
 
 	def gauge_apply(self, gauge: GAUGE) -> Self:
