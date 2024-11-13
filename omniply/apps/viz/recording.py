@@ -3,7 +3,7 @@ from collections import OrderedDict
 from omnibelt import colorize
 from tabulate import tabulate
 import logging, time
-from ...core import Context as _Context, ToolKit, tool, AbstractGadget
+from ...core import Context as _Context, ToolKit, tool, AbstractGadget, MissingGadget
 from ...core.gaggles import LoopyGaggle
 from ...core.games import CacheGame, GameBase, GatedCache
 
@@ -125,11 +125,11 @@ class RecordingGaggle(LoopyGaggle, RecordableBase):
 						self._grabber_stack.pop(gizmo)
 					return out
 		except self._MissingGadgetError:
-			if self._active_recording:
-				self._active_recording.missing(gizmo)
+			# if self._active_recording:
+			# 	self._active_recording.missing(gizmo)
 			raise
-		if self._active_recording:
-			self._active_recording.missing(gizmo)
+		# if self._active_recording:
+		# 	self._active_recording.missing(gizmo)
 		if gizmo in self._grabber_stack:
 			self._grabber_stack.pop(gizmo)
 		if failures:
@@ -410,23 +410,31 @@ class EventRecorder(RecorderBase):
 				node.end = ts
 			elif event_type == 'failure':
 				gizmo, gadget, error, ts = event
-				assert len(stack) > 0, f'No active attempt for failure event: {event}'
-				node = stack.pop()
-				assert node.gizmo == gizmo and node.gadget == gadget
-				node.outcome = 'failure'
-				node.error = error
-				node.end = ts
+
+				if isinstance(error, MissingGadget):
+					node = cls._EventNode(gizmo=gizmo, outcome='missing', start=ts, end=ts, error=error)
+					parent = stack[-1].children if stack else root_nodes
+					if stack: node.parent = stack[-1]
+					parent.append(node)
+				else:
+					assert len(stack) > 0, f'No active attempt for failure event: {event}'
+					node = stack.pop()
+					assert node.gizmo == gizmo and (gadget is None or node.gadget == gadget)
+					node.outcome = 'failure'
+					node.error = error
+					node.end = ts
 			elif event_type == 'missing':
+				raise NotImplemented('not currently supported as all "missing" events should be recorded as a "failure"')
 				gizmo, ts = event
 				node = cls._EventNode(gizmo=gizmo, outcome='missing', start=ts, end=ts, error='missing')
 				parent = stack[-1].children if stack else root_nodes
 				if stack: node.parent = stack[-1]
 				parent.append(node)
-				while len(stack) and stack[-1].outcome is None:
-					parent = stack.pop()
-					parent.outcome = 'failure'
-					parent.error = f'{gizmo!r} missing'
-					parent.end = ts
+				# while len(stack) and stack[-1].outcome is None:
+				# 	parent = stack.pop()
+				# 	parent.outcome = 'failure'
+				# 	parent.error = f'{gizmo!r} missing'
+				# 	parent.end = ts
 
 		return root_nodes
 
@@ -512,7 +520,8 @@ class EventRecorder(RecorderBase):
 
 		@tool('title')
 		def render_title(self, structure_prefix, gizmo, outcome, is_relabel, relabel, gadget):
-			colors = {'success': 'green', 'failure': 'red', 'cached': 'blue', 'missing': 'red'}
+			colors = {'success': 'green', 'failure': 'red', None: 'red',
+					  'cached': 'blue', 'missing': 'red'}
 			name = colorize(gizmo, color=colors.get(outcome, "yellow"))
 			alt = None
 			if is_relabel:
@@ -607,10 +616,36 @@ class EventRecorder(RecorderBase):
 		return tabulate(table, tablefmt='plain').replace(SPECIAL_CHARACTER, ' ')
 
 
-
+from ...core.errors import AbstractGadgetError, GrabError
 
 class Context(_Context, RecordingCached, GameBase, RecordingGaggle):
 	_Recorder = EventRecorder
+
+
+	def _grab_from_fallback(self, error: Exception, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
+		"""
+		Handles a GadgetFailure when trying to grab a gizmo from the context.
+
+		Args:
+			error (Exception): The exception that occurred during the grab operation.
+			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
+			gizmo (str): The name of the gizmo to grab.
+
+		Returns:
+			Any: The result of the fallback operation.
+
+		Raises:
+			_GrabError: If the error is a GrabError or if the context is None or self.
+			error: If the error is not a GrabError.
+		"""
+		if isinstance(error, AbstractGadgetError):
+			if isinstance(error, GrabError) or ctx is None or ctx is self:
+				if self._active_recording:
+					self._active_recording.failure(gizmo, None, error)
+				raise self._GrabError(gizmo, error) from error
+			else:
+				return ctx.grab(gizmo)
+		raise error from error
 
 
 
@@ -729,7 +764,7 @@ def test_mech_recording():
 	print(ctx.report())
 
 
-
+# def test_
 
 
 
