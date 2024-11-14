@@ -128,8 +128,8 @@ class RecordingGaggle(LoopyGaggle, RecordableBase):
 			# if self._active_recording:
 			# 	self._active_recording.missing(gizmo)
 			raise
-		# if self._active_recording:
-		# 	self._active_recording.missing(gizmo)
+		if self._active_recording: # recent change
+			self._active_recording.missing(gizmo)
 		if gizmo in self._grabber_stack:
 			self._grabber_stack.pop(gizmo)
 		if failures:
@@ -222,7 +222,7 @@ class RecordingMechanism(MechanismBase, RecordingGaggle):
 				self._active_recording.relabel(fixed, gizmo, 'internal')
 			try:
 				out = self._grab(fixed)
-			except self._GadgetFailure:
+			except self._MissingGadgetError: # important change
 				# default to parent/s
 				if self._insulate_in and gizmo not in self._apply_map:
 					raise
@@ -234,6 +234,8 @@ class RecordingMechanism(MechanismBase, RecordingGaggle):
 					else:
 						break
 				else:
+					if self._active_recording:
+						self._active_recording.missing(gizmo)
 					raise
 
 		else: # grab from external context
@@ -416,14 +418,19 @@ class EventRecorder(RecorderBase):
 				else:
 					node = cls._EventNode(gizmo=gizmo, outcome='cached', value=value, start=ts, end=ts)
 					parent = stack[-1].children if stack else root_nodes
-					if stack: node.parent = stack[-1]
-					parent.append(node)
+					if len(parent) and parent[-1].gizmo == gizmo and parent[-1].outcome == 'failure':
+						assert parent[-1].followup is None
+						parent[-1].followup = node
+						node.origin = parent[-1]
+					else:
+						if stack: node.parent = stack[-1]
+						parent.append(node)
 
 			elif event_type == 'success':
 				gizmo, gadget, value, ts = event
 				assert len(stack) > 0, f'No active attempt for success event: {event}'
 				node = stack.pop()
-				assert node.gizmo == gizmo and node.gadget == gadget
+				# assert node.gizmo == gizmo and node.gadget == gadget # recent change
 				node.outcome = 'success'
 				node.value = value
 				node.end = ts
@@ -437,18 +444,27 @@ class EventRecorder(RecorderBase):
 					parent.append(node)
 				else:
 					assert len(stack) > 0, f'No active attempt for failure event: {event}'
-					node = stack.pop()
-					assert node.gizmo == gizmo and (gadget is None or node.gadget == gadget)
-					node.outcome = 'failure'
-					node.error = error
-					node.end = ts
+					node = None
+					while stack and (node is None or node.gizmo != gizmo):
+						node = stack.pop()
+					# assert node.gizmo == gizmo and (gadget is None or node.gadget == gadget)
+					if node is not None and node.gizmo == gizmo:
+						node.outcome = 'failure'
+						node.error = error
+						node.end = ts
 			elif event_type == 'missing':
-				raise NotImplemented('not currently supported as all "missing" events should be recorded as a "failure"')
+				# raise NotImplemented('not currently supported as all "missing" events should be recorded as a "failure"')
 				gizmo, ts = event
-				node = cls._EventNode(gizmo=gizmo, outcome='missing', start=ts, end=ts, error='missing')
-				parent = stack[-1].children if stack else root_nodes
-				if stack: node.parent = stack[-1]
-				parent.append(node)
+				if stack and stack[-1].gizmo == gizmo and stack[-1].outcome is None:
+					stack[-1].outcome = 'missing'
+					stack[-1].end = ts
+					stack[-1].error = 'missing'
+					stack.pop()
+				else:
+					node = cls._EventNode(gizmo=gizmo, outcome='missing', start=ts, end=ts, error='missing')
+					parent = stack[-1].children if stack else root_nodes
+					if stack: node.parent = stack[-1]
+					parent.append(node)
 				# while len(stack) and stack[-1].outcome is None:
 				# 	parent = stack.pop()
 				# 	parent.outcome = 'failure'
