@@ -1,11 +1,11 @@
 from .imports import *
-from .op import Geared, gear, Mechanics, Mechanized
+from .op import ToolKit, gear, Mechanics, Mechanized
 
 
 
 def test_gears():
 
-	class Tester(Geared):
+	class Tester(ToolKit):
 		@gear('a')
 		def something(self):
 			return 10
@@ -21,7 +21,7 @@ def test_gears():
 
 
 def test_synced():
-	class Tester(Geared):
+	class Tester(ToolKit):
 		@gear('a')
 		def something(self):
 			return 10
@@ -30,7 +30,7 @@ def test_synced():
 		def something_else_else(self, a, outside):
 			return a + outside
 
-	class Tester2(Geared):
+	class Tester2(ToolKit):
 		@gear('outside')
 		def other(self):
 			return 100

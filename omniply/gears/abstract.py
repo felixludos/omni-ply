@@ -8,21 +8,28 @@ class AbstractGear(AbstractGadget):
 
 
 class AbstractGearbox(AbstractGaggle):
+	'''just like a mutable gaggle, but adds gearboxes when encountering geared gadgets'''
 	pass
 
 
 
-class AbstractGearable(AbstractGadget):
+class AbstractGeared(AbstractGadget):
 	def gears(self) -> Iterator[str]:
-		raise NotImplementedError
+		yield from self.gearbox().gizmos()
 
 
-
-class AbstractGeared(AbstractGearable):
-	# analogous to "prepared"
-	# _structure = None
 	def gearbox(self) -> AbstractGearbox:
 		raise NotImplementedError
+
+
+
+class AbstractMechanical(AbstractGeared):
+	'''gadget with synchronized gears'''
+	# analogous to "prepared"
+	# _structure = None
+	def mechanics(self) -> Optional['AbstractMechanics']:
+		raise NotImplementedError
+
 
 
 class AbstractMechanics(AbstractGame):
@@ -30,13 +37,11 @@ class AbstractMechanics(AbstractGame):
 	pass
 
 
-class MechanizedBase:
-	_mechanics = None
 
+class AbstractMechanized(AbstractMechanical):
 	def mechanize(self, mechanics: AbstractMechanics):
-		self._mechanics = mechanics
+		raise NotImplementedError
 
-	pass
 
 
 
