@@ -4,4 +4,5 @@ from .templating import Template, FileTemplate
 from .decisions import *
 from .gaps import Gapped, Gauged
 from .staging import AbstractStaged, Staged, StagedGaggle
-from .guides import AbstractGuru, AbstractMogul, MutableGuru, Guru
+# from .guides import AbstractGuru, AbstractMogul, MutableGuru, Guru
+from .mechanisms import Mechanism, SimpleMechanism
