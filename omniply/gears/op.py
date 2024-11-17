@@ -1,16 +1,17 @@
 from .imports import *
 from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, NestableCraft
 from ..core.gaggles import LoopyGaggle
-from ..core import Context, ToolKit as _ToolKit
+from ..core import Context as _Context, ToolKit as _ToolKit
+from .abstract import AbstractGeared, AbstractMechanized
 from .gearbox import MutableGearbox, GearedGaggle
-from .mechanics import MechanizedBase, AutoMechanized, Mechanics
-from .gears import AutoGearDecorator, GearDecorator
+from .mechanics import MechanizedBase, AutoMechanized, MechanizedGaggle, AutoMechanizedGaggle, Mechanics
+from .gears import GearDecorator
 
 
 
-class gear(AutoGearDecorator):
+class gear(GearDecorator):
 	'''decorator for gears'''
-	from_context = GearDecorator
+	# from_context = GearDecorator # not included by default (but implemented)
 
 
 
@@ -20,19 +21,20 @@ class Geared(GearedGaggle):
 
 
 
-class Mechanized(MechanizedBase, Geared):
-	'''synchronized'''
+class Mechanized(AutoMechanized, MechanizedGaggle, Geared):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.mechanize() # makes (local) gears cached by default
+
+
+
+class ToolKit(Mechanized, _ToolKit):
 	pass
 
 
 
-class ToolKit(AutoMechanized, Geared, _ToolKit):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self._mechanize_self()
-
-
-
+class Context(AutoMechanizedGaggle, _Context):
+	pass
 
 
 

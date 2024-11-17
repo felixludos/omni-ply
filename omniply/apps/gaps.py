@@ -5,8 +5,11 @@ from .. import AbstractGadget, AbstractGaggle
 from ..core.gaggles import CraftyGaggle, MutableGaggle
 from ..core.games import CacheGame
 from ..core.tools import ToolCraft, AutoToolCraft
-from ..core.genetics import AutoMIMOFunctionGadget
-from .. import ToolKit as _ToolKit, tool as _tool, Context as _Context
+from ..core.genetics import AutoMIMOFunctionGadget, AutoFunctionGadget
+from .. import ToolKit as _ToolKit, tool as _tool, Context as _Context, gear as _gear, Mechanics as _Mechanics
+from ..gears.gears import GearCraft, AutoGearCraft, GearSkill
+from ..gears.gearbox import GearedGaggle
+from ..gears.mechanics import MechanizedBase
 
 # gauges are not aliases - instead they replace existing gizmos ("relabeling" only, no remapping)
 
@@ -52,8 +55,14 @@ class Gauged(AbstractGauged):
 		return self
 
 
+class GappedGadget(AbstractGapped):
+	def gizmos(self) -> Iterator[str]:
+		for gizmo in super().gizmos():
+			yield self.gap(gizmo)
 
-class Gapped(Gauged, AbstractGapped):
+
+
+class Gapped(Gauged, GappedGadget):
 	'''Gapped gauges allow you to relabel inputs as well'''
 	def gap(self, internal_gizmo: str) -> str:
 		'''Converts an internal gizmo to its external representation. Meant only for inputs to this gadget.'''
@@ -68,23 +77,7 @@ class Gapped(Gauged, AbstractGapped):
 
 
 
-# class GappedCap(Gapped):
-# 	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
-# 		return super().grab_from(ctx, self.gap(gizmo))
-
-
-
 class GaugedGaggle(MutableGaggle, Gauged):
-	# don't regauge new gadgets when they are added (gauges are stateless)
-	# def extend(self, gadgets: Iterable[AbstractGauged]) -> Self:
-	# 	'''Extends the Gauged with the provided gadgets.'''
-	# 	gadgets = list(gadgets)
-	# 	for gadget in gadgets:
-	# 		# if isinstance(gadget, AbstractGauged):
-	# 		gadget.gauge_apply(self._gauge)
-	# 	return super().extend(gadgets)
-
-
 	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		'''Applies the gauge to the GaugedGaggle.'''
 		super().gauge_apply(gauge)
@@ -95,6 +88,7 @@ class GaugedGaggle(MutableGaggle, Gauged):
 		self._gadgets_table.clear()
 		self._gadgets_table.update(table)
 		return self
+
 
 
 
@@ -109,7 +103,7 @@ class GaugedGame(CacheGame, GaugedGaggle):
 
 
 
-class AutoFunctionGapped(AutoMIMOFunctionGadget, AbstractGapped):
+class AutoFunctionGapped(GappedGadget, AutoFunctionGadget):
 	def gap(self, internal_gizmo: str) -> str:
 		'''Converts an internal gizmo to its external representation.'''
 		return self._arg_map.get(internal_gizmo, internal_gizmo)
@@ -133,18 +127,69 @@ class AutoFunctionGapped(AutoMIMOFunctionGadget, AbstractGapped):
 		return self
 
 
-	def gizmos(self) -> Iterator[str]:
-		for gizmo in super().gizmos():
-			yield self.gap(gizmo)
+class RecoverableGearSkill(GearSkill):
+	'''needs to be recoverable for GaugedGearedGaggle'''
+	@property
+	def craft(self) -> GearCraft:
+		return self._base
 
 
 
-class GappedTool(ToolCraft):
+
+class GaugedGearedGaggle(GearedGaggle, Gauged):
+	_gears_list: list[RecoverableGearSkill]
+
+	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
+		for gear in self._gears_list:
+			if isinstance(gear, AbstractGauged):
+				gear.gauge_apply(gauge)
+		return super().gauge_apply(gauge)
+
+	def _give_gear_skill(self, craft: GearCraft) -> GearSkill:
+		'''
+		used to reocover the gear skill corresponding to a given craft
+		(used primarily internally in case the skill changes the grab behavior)
+		Args:
+			gear:
+
+		Returns:
+
+		'''
+		for gear in self._gears_list:
+			if gear.craft is craft:
+				return gear
+		raise ValueError(f'gear {craft} not found in {self}')
+
+
+	def gearbox(self) -> 'AbstractGearbox':
+		gearbox = super().gearbox()
+		raise NotImplementedError # apply gauge here (and only here)
+		return self._Gearbox(*self._gears_list)
+
+
+class CarefulGearCraft(GearCraft):
+	'''recovers the corresponding skill to apply the correct gap'''
+
+	def __get__(self, instance: GaugedGearedGaggle, owner):
+		ctx = self._find_context(instance)
+		skill = instance._give_gear_skill(self)
+		gizmo = skill.gap(self._gizmo)
+		return ctx.grab(gizmo)
+
+
+
+
+class GaugedMechanized(MechanizedBase, Gauged):
+	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
+		if self._mechanics is not None:
+			self._mechanics.gauge_apply(gauge)
+		return super().gauge_apply(gauge)
+
+
+
+class GappedTool(Gapped, ToolCraft):
 	class _ToolSkill(Gapped, ToolCraft._ToolSkill):
-		def gizmos(self) -> Iterable[str]:
-			'''Lists the gizmos produced by the tool.'''
-			for gizmo in super().gizmos():
-				yield self.gap(gizmo)
+		pass
 
 
 
@@ -154,7 +199,15 @@ class GappedAutoTool(AutoFunctionGapped, AutoToolCraft):
 
 
 
-class ToolKit(_ToolKit, Gapped, GaugedGaggle):
+class Mechanics(_Mechanics, GaugedGame):
+	pass
+
+
+
+class ToolKit(_ToolKit, Gapped, GaugedMechanized, GaugedGearedGaggle, GaugedGaggle):
+	_Mechanics = Mechanics
+
+
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.gauge_apply(self._gauge)
@@ -162,7 +215,7 @@ class ToolKit(_ToolKit, Gapped, GaugedGaggle):
 
 
 class Context(_Context, GaugedGame):
-	pass
+	_Mechanics = Mechanics
 
 
 
@@ -172,7 +225,19 @@ class tool(_tool):
 		_ToolCraft = GappedTool
 
 
+
+class gear(AutoFunctionGapped, CarefulGearCraft, _gear):
+	class _GearSkill(AutoFunctionGapped, RecoverableGearSkill, _gear._GearSkill):
+		pass
+	# class from_context(Gapped, _gear.from_context):
+	# 	class _GearSkill(Gapped, _gear._GearSkill):
+	# 		pass
+
+
+
+
 from .simple import DictGadget as _DictGadget, Table as _Table
+
 
 
 class DictGadget(Gauged, _DictGadget): # TODO: unit test this and the GappedCap
@@ -189,6 +254,7 @@ class DictGadget(Gauged, _DictGadget): # TODO: unit test this and the GappedCap
 					src[fix] = src[key]
 					del src[key]
 		return self
+
 
 
 class Table(Gapped, _Table): # TODO: unit test this

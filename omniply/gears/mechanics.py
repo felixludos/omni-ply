@@ -25,12 +25,29 @@ class MechanizedBase(AbstractMechanized):
 
 
 class AutoMechanized(MechanizedBase):
-	def _mechanize_self(self):
-		self._mechanics = Mechanics(self)
-
+	_Mechanics = Mechanics
+	def _auto_mechanics(self):
+		return self._Mechanics(self)
 
 	def mechanize(self, mechanics: AbstractMechanics = None):
 		if mechanics is None:
-			self._mechanize_self()
+			mechanics = self._auto_mechanics()
 		return super().mechanize(mechanics)
+
+
+
+class MechanizedGaggle(MechanizedBase):
+	def mechanize(self, mechanics: AbstractMechanics):
+		for gadget in self.vendors():
+			if isinstance(gadget, AbstractMechanized):
+				gadget.mechanize(mechanics)
+		return super().mechanize(mechanics)
+
+
+
+class AutoMechanizedGaggle(AutoMechanized, MechanizedGaggle):
+	def _auto_mechanics(self):
+		return self._Mechanics(*self.vendors())
+
+
 

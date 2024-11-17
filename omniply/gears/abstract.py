@@ -23,7 +23,7 @@ class AbstractGeared(AbstractGadget):
 
 
 
-class AbstractMechanical(AbstractGeared):
+class AbstractMechanical:
 	'''gadget with synchronized gears'''
 	# analogous to "prepared"
 	# _structure = None

@@ -1,4 +1,4 @@
-from .gaps import tool, Context, ToolKit, Table, DictGadget
+from .gaps import tool, Context, ToolKit, gear, Table, DictGadget
 from .mechanisms import SimpleMechanism, Mechanism
 
 
@@ -120,7 +120,30 @@ def test_gapped_apps():
 	assert ctx['z'] == 1
 	assert ctx['b'] == 4
 
+
+
+def test_gapped_gear():
+	class Tester(ToolKit):
+		@gear('a')
+		def something(self):
+			return 10
+
+		@gear('b')
+		def something_else(self, a):
+			return a + 5
+
+	src = Tester(gap={'a': 'c'})
+
+	assert src.something == 10
+	assert src.something_else == 15
+
+	assert src.mechanics().is_cached('c')
+	assert src.mechanics()['b'] == 15
+
+
+
 # endregion
+
 
 # region Mechanism
 

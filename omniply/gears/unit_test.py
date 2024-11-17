@@ -1,5 +1,5 @@
 from .imports import *
-from .op import ToolKit, gear, Mechanics, Mechanized
+from .op import Context, ToolKit, gear, Mechanics, Mechanized
 
 
 
@@ -12,12 +12,12 @@ def test_gears():
 
 		@gear('b')
 		def something_else(self, a):
-			return a + 10
+			return a + 5
 
 	src = Tester()
 
 	assert src.something == 10
-	assert src.something_else == 20
+	assert src.something_else == 15
 
 
 
@@ -131,6 +131,42 @@ def test_ref():
 	assert src2.other == 15
 	assert m.is_cached('b')
 	assert src2.other2 == 16
+
+
+
+def test_mechanized_context():
+	from .. import tool
+
+	class Tester(ToolKit):
+		@gear('a')
+		def something(self):
+			return 10
+
+		@gear('c')
+		def something_else_else(self, a, outside):
+			return a + outside
+
+		@tool('a')
+		def f(self):
+			return -10
+
+	class Tester2(ToolKit):
+		@gear('outside')
+		def other(self):
+			return 100
+
+		ref = gear('c')
+
+	src = Tester()
+	src2 = Tester2()
+
+	ctx = Context(src, src2)
+	ctx.mechanize()
+
+	assert ctx['a'] == -10
+	assert src2.ref == 110
+	assert src.something_else_else == 110
+	assert src2.other == 100
 
 
 

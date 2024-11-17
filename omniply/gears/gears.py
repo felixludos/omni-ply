@@ -1,9 +1,10 @@
 from .imports import *
+from omnibelt.crafts import AbstractCraft
 from .abstract import AbstractGear, AbstractGeared, AbstractMechanical
 from .errors import MissingMechanicsError
 from ..core import AbstractGame
-from ..core.gadgets import FunctionGadget, GadgetFailure
-from ..core.genetics import MIMOGadgetBase, AutoMIMOFunctionGadget
+from ..core.gadgets import GadgetFailure
+from ..core.genetics import AutoFunctionGadget, FunctionGadget
 from ..core.tools import SkillBase, CraftBase#, ToolDecoratorBase, MIMOToolDecorator, AutoToolDecorator
 
 
@@ -16,12 +17,11 @@ class GearBase(FunctionGadget, AbstractGear):
 
 
 
-class GearSkill(GearBase, MIMOGadgetBase, SkillBase):
+class GearSkill(GearBase, SkillBase):
 	pass
 
 
-
-class GearCraft(GearBase, MIMOGadgetBase, CraftBase):
+class GearCraft(GearBase, CraftBase):
 	_GearSkill = GearSkill
 
 	def as_skill(self, owner: 'AbstractCrafty') -> SkillBase:
@@ -68,43 +68,15 @@ class GearCraft(GearBase, MIMOGadgetBase, CraftBase):
 
 
 
-class AutoGearCraft(GearCraft, AutoMIMOFunctionGadget):
-	class _GearSkill(GearSkill, AutoMIMOFunctionGadget):
+class AutoGearCraft(GearCraft, AutoFunctionGadget):
+	class _GearSkill(GearSkill, AutoFunctionGadget):
 		pass
 
 
 
-class GearDecorator(GearCraft):
-	def __init__(self, *gizmos: str, **kwargs):
-		"""
-		Important: a single gizmo is always interpretted as a MISO (not MIMO).
-
-		To use a MIMO with a single output gizmo you must pass a 1-element tuple/list (why would you do that though?)
-
-		"""
-		gizmo = None
-		if len(gizmos) == 1:
-			if isinstance(gizmos[0], str):
-				gizmo = gizmos[0]
-				gizmos = None
-			else:
-				assert len(gizmos[0]) == 1, f'Cannot interpret {gizmos[0]} as a single gizmo'
-
-		if gizmos is not None:
-			gizmos = tuple(self._gizmo_type(gizmo) if isinstance(gizmo, str) and self._gizmo_type is not None
-						   else gizmo for gizmo in gizmos)
+class GearDecorator(AutoGearCraft):
+	def __init__(self, gizmo: str, **kwargs):
 		super().__init__(gizmo=gizmo, **kwargs)
-		self._gizmos = gizmos
-
-
-	def gizmos(self) -> Iterator[str]:
-		"""
-		Lists gizmos produced by self.
-
-		Returns:
-			Iterator[str]: An iterator over the gizmos.
-		"""
-		yield from self._gizmos
 
 
 	def __call__(self, fn):
@@ -112,10 +84,5 @@ class GearDecorator(GearCraft):
 		self._fn = fn
 		return self
 
-
-
-
-class AutoGearDecorator(GearDecorator, AutoGearCraft):
-	pass
 
 

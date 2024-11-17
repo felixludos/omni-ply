@@ -145,11 +145,6 @@ class AutoFunctionGadget(FunctionGadget, AbstractGenetic):
 		self._arg_map = arg_map
 
 
-	def gizmos(self) -> Iterator[str]:
-		for gizmo in super().gizmos():
-			yield self.gap(gizmo)
-
-
 	@cache
 	def _extract_missing_genes(self, fn=None, args=None, kwargs=None):
 		if fn is None:

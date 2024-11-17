@@ -2,8 +2,11 @@ from .imports import *
 from ..core.gaggles import MutableGaggle, CraftyGaggle
 from ..core import Context, ToolKit
 from .abstract import AbstractMechanized, AbstractMechanical, AbstractGearbox, AbstractGeared, AbstractGear
+from .gears import GearCraft
 
 # TODO: include a back reference of Gearboxes to their owners (for exclude)
+
+
 
 class MutableGearbox(MutableGaggle, AbstractGearbox):
 	'''A mutable gaggle that includes gearboxes from included gadgets that are geared'''
@@ -33,6 +36,7 @@ class GearedGaggle(CraftyGaggle, AbstractGeared):
 			self.include(skill)
 
 
+	_Gearbox = ToolKit
 	def gearbox(self) -> AbstractGearbox:
-		return ToolKit(*self._gears_list)
+		return self._Gearbox(*self._gears_list)
 
