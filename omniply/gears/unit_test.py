@@ -20,6 +20,51 @@ def test_gears():
 	assert src.something_else == 20
 
 
+
+def test_auto_mechanized():
+	class Flag(Exception): pass
+
+	class Tester(ToolKit):
+		allow_a_once = True
+		allow_b_once = True
+
+		@gear('a')
+		def something(self):
+			if not self.allow_a_once:
+				raise Flag
+			self.allow_a_once = False
+			return 10
+
+		@gear('b')
+		def something_else(self, a):
+			if not self.allow_b_once:
+				raise Flag
+			self.allow_b_once = False
+			return a + 5
+
+	src = Tester()
+
+	assert src.allow_a_once and src.allow_b_once
+	assert src.something_else == 15
+
+	assert not src.allow_a_once and not src.allow_b_once
+	assert src.something == 10
+	assert src.something_else == 15
+
+	mech = src.mechanics()
+
+	assert mech.is_cached('a') and mech.is_cached('b')
+
+	mech.clear_cache()
+
+	try:
+		src.something
+		assert False
+	except Flag:
+		pass
+
+
+
 def test_synced():
 	class Tester(ToolKit):
 		@gear('a')
@@ -45,8 +90,8 @@ def test_synced():
 	assert m['outside'] == 100
 
 
-def test_ref():
 
+def test_ref():
 	class Tester(ToolKit):
 		@gear('a')
 		def something(self):
@@ -86,7 +131,6 @@ def test_ref():
 	assert src2.other == 15
 	assert m.is_cached('b')
 	assert src2.other2 == 16
-
 
 
 
