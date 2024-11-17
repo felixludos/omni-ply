@@ -20,7 +20,7 @@ class Geared(GearedGaggle):
 
 
 
-class Mechanized(Geared, MechanizedBase):
+class Mechanized(MechanizedBase, Geared):
 	'''synchronized'''
 	pass
 

@@ -6,7 +6,7 @@ from .gearbox import MutableGearbox
 
 
 # class Mechanics(Context, LoopyGaggle, MutableGearbox):
-class Mechanics(Context, MutableGearbox):
+class Mechanics(Context, MutableGearbox, AbstractMechanics):
 	'''context of gears'''
 	pass
 
@@ -32,5 +32,5 @@ class AutoMechanized(MechanizedBase):
 	def mechanize(self, mechanics: AbstractMechanics = None):
 		if mechanics is None:
 			self._mechanize_self()
-		return self
+		return super().mechanize(mechanics)
 

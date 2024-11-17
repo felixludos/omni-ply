@@ -47,12 +47,12 @@ def test_synced():
 
 def test_ref():
 
-	class Tester(Mechanized):
+	class Tester(ToolKit):
 		@gear('a')
 		def something(self):
 			return 10
 
-	class Tester2(Mechanized):
+	class Tester2(ToolKit):
 		ref = gear('a')
 
 		@gear('b')
@@ -67,6 +67,17 @@ def test_ref():
 	src2 = Tester2()
 
 	m = Mechanics(src, src2)
+	src.mechanize(m)
+	src2.mechanize(m)
+
+	assert src2.ref == 10
+	assert m.is_cached('a')
+	assert src2.other == 15
+	assert m.is_cached('b')
+	assert src2.other2 == 16
+
+
+	m = Mechanics(src2, src)
 	src.mechanize(m)
 	src2.mechanize(m)
 
