@@ -224,14 +224,14 @@ class MIMOToolDecorator(ToolDecoratorBase):
 		self._gizmos = gizmos
 
 
-		def gizmos(self) -> Iterator[str]:
-			"""
-			Lists gizmos produced by self.
+	def gizmos(self) -> Iterator[str]:
+		"""
+		Lists gizmos produced by self.
 
-			Returns:
-				Iterator[str]: An iterator over the gizmos.
-			"""
-			yield from self._gizmos
+		Returns:
+			Iterator[str]: An iterator over the gizmos.
+		"""
+		yield from self._gizmos
 
 
 	def _actualize_tool(self, fn: Callable, **kwargs):

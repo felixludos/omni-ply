@@ -245,7 +245,10 @@ class MutableGaggle(GaggleBase, AbstractMutable):
 		Returns:
 			Self: this gaggle.
 		"""
-		# gadgets = list(gadgets)
+		try:
+			reversed(gadgets)
+		except TypeError:
+			gadgets = list(gadgets)
 		self._gadgets_list.extend(reversed(gadgets))
 		new = {}
 		for gadget in gadgets:
