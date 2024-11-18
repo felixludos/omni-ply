@@ -139,7 +139,7 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 
 class GearedMechanism(AbstractGeared):
 	def gearbox(self) -> AbstractGearbox:
-
+		raise NotImplementedError # TODO
 
 
 
