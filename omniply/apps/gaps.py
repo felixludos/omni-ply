@@ -127,55 +127,19 @@ class AutoFunctionGapped(GappedGadget, AutoFunctionGadget):
 		return self
 
 
-class RecoverableGearSkill(GearSkill):
-	'''needs to be recoverable for GaugedGearedGaggle'''
-	@property
-	def craft(self) -> GearCraft:
-		return self._base
-
-
-
 
 class GaugedGearedGaggle(GearedGaggle, Gauged):
-	_gears_list: list[RecoverableGearSkill]
-
 	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		for gear in self._gears_list:
 			if isinstance(gear, AbstractGauged):
 				gear.gauge_apply(gauge)
 		return super().gauge_apply(gauge)
 
-	def _give_gear_skill(self, craft: GearCraft) -> GearSkill:
-		'''
-		used to reocover the gear skill corresponding to a given craft
-		(used primarily internally in case the skill changes the grab behavior)
-		Args:
-			gear:
-
-		Returns:
-
-		'''
-		for gear in self._gears_list:
-			if gear.craft is craft:
-				return gear
-		raise ValueError(f'gear {craft} not found in {self}')
-
 
 	def gearbox(self) -> 'AbstractGearbox':
 		gearbox = super().gearbox()
+		# return self._Gearbox(*self._gears_list)
 		raise NotImplementedError # apply gauge here (and only here)
-		return self._Gearbox(*self._gears_list)
-
-
-class CarefulGearCraft(GearCraft):
-	'''recovers the corresponding skill to apply the correct gap'''
-
-	def __get__(self, instance: GaugedGearedGaggle, owner):
-		ctx = self._find_context(instance)
-		skill = instance._give_gear_skill(self)
-		gizmo = skill.gap(self._gizmo)
-		return ctx.grab(gizmo)
-
 
 
 
@@ -214,6 +178,16 @@ class ToolKit(_ToolKit, Gapped, GaugedMechanized, GaugedGearedGaggle, GaugedGagg
 
 
 
+class CarefulGearCraft(GearCraft):
+	'''recovers the corresponding skill to apply the correct gap'''
+
+	def __get__(self, instance: ToolKit, owner):
+		ctx = self._find_context(instance)
+		gizmo = instance.gap(self._gizmo)
+		return ctx.grab(gizmo)
+
+
+
 class Context(_Context, GaugedGame):
 	_Mechanics = Mechanics
 
@@ -227,7 +201,7 @@ class tool(_tool):
 
 
 class gear(AutoFunctionGapped, CarefulGearCraft, _gear):
-	class _GearSkill(AutoFunctionGapped, RecoverableGearSkill, _gear._GearSkill):
+	class _GearSkill(AutoFunctionGapped, _gear._GearSkill):
 		pass
 	# class from_context(Gapped, _gear.from_context):
 	# 	class _GearSkill(Gapped, _gear._GearSkill):
