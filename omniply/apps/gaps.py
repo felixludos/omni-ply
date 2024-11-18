@@ -8,7 +8,7 @@ from ..core.tools import ToolCraft, AutoToolCraft
 from ..core.genetics import AutoMIMOFunctionGadget, AutoFunctionGadget
 from .. import ToolKit as _ToolKit, tool as _tool, Context as _Context, gear as _gear, Mechanics as _Mechanics
 from ..gears.gears import GearCraft, AutoGearCraft, GearSkill
-from ..gears.gearbox import GearedGaggle
+from ..gears.gearbox import GearedGaggle, GearBox as _GearBox
 from ..gears.mechanics import MechanizedBase
 
 # gauges are not aliases - instead they replace existing gizmos ("relabeling" only, no remapping)
@@ -55,6 +55,7 @@ class Gauged(AbstractGauged):
 		return self
 
 
+
 class GappedGadget(AbstractGapped):
 	def gizmos(self) -> Iterator[str]:
 		for gizmo in super().gizmos():
@@ -88,7 +89,6 @@ class GaugedGaggle(MutableGaggle, Gauged):
 		self._gadgets_table.clear()
 		self._gadgets_table.update(table)
 		return self
-
 
 
 
@@ -128,18 +128,22 @@ class AutoFunctionGapped(GappedGadget, AutoFunctionGadget):
 
 
 
+class GearBox(Gapped, _GearBox, GaugedGaggle):
+	pass
+
+
+
 class GaugedGearedGaggle(GearedGaggle, Gauged):
-	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
-		for gear in self._gears_list:
-			if isinstance(gear, AbstractGauged):
-				gear.gauge_apply(gauge)
-		return super().gauge_apply(gauge)
+	_GearBox = GearBox
+	# def gearbox(self) -> 'AbstractGearbox':
+	# 	gearbox = super().gearbox()
+	# 	gearbox.gauge_apply(self._gauge)
+	# 	return gearbox
+	# 	raise NotImplementedError # apply gauge here (and only here)
 
 
 	def gearbox(self) -> 'AbstractGearbox':
-		gearbox = super().gearbox()
-		# return self._Gearbox(*self._gears_list)
-		raise NotImplementedError # apply gauge here (and only here)
+		return super().gearbox().gauge_apply(self._gauge)
 
 
 
@@ -170,7 +174,6 @@ class Mechanics(_Mechanics, GaugedGame):
 
 class ToolKit(_ToolKit, Gapped, GaugedMechanized, GaugedGearedGaggle, GaugedGaggle):
 	_Mechanics = Mechanics
-
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)

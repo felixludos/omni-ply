@@ -3,7 +3,7 @@ from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, Nestab
 from ..core.gaggles import LoopyGaggle
 from ..core import Context as _Context, ToolKit as _ToolKit
 from .abstract import AbstractGeared, AbstractMechanized
-from .gearbox import MutableGearbox, GearedGaggle
+from .gearbox import MutableMechanics, GearedGaggle
 from .mechanics import MechanizedBase, AutoMechanized, MechanizedGaggle, AutoMechanizedGaggle, Mechanics
 from .gears import GearDecorator
 

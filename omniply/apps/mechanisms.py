@@ -3,6 +3,8 @@ from ..core.abstract import AbstractGate, AbstractGadget, AbstractGame
 from ..core.gaggles import LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase
 from ..core.gates import CachableGate, SelectiveGate
 from ..core.games import GatedCache
+from ..gears.abstract import AbstractGearbox
+from ..gears.gearbox import AbstractGeared
 
 
 
@@ -132,6 +134,12 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 			self._game_stack.pop()
 
 		return out
+
+
+
+class GearedMechanism(AbstractGeared):
+	def gearbox(self) -> AbstractGearbox:
+
 
 
 

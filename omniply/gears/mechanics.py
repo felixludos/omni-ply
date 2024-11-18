@@ -1,12 +1,12 @@
 from .imports import *
 from .abstract import AbstractMechanized, AbstractMechanics
 from ..core import Context
-from .gearbox import MutableGearbox
+from .gearbox import MutableMechanics
 
 
 
 # class Mechanics(Context, LoopyGaggle, MutableGearbox):
-class Mechanics(Context, MutableGearbox, AbstractMechanics):
+class Mechanics(Context, MutableMechanics, AbstractMechanics):
 	'''context of gears'''
 	pass
 
