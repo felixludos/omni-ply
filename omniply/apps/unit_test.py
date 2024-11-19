@@ -140,8 +140,6 @@ def test_gapped_gear():
 	assert src.mechanics().is_cached('c')
 	assert src.mechanics()['b'] == 15
 
-
-
 # endregion
 
 
@@ -311,9 +309,9 @@ def test_rebuild_chain():
 
 	src = Tester()
 
-	resp = Mechanism([src], select={'lat': 'response'}, relabel_in={'obs': 'rec', 'lat': 'probe'})
+	resp = Mechanism([src], select={'lat': 'response'}, apply={'obs': 'rec', 'lat': 'probe'})
 	resp2 = Mechanism([src], select={'lat': 'resp2', 'rec': 'prec'},
-					  relabel_in={'obs': 'rec', 'lat': 'probe2'})
+					  apply={'obs': 'rec', 'lat': 'probe2'})
 	ctx = Context(src, resp, resp2, DictGadget({'obs': 1, 'probe': 10, 'probe2': 100}))
 
 	assert ctx['rec'] == -2
