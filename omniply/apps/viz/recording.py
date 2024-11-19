@@ -384,21 +384,24 @@ class EventRecorder(RecorderBase):
 					parent = stack[-1].children if stack else root_nodes
 					if stack: node.parent = stack[-1]
 					parent.append(node)
-				elif node.outcome == 'failure':
+				elif node.outcome == 'failure': # past failure
 					followup = cls._EventNode(gizmo=gizmo, gadget=gadget, start=ts)
 					node.followup = followup
 					followup.origin = node
 					node = followup
-				elif node.internal is not None or node.external is not None:
+				elif node.internal is not None or node.external is not None: # waiting relabel
 					assert node.gadget is None, f'Attempted gizmo {gizmo!r} already has a gadget {node.gadget!r}'
 					node.gadget = gadget
-					# node.start = ts # NOTE: overwrites start time from relabel event				
+					# node.start = ts # NOTE: overwrites start time from relabel event
+				else: # loopy
+					stack.append(node)
+					node = cls._EventNode(gizmo=gizmo, gadget=gadget, start=ts)
 				stack.append(node)
 
 			elif event_type == 'cached':
 				gizmo, value, ts = event
 				node = None
-				while stack and stack[-1].outcome == 'failure':
+				while stack and (stack[-1].gizmo == gizmo or stack[-1].outcome == 'failure'):
 					node = stack.pop()
 					if node.gizmo == gizmo: break
 				if node is None:
@@ -406,15 +409,14 @@ class EventRecorder(RecorderBase):
 					parent = stack[-1].children if stack else root_nodes
 					if stack: node.parent = stack[-1]
 					parent.append(node)
+				elif node.outcome is None: # open attempt or relabel
+					node.outcome = 'cached'
+					node.end = ts
+					node.value = value
+				elif node.outcome == 'failure':
+					node.followup = cls._EventNode(gizmo=gizmo, outcome='cached', value=value, start=ts)
 				else:
-					if node.outcome is None:
-						node.outcome = 'cached'
-						node.end = ts
-						node.value = value
-					elif node.outcome == 'failure':
-						node.followup = cls._EventNode(gizmo=gizmo, outcome='cached', value=value, start=ts)
-					else:
-						raise ValueError('confused')
+					raise ValueError('confused')
 				for n in stack: n.outcome = None
 
 			elif event_type == 'success':
