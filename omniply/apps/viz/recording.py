@@ -41,9 +41,6 @@ class AbstractRecordable:
 	def reset(self):
 		raise NotImplementedError
 
-	# def record_relabel(self, external: str, internal: str):
-	# 	raise NotImplementedError
-
 
 
 class RecorderBase:
@@ -85,11 +82,6 @@ class RecordableBase(AbstractRecordable):
 		return self
 
 
-	# def record_relabel(self, external: str, internal: str):
-	# 	if self._active_recording:
-	# 		self._active_recording.relabel(external, internal)
-
-
 	def report(self, **kwargs):
 		return self._active_recording.report(self, **kwargs)
 
@@ -105,29 +97,24 @@ class RecordingGaggle(LoopyGaggle, RecordableBase):
 	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
 		failures = OrderedDict()
 		itr = self._grabber_stack.setdefault(gizmo, self._gadgets(gizmo))
-		try:
-			for gadget in itr:
-				try:
-					if self._active_recording:
-						self._active_recording.attempt(gizmo, gadget)
-					out = gadget.grab_from(ctx, gizmo)
-				except self._GadgetFailure as e:
-					if self._active_recording:
-						self._active_recording.failure(gizmo, gadget, e)
-					failures[e] = gadget
-				except:
-					logger.debug(f'{gadget!r} failed while trying to produce {gizmo!r}')
-					raise
-				else:
-					if self._active_recording:
-						self._active_recording.success(gizmo, gadget, out)
-					if gizmo in self._grabber_stack:
-						self._grabber_stack.pop(gizmo)
-					return out
-		except self._MissingGadgetError:
-			# if self._active_recording:
-			# 	self._active_recording.missing(gizmo)
-			raise
+		for gadget in itr:
+			try:
+				if self._active_recording:
+					self._active_recording.attempt(gizmo, gadget)
+				out = gadget.grab_from(ctx, gizmo)
+			except self._GadgetFailure as e:
+				if self._active_recording:
+					self._active_recording.failure(gizmo, gadget, e)
+				failures[e] = gadget
+			except:
+				logger.debug(f'{gadget!r} failed while trying to produce {gizmo!r}')
+				raise
+			else:
+				if self._active_recording:
+					self._active_recording.success(gizmo, gadget, out)
+				if gizmo in self._grabber_stack:
+					self._grabber_stack.pop(gizmo)
+				return out
 		if self._active_recording: # recent change
 			self._active_recording.missing(gizmo)
 		if gizmo in self._grabber_stack:

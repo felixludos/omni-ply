@@ -110,7 +110,7 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 			fixed = self._apply_map.get(gizmo, gizmo)
 			try:
 				out = self._grab(fixed)
-			except self._GadgetFailure:
+			except (self._GadgetFailure, self._MissingGadgetError): # important change
 				# default to parent/s
 				if self._insulate_in and gizmo not in self._apply_map:
 					raise
