@@ -5,7 +5,7 @@ from omnibelt import filter_duplicates
 from omnibelt.crafts import InheritableCrafty, AbstractSkill
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractMutable
-from .errors import logger, GadgetFailure, MissingGadget, AssemblyError
+from .errors import logger, GadgetFailed, MissingGadget, AssemblyError
 from .gadgets import GadgetBase, SingleGadgetBase, SingleFunctionGadget, AutoSingleFunctionGadget
 
 Self = TypeVar('Self')

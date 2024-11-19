@@ -137,9 +137,29 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 
 
 
-class GearedMechanism(AbstractGeared):
-	def gearbox(self) -> AbstractGearbox:
-		raise NotImplementedError # TODO
+class GearedMechanism(MechanismBase, AbstractGeared):
+	def __init__(self, content, *, insulate_gears_in: bool = None, **kwargs):
+		super().__init__(content, **kwargs)
+		if insulate_gears_in is None:
+			insulate_gears_in = self._insulate_in
+		self._insulate_gears_in = insulate_gears_in
+
+
+	_GearBox = None
+	def gearbox(self, insulate_out: bool = True, insulate_in: bool = True,
+				 select: Mapping[str, str] = None, apply: Mapping[str, str] = None, **kwargs) -> AbstractGearbox:
+		if select is None:
+			select = self._select_map
+		if apply is None:
+			apply = self._apply_map
+		if insulate_in is None:
+			insulate_in = self._insulate_in
+		if insulate_out is None:
+			insulate_out = self._insulate_out
+		insulate_in = insulate_in or self._insulate_gears_in
+		gears = [gadget.gearbox() for gadget in self.vendors() if isinstance(gadget, AbstractGeared)]
+		return self._GearBox(gears, insulate_out=insulate_out, insulate_in=insulate_in,
+							  select=select, apply=apply, **kwargs)
 
 
 
@@ -158,6 +178,8 @@ class Mechanism(MechanismBase):
 		if isinstance(select, list):
 			select = {k: k for k in select}
 		super().__init__(content=content, apply=apply, select=select, **kwargs)
+
+GearedMechanism.GearBox = Mechanism
 
 
 

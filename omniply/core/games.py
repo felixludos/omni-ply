@@ -4,7 +4,7 @@ from omnibelt import filter_duplicates
 
 from .abstract import (AbstractGadget, AbstractGaggle, AbstractGame, AbstractGate, AbstractGadgetError,
 					   AbstractConsistentGame)
-from .errors import GadgetFailure, MissingGadget, AssemblyError, GrabError
+from .errors import GadgetFailed, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
 from .gaggles import GaggleBase, MutableGaggle, MultiGadgetBase
 

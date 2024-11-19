@@ -1,30 +1,71 @@
 from .imports import *
 from omnibelt.crafts import AbstractCraft
 from .abstract import AbstractGear, AbstractGeared, AbstractMechanical
-from .errors import MissingMechanicsError
+from .errors import MissingMechanicsError, GearFailed
 from ..core import AbstractGame
-from ..core.gadgets import GadgetFailure
+from ..core.gadgets import GadgetFailed, SingleGadgetBase
 from ..core.genetics import AutoFunctionGadget, FunctionGadget
-from ..core.tools import SkillBase, CraftBase#, ToolDecoratorBase, MIMOToolDecorator, AutoToolDecorator
+from ..core.tools import AbstractCrafty, AbstractSkill, SkillBase, CraftBase#, ToolDecoratorBase, MIMOToolDecorator, AutoToolDecorator
 
 
 
-class GearBase(FunctionGadget, AbstractGear):
-	def _grab_from(self, ctx: 'AbstractGame') -> Any:
-		if self._fn is None:
-			raise GadgetFailure
+class GearSkillBase(SingleGadgetBase, AbstractSkill):
+	def __init__(self, *, base: Optional[AbstractCraft] = None, **kwargs):
+		super().__init__(**kwargs)
+		self._base = base
+
+
+
+class GearSkill(FunctionGadget, GearSkillBase, SkillBase, AbstractGear):
+	def _grab_from(self, ctx: AbstractGame) -> Any:
+		if self._fn is None: # for "ghost" gears
+			raise GearFailed
 		return super()._grab_from(ctx)
 
 
 
-class GearSkill(GearBase, SkillBase):
-	pass
+class GearCraftBase(CraftBase):
+	def __init__(self, gizmo: str, **kwargs):
+		super().__init__(**kwargs)
+		self._gizmo = gizmo
 
 
-class GearCraft(GearBase, CraftBase):
+	_GearSkill: Type[GearSkillBase]
+	def as_skill(self, owner: AbstractCrafty, *, gizmo: str = None, **kwargs) -> GearSkillBase:
+		return self._GearSkill(gizmo=gizmo or self._gizmo, base=self, **kwargs)
+
+
+	@staticmethod
+	def _find_context(geared: AbstractGeared) -> AbstractGame:
+		mech = None
+		if isinstance(geared, AbstractMechanical):
+			mech = geared.mechanics()
+		if mech is None:
+			return Context(geared.gearbox()) # effectively no caching, and all dependencies must be local
+		return mech
+
+
+	def __get__(self, instance, owner):
+		'''
+		The only time a gear craft is called is as a property - in which case it defers to the local mechanics
+		'''
+		ctx = self._find_context(instance)
+		return ctx.grab(self._gizmo)
+
+
+
+class GearCraft(GearCraftBase):
+	# note that unlike ToolCraft, GearCraft is not a gadget - it can be used as a gadget
+	# through an instantiated object (through its skill)
 	_GearSkill = GearSkill
 
-	def as_skill(self, owner: 'AbstractCrafty') -> SkillBase:
+
+	def __init__(self, gizmo: str, *, fn: Callable = None, **kwargs):
+		super().__init__(gizmo=gizmo, **kwargs)
+		self._fn = fn
+
+
+	def as_skill(self, owner: 'AbstractCrafty', fn=None, unbound_fn=None, **kwargs) -> GearSkill:
 		"""
 		When an AbstractCrafty is instantiated (i.e., `owner`), any crafts accessible by the class (including inherited ones) can be converted to skills.
 
@@ -36,49 +77,21 @@ class GearCraft(GearBase, CraftBase):
 		"""
 		if not isinstance(owner, AbstractGeared):
 			print(f'WARNING: {owner} is not an geared, so gears may not work')
-		unbound_fn = self._wrapped_content_leaf()
-		fn = None if unbound_fn is None else unbound_fn.__get__(owner, type(owner))
-		return self._GearSkill(fn=fn, gizmo=self._gizmo, unbound_fn=unbound_fn, base=self)
-
-
-	@staticmethod
-	def _find_context(geared: AbstractGeared) -> AbstractGame:
-		mech = None
-		if isinstance(geared, AbstractMechanical):
-			mech = geared.mechanics()
-		# raise MissingMechanicsError(f'Could not find mechanics for {instance}')
-		if mech is None:
-			return Context(geared.gearbox()) # effectively no caching, and all dependencies must be local
-		return mech
-
-
-	def __get__(self, instance, owner):
-		"""
-		When accessing ToolCraft instances directly, they behave as regular methods, applying __get__ to the wrapped function.
-
-		Args:
-			instance: The instance that the method is being accessed through, or None when the method is accessed through the owner.
-			owner: The owner class.
-
-		Returns:
-			Callable: The wrapped function.
-		"""
-		ctx = self._find_context(instance)
-		return ctx.grab(self._gizmo)
+		if unbound_fn is None:
+			unbound_fn = self._wrapped_content_leaf()
+		if fn is None:
+			fn = None if unbound_fn is None else unbound_fn.__get__(owner, type(owner))
+		return super().as_skill(owner, fn=fn, unbound_fn=unbound_fn, **kwargs)
 
 
 
-class AutoGearCraft(GearCraft, AutoFunctionGadget):
+class AutoGearCraft(GearCraft):
 	class _GearSkill(GearSkill, AutoFunctionGadget):
 		pass
 
 
 
 class GearDecorator(AutoGearCraft):
-	def __init__(self, gizmo: str, **kwargs):
-		super().__init__(gizmo=gizmo, **kwargs)
-
-
 	def __call__(self, fn):
 		assert self._fn is None, f'Cannot reassign function to {self}'
 		self._fn = fn
@@ -86,3 +99,29 @@ class GearDecorator(AutoGearCraft):
 
 
 
+# region Static Gears
+
+
+
+class StaticGearSkill(GearSkillBase, AbstractGear):
+	def __init__(self, gizmo: str, value: Any, **kwargs):
+		super().__init__(gizmo=gizmo, **kwargs)
+		self._value = value
+
+	def _grab_from(self, ctx: 'AbstractGame') -> Any:
+		return self._value
+
+
+
+class StaticGearCraft(GearCraftBase):
+	def __init__(self, gizmo: str, value: Any, **kwargs):
+		super().__init__(gizmo=gizmo, **kwargs)
+		self._value = value
+
+
+	_no_value = object()
+	_GearSkill = StaticGearSkill
+	def as_skill(self, owner: 'AbstractCrafty', value: Any = _no_value, **kwargs) -> StaticGearSkill:
+		return super().as_skill(owner, value=self._value if value is self._no_value else value, **kwargs)
+
+# endregion

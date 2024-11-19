@@ -3,7 +3,7 @@ from collections import UserDict
 from omnibelt import filter_duplicates
 
 from .abstract import AbstractGate, AbstractGame
-from .errors import GadgetFailure, ApplicationAmbiguityError
+from .errors import GadgetFailed, ApplicationAmbiguityError
 from .gaggles import GaggleBase, MultiGadgetBase
 from .games import GameBase, GatedCache
 

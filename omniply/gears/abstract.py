@@ -25,8 +25,6 @@ class AbstractGeared(AbstractGadget):
 
 class AbstractMechanical:
 	'''gadget with synchronized gears'''
-	# analogous to "prepared"
-	# _structure = None
 	def mechanics(self) -> Optional['AbstractMechanics']:
 		raise NotImplementedError
 

@@ -109,7 +109,7 @@ class AutoToolCraft(AutoMIMOFunctionGadget, ToolCraftBase):
 
 
 
-class ToolDecoratorBase(GadgetBase):
+class ToolDecoratorBase: # GadgetBase
 	"""
 	The ToolDecorator class is a subclass of GadgetBase. It provides methods to handle gizmo decoration.
 
@@ -134,42 +134,42 @@ class ToolDecoratorBase(GadgetBase):
 		super().__init__(**kwargs)
 		self._gizmo = gizmo
 
-	def gizmos(self) -> Iterator[str]:
-		"""
-		Lists gizmos produced by self.
-
-		Returns:
-			Iterator[str]: An iterator over the gizmos.
-		"""
-		yield self._gizmo
-
-	def gives(self, gizmo: str) -> bool:
-		"""
-		Checks if a gizmo is can be produced by this gadget.
-
-		Args:
-			gizmo (str): The name of the gizmo to check.
-
-		Returns:
-			bool: True if the gizmo can be grabbed, False otherwise.
-		"""
-		return gizmo == self._gizmo
-
-	def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
-		"""
-		Tries to grab a gizmo from the context.
-
-		Args:
-			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
-			gizmo (str): The name of the gizmo to grab.
-
-		Returns:
-			Any: The grabbed gizmo.
-
-		Raises:
-			_GadgetFailed: If the gizmo cannot be grabbed.
-		"""
-		raise self._GadgetFailure(gizmo)
+	# def gizmos(self) -> Iterator[str]:
+	# 	"""
+	# 	Lists gizmos produced by self.
+	#
+	# 	Returns:
+	# 		Iterator[str]: An iterator over the gizmos.
+	# 	"""
+	# 	yield self._gizmo
+	#
+	# def gives(self, gizmo: str) -> bool:
+	# 	"""
+	# 	Checks if a gizmo is can be produced by this gadget.
+	#
+	# 	Args:
+	# 		gizmo (str): The name of the gizmo to check.
+	#
+	# 	Returns:
+	# 		bool: True if the gizmo can be grabbed, False otherwise.
+	# 	"""
+	# 	return gizmo == self._gizmo
+	#
+	# def grab_from(self, ctx: Optional[AbstractGame], gizmo: str) -> Any:
+	# 	"""
+	# 	Tries to grab a gizmo from the context.
+	#
+	# 	Args:
+	# 		ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
+	# 		gizmo (str): The name of the gizmo to grab.
+	#
+	# 	Returns:
+	# 		Any: The grabbed gizmo.
+	#
+	# 	Raises:
+	# 		_GadgetFailed: If the gizmo cannot be grabbed.
+	# 	"""
+	# 	raise self._GadgetFailure(gizmo)
 
 	_ToolCraft = ToolCraftBase
 	def _actualize_tool(self, fn: Callable, **kwargs):
@@ -224,14 +224,14 @@ class MIMOToolDecorator(ToolDecoratorBase):
 		self._gizmos = gizmos
 
 
-	def gizmos(self) -> Iterator[str]:
-		"""
-		Lists gizmos produced by self.
-
-		Returns:
-			Iterator[str]: An iterator over the gizmos.
-		"""
-		yield from self._gizmos
+	# def gizmos(self) -> Iterator[str]:
+	# 	"""
+	# 	Lists gizmos produced by self.
+	#
+	# 	Returns:
+	# 		Iterator[str]: An iterator over the gizmos.
+	# 	"""
+	# 	yield from self._gizmos
 
 
 	def _actualize_tool(self, fn: Callable, **kwargs):

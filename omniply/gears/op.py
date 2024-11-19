@@ -4,8 +4,9 @@ from ..core.gaggles import LoopyGaggle
 from ..core import Context as _Context, ToolKit as _ToolKit
 from .abstract import AbstractGeared, AbstractMechanized
 from .gearbox import MutableMechanics, GearedGaggle
-from .mechanics import MechanizedBase, AutoMechanized, MechanizedGaggle, AutoMechanizedGaggle, Mechanics
+from .mechanics import MechanizedBase, AutoMechanized, MechanizedGame, MutableMechanized, Mechanics
 from .gears import GearDecorator
+from .errors import GearFailed
 
 
 
@@ -21,19 +22,19 @@ class Geared(GearedGaggle):
 
 
 
-class Mechanized(AutoMechanized, MechanizedGaggle, Geared):
+class Mechanized(AutoMechanized, MutableMechanized):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.mechanize() # makes (local) gears cached by default
 
 
 
-class ToolKit(Mechanized, _ToolKit):
+class ToolKit(Mechanized, Geared, _ToolKit):
 	pass
 
 
 
-class Context(AutoMechanizedGaggle, _Context):
+class Context(Mechanized, MechanizedGame, _Context):
 	pass
 
 

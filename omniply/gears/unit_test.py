@@ -1,6 +1,7 @@
 from .imports import *
 from .op import Context, ToolKit, gear, Mechanics, Mechanized
-
+from .. import GrabError
+from .errors import GearFailed
 
 
 def test_gears():
@@ -161,7 +162,7 @@ def test_mechanized_context():
 	src2 = Tester2()
 
 	ctx = Context(src, src2)
-	ctx.mechanize()
+	# ctx.mechanize()
 
 	assert ctx['a'] == -10
 	assert src2.ref == 110
@@ -169,4 +170,45 @@ def test_mechanized_context():
 	assert src2.other == 100
 
 
+
+def test_gear_failed():
+	class Tester(ToolKit):
+		@gear('a')
+		def defer(self):
+			raise GearFailed
+
+		@gear('c')
+		def something_else_else(self, a, outside):
+			return a + outside
+
+
+	class Tester2(ToolKit):
+		@gear('a')
+		def something(self):
+			return 10
+
+		@gear('outside')
+		def other(self):
+			return 100
+
+		ref = gear('c') # reference gear - only accessible in a mechanized environment that contains a 'c' gear
+
+	src = Tester()
+	src2 = Tester2()
+
+	try:
+		src.defer
+		assert False # since the only known gear failed
+	except GrabError: # TODO: maybe capture/replace GrabError to make explicit that grabbing a *gear* failed
+		pass
+
+	ctx = Context(src, src2) # auto mechanizes
+
+	assert src.defer == 10
+	assert src2.ref == 110
+	assert src.something_else_else == 110
+	assert src2.other == 100
+
+
+# TODO: test gears with inheritance (should be no different than tools)
 

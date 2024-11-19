@@ -8,7 +8,7 @@ logger = logging.getLogger('omniply')
 
 
 
-class GadgetFailure(AbstractGadgetError):
+class GadgetFailed(AbstractGadgetError):
 	'''
 	General error for when a gadget fails to grab a gizmo,
 	but automatic recovery is possible by trying the remaining gadgets
@@ -31,9 +31,9 @@ class GadgetFailure(AbstractGadgetError):
 
 
 
-class AssemblyError(GadgetFailure):
+class AssemblyError(GadgetFailed):
 	'''Error for when a gadget fails to grab a gizmo because the gizmo can't be assembled from the gadgets available'''
-	def __init__(self, failures: Dict[GadgetFailure, AbstractGadget], *,
+	def __init__(self, failures: Dict[GadgetFailed, AbstractGadget], *,
 				 message: Optional[str] = None):
 		if message is None:
 			errors = [str(error) for error in failures]

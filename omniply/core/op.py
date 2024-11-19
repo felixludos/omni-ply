@@ -1,6 +1,6 @@
 from typing import Iterable, Callable
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGate
-from .errors import GadgetFailure, MissingGadget
+from .errors import GadgetFailed, MissingGadget
 from .tools import ToolCraftBase, AutoToolCraft, MIMOToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
 from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle, MutableCrafty

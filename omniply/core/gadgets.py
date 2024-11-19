@@ -2,7 +2,7 @@ from typing import Iterator, Optional, Any, Iterable, Callable, Tuple, List, Dic
 from omnibelt import extract_function_signature, extract_missing_args
 from omnibelt.crafts import AbstractSkill, NestableCraft
 
-from .errors import GadgetFailure, MissingGadget
+from .errors import GadgetFailed, MissingGadget
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGame
 
 
@@ -15,7 +15,7 @@ class GadgetBase(AbstractGadget):
 		_GadgetFailure: The general exception that is raised when a gadget fails.
 		_MissingGadgetError: The exception that is raised when a required gizmo is missing.
 	"""
-	_GadgetFailure = GadgetFailure
+	_GadgetFailure = GadgetFailed
 	_MissingGadgetError = MissingGadget
 
 

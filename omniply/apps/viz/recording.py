@@ -3,7 +3,7 @@ from collections import OrderedDict
 from omnibelt import colorize
 from tabulate import tabulate
 import logging, time
-from ...core import Context as _Context, ToolKit, tool, AbstractGadget, MissingGadget
+from ...core import Context as _Context, ToolKit, tool, AbstractGame, AbstractGadget, MissingGadget
 from ...core.gaggles import LoopyGaggle
 from ...core.games import CacheGame, GameBase, GatedCache
 
@@ -59,7 +59,7 @@ class RecorderBase:
 	def success(self, gizmo: str, gadget: 'AbstractGadget', value: Any):
 		self._log.append(('success', gizmo, gadget, value, time.time()))
 
-	def failure(self, gizmo: str, gadget: 'AbstractGadget', error: Exception):
+	def failure(self, gizmo: str, gadget: 'AbstractGadget', error: Optional[Exception]):
 		self._log.append(('failure', gizmo, gadget, error, time.time()))
 
 	def missing(self, gizmo: str):
@@ -652,7 +652,7 @@ class Context(_Context, RecordingCached, GameBase, RecordingGaggle):
 def test_recording():
 
 	from ..gaps import tool, ToolKit
-	from ...core import GadgetFailure, MissingGadget, GrabError
+	from ...core import GadgetFailed, MissingGadget, GrabError
 
 	class Tester(ToolKit):
 		@tool('a')
@@ -669,7 +669,7 @@ def test_recording():
 
 	@tool('b')
 	def i():
-		raise GadgetFailure
+		raise GadgetFailed
 
 	ctx = Context(i, Tester(gap={'a': 'x'}))
 
@@ -729,7 +729,7 @@ def test_loopy():
 def test_mech_recording():
 
 	from ...core import tool, ToolKit
-	from ...core import GadgetFailure, MissingGadget, GrabError
+	from ...core import GadgetFailed, MissingGadget, GrabError
 
 	class Tester(ToolKit):
 		@tool('a')
