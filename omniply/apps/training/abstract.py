@@ -96,6 +96,11 @@ class AbstractTrainer:
 		raise NotImplementedError
 
 
+	def environment(self) -> Dict[str, Any]:
+		'''prepare the dataset for training'''
+		raise NotImplementedError
+
+
 
 class AbstractPlanner:
 	def setup(self, src: AbstractDataset) -> Self:
