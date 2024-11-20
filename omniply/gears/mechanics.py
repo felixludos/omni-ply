@@ -11,7 +11,6 @@ class Mechanics(Context, MutableMechanics, AbstractMechanics):
 	pass
 
 
-
 class MechanizedBase(AbstractMechanized):
 	_mechanics: Mechanics = None
 
@@ -27,7 +26,6 @@ class MechanizedBase(AbstractMechanized):
 
 
 class AutoMechanized(MechanizedBase):
-	''''''
 	_Mechanics = Mechanics
 	def _auto_mechanics(self):
 		return self._Mechanics(self)

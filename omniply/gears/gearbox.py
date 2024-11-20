@@ -45,5 +45,9 @@ class GearedGaggle(CraftyGaggle, AbstractGeared):
 
 	_GearBox = GearBox
 	def gearbox(self) -> AbstractGearbox:
-		return self._GearBox(*self._gears_list, base=self)
+		gearbox = self._GearBox(*self._gears_list, base=self)
+		for gadget in self.vendors():
+			if isinstance(gadget, AbstractGeared):
+				gearbox.extend(gadget.gearbox().vendors())
+		return gearbox
 

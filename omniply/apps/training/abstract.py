@@ -79,6 +79,10 @@ class AbstractEvaluator:
 
 
 class AbstractTrainer:
+	def gadgetry(self) -> Iterator[AbstractGadget]:
+		raise NotImplementedError
+
+
 	def fit_loop(self, src: AbstractDataset) -> Iterator[AbstractBatch]:
 		raise NotImplementedError
 

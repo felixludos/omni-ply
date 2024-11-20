@@ -84,9 +84,8 @@ class DynamicTrainerBase(TrainerBase):
 		return self
 
 
-	def gadgetry(self) -> Iterator[AbstractGadget]:
+	def gadgetry(self) -> ToolKit:
 		'''gadgets to include in the batch'''
 		yield from self._gadgetry
-
 
 
