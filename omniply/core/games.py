@@ -248,7 +248,9 @@ class GatedCache(CacheGame):
 		def _gate_cached():
 			for gate, cache in self._gate_cache.items():
 				for key in cache:
-					yield gate.gizmo_to(key)
+					ext = gate.gizmo_to(key)
+					if ext is not None:
+						yield ext
 		yield from filter_duplicates(super().cached(), _gate_cached())
 
 	def check_gate_cache(self, gate: AbstractGate, gizmo: str):

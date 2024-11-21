@@ -2,7 +2,7 @@ from .imports import *
 from ..core.gaggles import MutableGaggle, CraftyGaggle
 from ..core import Context, ToolKit
 from .abstract import AbstractMechanized, AbstractMechanics, AbstractMechanical, AbstractGearbox, AbstractGeared, AbstractGear
-from .gears import GearCraft
+from .gears import GearCraft, GearFailed
 
 # TODO: include a back reference of Gearboxes to their owners (for exclude)
 
@@ -43,6 +43,7 @@ class GearedGaggle(CraftyGaggle, AbstractGeared):
 			super()._process_skill(skill)
 
 
+	_GearFailed = GearFailed
 	_GearBox = GearBox
 	def gearbox(self) -> AbstractGearbox:
 		gearbox = self._GearBox(*self._gears_list, base=self)
