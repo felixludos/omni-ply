@@ -5,6 +5,7 @@ __pycache__/
 
 tests/products/
 .DS_Store
+.vscode/
 
 extra/
 .idea/
