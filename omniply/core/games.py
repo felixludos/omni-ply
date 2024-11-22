@@ -198,7 +198,7 @@ class CacheGame(GameBase, UserDict):
 
 
 
-class GatedCache(CacheGame):
+class GatedCache(CacheGame): # TODO: rename to GangCache
 	"""
 	The GatedCache class is a subclass of CacheGame. It provides methods to handle gizmo caching with support for gates.
 
@@ -247,10 +247,10 @@ class GatedCache(CacheGame):
 		"""
 		def _gate_cached():
 			for gate, cache in self._gate_cache.items():
-				for key in cache:
-					ext = gate.gizmo_to(key)
-					if ext is not None:
-						yield ext
+				for internal in cache:
+					external = gate.gizmo_to(internal)
+					if external is not None:
+						yield external
 		yield from filter_duplicates(super().cached(), _gate_cached())
 
 	def check_gate_cache(self, gate: AbstractGate, gizmo: str):

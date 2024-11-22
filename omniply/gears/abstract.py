@@ -23,7 +23,7 @@ class AbstractGeared(AbstractGadget):
 
 
 
-class AbstractMechanical:
+class AbstractMechanical(AbstractGadget):
 	'''gadget with synchronized gears'''
 	def mechanics(self) -> Optional['AbstractMechanics']:
 		raise NotImplementedError

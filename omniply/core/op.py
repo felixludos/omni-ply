@@ -5,7 +5,7 @@ from .tools import ToolCraftBase, AutoToolCraft, MIMOToolDecorator, AutoToolDeco
 from .gizmos import DashGizmo
 from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle, MutableCrafty
 from .games import CacheGame, GatedCache, TraceGame, RollingGame, ConsistentGame
-from .gates import GateBase, CachableGate, SelectiveGate
+from .gangs import CachableGang, GateBase
 from .genetics import GeneticGaggle
 
 
@@ -49,7 +49,7 @@ class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle):
 		__init__(self, *args, **kwargs): Initializes a new instance of the ToolKit class.
 	"""
 
-	def __init__(self, *tools: AbstractGadget, **kwargs):
+	def __init__(self, *gadgets: AbstractGadget, **kwargs):
 		"""
 		Initializes a new instance of the ToolKit class.
 
@@ -60,7 +60,7 @@ class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle):
 			kwargs: Arbitrary keyword arguments.
 		"""
 		super().__init__(**kwargs)
-		self.extend(tools) # note that you can add tools before crafts, but only if they are passed here!
+		self.extend(gadgets) # note that you can add tools before crafts, but only if they are passed here!
 		self._process_crafts()
 
 
@@ -87,13 +87,13 @@ class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggl
 			kwargs: Arbitrary keyword arguments.
 		"""
 		super().__init__(**kwargs)
-		self.include(*gadgets)
+		self.extend(gadgets)
 
 
 	def gabel(self, *args, **kwargs):
 		'''effectively a shallow copy, excluding the cache'''
 		new = self.__class__(*args, **kwargs)
-		new.include(*self.vendors())
+		new.extend(self.vendors())
 		return new
 
 
@@ -110,27 +110,26 @@ class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggl
 		return self.grab(item)
 
 
-class Scope(CachableGate, LoopyGaggle, MutableGaggle, AbstractGate):
-	"""
-	The Scope class is a subclass of CachableGate, LoopyGaggle, MutableGaggle, and AbstractGate. It provides methods
-	to handle gadgets in a scope.
 
-	Methods:
-		__init__(self, *gadgets: AbstractGadget, **kwargs): Initializes a new instance of the Scope class.
+class Gang(CachableGang, LoopyGaggle, MutableGaggle, AbstractGate):
 	"""
+	The Gang class is a subclass of CachableGang, LoopyGaggle, and MutableGaggle.
 
+	It provides methods to handle gadgets in a gang.
+	"""
 	def __init__(self, *gadgets: AbstractGadget, **kwargs):
 		"""
-		Initializes a new instance of the Scope class.
+		Initializes a new instance of the Gang class.
 
-		This method initializes the superclass with the provided arguments and includes the provided gadgets in the scope.
+		This method initializes the superclass with the provided arguments and includes the provided gadgets in the gang.
 
 		Args:
-			gadgets (AbstractGadget): The gadgets to be included in the scope.
+			gadgets (AbstractGadget): The gadgets to be included in the gang.
 			kwargs: Arbitrary keyword arguments.
 		"""
 		super().__init__(**kwargs)
-		self.include(*gadgets)
+		self.extend(gadgets)
+
 
 	def __getitem__(self, item):
 		"""
@@ -144,35 +143,12 @@ class Scope(CachableGate, LoopyGaggle, MutableGaggle, AbstractGate):
 		"""
 		return self.grab(item)
 
-class Selection(SelectiveGate, Scope):
+
+
+class Gate(Gang, GateBase):
 	"""
-	The Selection class is a subclass of SelectiveGate and Scope. It provides methods to handle selective gizmo mapping
-	within a scope.
+	The Gate class is a subclass of GateBase, CachableGang, LoopyGaggle, and MutableGaggle.
 
-	Methods:
-		__init__(self, *gadgets: AbstractGadget, **kwargs): Initializes a new instance of the Selection class.
+	It provides methods to handle gadgets in a gate, which is a simplified gang.
 	"""
-
-	def __init__(self, *gadgets: AbstractGadget, **kwargs):
-		"""
-		Initializes a new instance of the Selection class.
-
-		This method initializes the superclass with the provided arguments and includes the provided gadgets in the selection.
-
-		Args:
-			gadgets (AbstractGadget): The gadgets to be included in the selection.
-			kwargs: Arbitrary keyword arguments.
-		"""
-		super().__init__(*gadgets, **kwargs)
-
-	def __getitem__(self, item):
-		"""
-		Returns the grabbed item from the context.
-
-		Args:
-			item: The item to be grabbed from the context.
-
-		Returns:
-			Any: The grabbed item from the context.
-		"""
-		return self.grab(item)
+	pass

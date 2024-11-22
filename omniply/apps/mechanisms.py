@@ -1,7 +1,7 @@
 from typing import Iterable, Iterator, Union, Any, Optional, Mapping
 from ..core.abstract import AbstractGate, AbstractGadget, AbstractGame
 from ..core.gaggles import LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase
-from ..core.gates import CachableGate, SelectiveGate
+# from ..core.gates import CachableGate, SelectiveGate
 from ..core.games import GatedCache
 from ..gears.abstract import AbstractGearbox
 from ..gears.gearbox import AbstractGeared
@@ -193,7 +193,8 @@ class SimpleMechanism(Mechanism):
 			content = [content]
 		if relabel is None:
 			relabel = {}
-		select = relabel if request is None else {k: v for k, v in relabel.items() if k in request}
+		# select = relabel if request is None else {k: v for k, v in relabel.items() if k in request}
+		select = relabel if request is None else {k: relabel.get(k, k) for k in request}
 		apply = relabel
 		if insulate_in is None:
 			insulate_in = insulate

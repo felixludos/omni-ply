@@ -1,12 +1,12 @@
 from typing import Iterable, Mapping, Any, Iterator, TypeVar
-from collections import UserDict
 
 from .. import AbstractGadget, AbstractGaggle
 from ..core.gaggles import CraftyGaggle, MutableGaggle
 from ..core.games import CacheGame
 from ..core.tools import ToolCraft, AutoToolCraft
 from ..core.genetics import AutoMIMOFunctionGadget, AutoFunctionGadget
-from .. import ToolKit as _ToolKit, tool as _tool, Context as _Context, gear as _gear, Mechanics as _Mechanics
+from .. import (ToolKit as _ToolKit, tool as _tool, Context as _Context, gear as _gear, Mechanics as _Mechanics,
+				Structured as _Structured)
 from ..gears.gears import GearCraft, AutoGearCraft, GearSkill, StaticGearCraft# as _StaticGearCraft
 from ..gears.gearbox import GearedGaggle, GearBox as _GearBox
 from ..gears.mechanics import MechanizedBase
@@ -135,13 +135,6 @@ class GearBox(Gapped, _GearBox, GaugedGaggle):
 
 class GaugedGearedGaggle(GearedGaggle, Gauged):
 	_GearBox = GearBox
-	# def gearbox(self) -> 'AbstractGearbox':
-	# 	gearbox = super().gearbox()
-	# 	gearbox.gauge_apply(self._gauge)
-	# 	return gearbox
-	# 	raise NotImplementedError # apply gauge here (and only here)
-
-
 	def gearbox(self) -> 'AbstractGearbox':
 		return super().gearbox().gauge_apply(self._gauge)
 
@@ -172,12 +165,17 @@ class Mechanics(_Mechanics, GaugedGame):
 
 
 
-class ToolKit(_ToolKit, Gapped, GaugedMechanized, GaugedGearedGaggle, GaugedGaggle):
+class ToolKit(Gapped, GaugedMechanized, GaugedGearedGaggle, GaugedGaggle, _ToolKit):
 	_Mechanics = Mechanics
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.gauge_apply(self._gauge)
+
+
+
+class Structured(_Structured, ToolKit):
+	pass
 
 
 

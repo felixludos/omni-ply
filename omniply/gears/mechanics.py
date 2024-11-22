@@ -19,7 +19,7 @@ class MechanizedBase(AbstractMechanized):
 		return self._mechanics
 
 
-	def mechanize(self, mechanics: AbstractMechanics):
+	def mechanize(self, mechanics: Mechanics):
 		self._mechanics = mechanics
 		return self
 
@@ -39,7 +39,7 @@ class AutoMechanized(MechanizedBase):
 
 
 class MechanizedGaggle(MechanizedBase, AbstractGaggle):
-	def mechanize(self, mechanics: AbstractMechanics):
+	def mechanize(self, mechanics: Mechanics):
 		for gadget in self.vendors():
 			if isinstance(gadget, AbstractMechanized):
 				gadget.mechanize(mechanics)

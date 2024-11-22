@@ -1,2 +1,2 @@
 from .abstract import AbstractMechanized, AbstractGear
-from .op import ToolKit, Context, gear, Mechanics, Mechanized, Geared, GearFailed
+from .op import Structured, ToolKit, Context, Gang, Gate, gear, Mechanics, Mechanized, GearFailed

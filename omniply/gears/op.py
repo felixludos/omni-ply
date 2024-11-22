@@ -1,9 +1,9 @@
 from .imports import *
 from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, NestableCraft
 from ..core.gaggles import LoopyGaggle
-from ..core import Context as _Context, ToolKit as _ToolKit
+from ..core import Context as _Context, ToolKit as _ToolKit, Gang as _Gang, Gate as _Gate
 from .abstract import AbstractGeared, AbstractMechanized
-from .gearbox import MutableMechanics, GearedGaggle
+from .gearbox import MutableMechanics, GearedGang, CraftyGearedGaggle
 from .mechanics import MechanizedBase, AutoMechanized, MechanizedGame, MutableMechanized, Mechanics
 from .gears import GearDecorator
 from .errors import GearFailed
@@ -16,12 +16,6 @@ class gear(GearDecorator):
 
 
 
-class Geared(GearedGaggle):
-	'''gaggle which can contain gears and produces a gearbox'''
-	pass
-
-
-
 class Mechanized(AutoMechanized, MutableMechanized):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -29,12 +23,27 @@ class Mechanized(AutoMechanized, MutableMechanized):
 
 
 
-class ToolKit(Mechanized, Geared, _ToolKit):
+class ToolKit(CraftyGearedGaggle, _ToolKit): # no caching of gears and only local gears (no mechanics)
 	pass
 
 
 
-class Context(Mechanized, MechanizedGame, _Context):
+class Structured(AutoMechanized, MutableMechanized, ToolKit):
+	pass
+
+
+
+class Context(MechanizedGame, _Context):
+	pass
+
+
+
+class Gang(_Gang, GearedGang):
+	_GearGang = _Gang
+
+
+
+class Gate(_Gate, Gang):
 	pass
 
 

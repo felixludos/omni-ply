@@ -1,6 +1,6 @@
-from .gaps import tool, Context, ToolKit, gear, Table, DictGadget
-from .mechanisms import SimpleMechanism, Mechanism
-
+from .gaps import tool, Context, Structured, ToolKit, gear, Table, DictGadget
+# from .mechanisms import SimpleMechanism, Mechanism
+from .. import Gate, Gang
 
 # region Gauges and Gaps
 
@@ -123,7 +123,7 @@ def test_gapped_apps():
 
 
 def test_gapped_gear():
-	class Tester(ToolKit):
+	class Tester(Structured):
 		@gear('a')
 		def something(self):
 			return 10
@@ -132,7 +132,7 @@ def test_gapped_gear():
 		def something_else(self, a):
 			return a + 5
 
-	src = Tester(gap={'a': 'c'})
+	src = Tester(gap={'a': 'c'}).mechanize()
 
 	assert src.something == 10
 	assert src.something_else == 15
@@ -140,156 +140,7 @@ def test_gapped_gear():
 	assert src.mechanics().is_cached('c')
 	assert src.mechanics()['b'] == 15
 
-# endregion
 
-
-# region Mechanism
-
-def test_simple_mechanism():
-	# from ..core import ToolKit, tool, Context
-
-	class Tester(ToolKit):
-		@tool('out')
-		def f(self, in1, in2):
-			return in1 - in2
-
-	obj = Tester()
-
-	ctx = Context(obj, DictGadget({'in1': 10, 'in2': 7, 'alt': 1}))
-
-	ctx.include(SimpleMechanism(obj, relabel={'out': 'out2', 'in2': 'alt'}, insulate=False))
-
-	gizmos = list(ctx.gizmos())
-	assert 'out' in gizmos, f'out not in {gizmos}'
-	assert 'out2' in gizmos, f'out2 not in {gizmos}'
-
-	assert ctx['out'] == 3
-	assert ctx.is_cached('in1') and ctx.is_cached('in2')
-	assert ctx.is_cached('out')
-	assert not ctx.is_cached('out2')
-
-	assert ctx['out2'] == 9
-	assert ctx.is_cached('out2')
-
-	ctx.clear()
-
-	assert ctx['out2'] == 9
-	assert not ctx.is_cached('out')
-
-
-def test_mechanism_gears():
-	class Tester(ToolKit):
-		@tool('out')
-		def f(self, in1, in2):
-			return in1 - in2
-
-		@gear('out')
-		def g(self, in1, in2):
-			return in1 + in2
-
-		@gear('x')
-		def h(self):
-			return 299
-
-		@gear('y')
-		def i(self, x):
-			return x + 1
-
-		@gear('z')
-		def j(self):
-			return 4
-
-	class Tester2(ToolKit):
-		@gear('a')
-		def f(self, y):
-			return y + -100
-
-	obj = Tester()
-	obj2 = Tester2()
-
-	ctx = Context(obj, obj2)
-
-	mech = Mechanism(obj, apply={'x': 'out'}, select={'x': 'in1', 'z': 'in2', 'y': 'z'},
-					 insulate_in=False, insulate_out=False)
-
-	ctx.include(mech)
-
-	assert obj.g == 303
-	assert obj.h == 299
-	assert obj.i == 300
-	# note that when debugging this may appear to be 4 due to caching (since the debugger automatically gets properties)
-	assert obj.j == 304
-	assert obj2.f == 200
-
-
-def test_insulated_mechanism():
-
-	from ..core import ToolKit, tool, Context, Scope
-	from .simple import DictGadget
-
-	class Tester(ToolKit):
-		@tool('intermediate')
-		def f(self, in1, in2):
-			return in1 - in2
-
-		@tool('out')
-		def g(self, intermediate):
-			return -intermediate
-
-	obj = Tester()
-
-	ctx = Context(obj, DictGadget({'in1': 10, 'in2': 7, 'alt': 1}))
-
-	ctx.clear()
-
-	mech = SimpleMechanism(obj, relabel={'out': 'out2', 'in2': 'alt'}, insulate_in=False)
-
-	ctx.include(mech)
-
-	gizmos = list(ctx.gizmos())
-	assert 'out2' in gizmos, f'out2 not in {gizmos}'
-
-	assert ctx['out'] == -3, f'{ctx["out"]} != -3'
-	assert ctx['out2'] == -9, f'{ctx["out2"]} != -9'
-
-	ctx.clear()
-
-	assert ctx['out2'] == -9, f'{ctx["out2"]} != -9'
-	assert ctx['out'] == -3, f'{ctx["out"]} != -3'
-
-	@tool('alt2')
-	def other_alt():
-		return 5
-
-	mech = SimpleMechanism(obj, relabel={'out': 'out2', 'in2': 'alt2', 'in1': 'alt2'})
-
-	ctx = Context(mech, other_alt)
-
-	assert ctx['out2'] == 0
-
-def test_chain():
-	from ..core import ToolKit, tool, Context, Scope
-	from .simple import DictGadget
-
-	class Tester(ToolKit):
-		@tool('b')
-		def f(self, a):
-			return a + 1
-
-		@tool('d')
-		def g(self, c):
-			return -c
-
-	src = Tester()
-
-	obj = SimpleMechanism(src, relabel={'b': 'c', 'd': 'd'}, insulate_in=False)
-	ctx = Context(obj, DictGadget({'a': 1}))
-	assert ctx['d'] == -2
-
-	# This works but is worse as it requires the 'b': 'b' to make b visible externally
-	obj = SimpleMechanism(src, relabel={'c': 'b', 'b': 'b', 'd': 'd'}, insulate_in=False)
-	ctx = Context(obj, DictGadget({'a': 2}))
-	assert ctx['d'] == -3
 
 def test_multi_chain():
 	from .gaps import ToolKit, tool, Context
@@ -306,13 +157,15 @@ def test_multi_chain():
 
 	src = Tester(gap={'b': 'c'})
 
-	obj = SimpleMechanism(src, relabel={'d': 'e', 'c': 'alt'}, request=['d'])
-	obj2 = SimpleMechanism(src, relabel={'c': 'f', 'a': 'alt'})
+	obj = Gate(src, gate={'d': 'e', 'c': 'alt'}, select=['d'])
+	obj2 = Gate(src, gate={'c': 'f', 'a': 'alt'}, exclusive=True)
 	ctx = Context(obj, obj2, src, DictGadget({'a': 1, 'alt': -4}))
 
 	assert ctx['d'] == -2
 	assert ctx['e'] == 4
 	assert ctx['f'] == -3
+
+
 
 def test_break_chain():
 	from .gaps import ToolKit, tool, Context
@@ -329,14 +182,16 @@ def test_break_chain():
 
 	src = Tester()
 
-	obj = SimpleMechanism(src, relabel={'c': 'd', 'b': 'other'}, request=['c'])
-	obj2 = SimpleMechanism(src, relabel={'b': 'e', 'a': 'other2', 'c': 'f'})
+	obj = Gate(src, gate={'c': 'd', 'b': 'other'}, select=['c'])
+	obj2 = Gate(src, gate={'b': 'e', 'a': 'other2', 'c': 'f'}, exclusive=True)
 	ctx = Context(obj, obj2, src, DictGadget({'a': 1, 'other': 10, 'other2': 100}))
 
 	assert ctx['c'] == -2
 	assert ctx['d'] == -10
 	assert ctx['f'] == -101
 	assert ctx['e'] == 101
+
+
 
 def test_rebuild_chain():
 	from .gaps import ToolKit, tool, Context
@@ -353,9 +208,9 @@ def test_rebuild_chain():
 
 	src = Tester()
 
-	resp = Mechanism([src], select={'lat': 'response'}, apply={'obs': 'rec', 'lat': 'probe'})
-	resp2 = Mechanism([src], select={'lat': 'resp2', 'rec': 'prec'},
-					  apply={'obs': 'rec', 'lat': 'probe2'})
+	resp = Gang(src, aus={'lat': 'response'}, ein={'obs': 'rec', 'lat': 'probe'})
+	resp2 = Gang(src, aus={'lat': 'resp2', 'rec': 'prec'},
+					  ein={'obs': 'rec', 'lat': 'probe2'})
 	ctx = Context(src, resp, resp2, DictGadget({'obs': 1, 'probe': 10, 'probe2': 100}))
 
 	assert ctx['rec'] == -2
@@ -363,7 +218,10 @@ def test_rebuild_chain():
 	assert ctx['resp2'] == -99
 	assert ctx['prec'] == -100
 
+
 # endregion
+
+
 
 
 

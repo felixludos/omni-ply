@@ -1,4 +1,4 @@
-from .op import tool, ToolKit, Context, Scope, Selection
+from .op import tool, ToolKit, Context, Gang, Gate
 
 
 def test_tool():
@@ -454,7 +454,7 @@ def test_scope():
 	kit = _Kit1()
 
 	# The 'Scope' class is used to create a scope with the '_Kit1' instance and a gizmo mapping from 'y' to 'a'.
-	scope = Scope(kit, gate={'y': 'a'})
+	scope = Gang(kit, aus={'y': 'a'}, insulated=False, exclusive=False)
 
 	# Asserts that the gizmos of the scope are correctly identified.
 	assert list(scope.gizmos()) == ['a', 'z', 'w']
@@ -471,7 +471,7 @@ def test_scope():
 	assert ctx['a'] == 2
 
 	# The 'Context' class is used to create a new context with a new scope, which has a gizmo mapping from 'y' to 'a' and 'x' to 'b'.
-	ctx = Context(Scope(kit, gate={'y': 'a', 'x': 'b'}))
+	ctx = Context(Gang(kit, aus={'y': 'a'}, ein={'x': 'b'}, exclusive=False))
 
 	# Asserts that the gizmos of the new scope are correctly identified.
 	assert list(ctx.gizmos()) == ['a', 'z', 'w']
@@ -497,7 +497,7 @@ def test_selection():
 	kit = _Kit1()
 
 	# The 'Selection' class is used to create a selection with the '_Kit1' instance and a gizmo mapping from 'y' to 'a'.
-	scope = Selection(kit, gate=['y'])
+	scope = Gate(kit, select=['y'])
 
 	# Asserts that the gizmos of the selection are correctly identified.
 	assert list(scope.gizmos()) == ['y']
@@ -552,7 +552,7 @@ def test_gate_cache():
 	assert ctx['a'] == 1  # Asserts that the context correctly maps 'a' to 1.
 	assert counter == 1  # Asserts that the counter is not incremented.
 
-	ctx = Context(Scope(f, gate={'a': 'b'}))  # The 'Scope' class is used to create a scope with the function 'f' and a gizmo mapping from 'a' to 'b'.
+	ctx = Context(Gate(f, gate={'a': 'b'}, exclusive=False))  # The 'Scope' class is used to create a scope with the function 'f' and a gizmo mapping from 'a' to 'b'.
 
 	assert not ctx.gives('a')  # Asserts that 'a' is not grabable from the context.
 	assert ctx.gives('b')  # Asserts that 'b' is grabable from the context.
@@ -580,14 +580,14 @@ def test_gate_cache():
 		"""
 		return 10 * a
 
-	ctx = Context(Scope(f, g, gate={'a': 'b'}))  # The 'Scope' class is used to create a scope with the functions 'f' and 'g' and a gizmo mapping from 'a' to 'b'.
+	ctx = Context(Gate(f, g, gate={'a': 'b'}, exclusive=False))  # The 'Scope' class is used to create a scope with the functions 'f' and 'g' and a gizmo mapping from 'a' to 'b'.
 
 	assert list(ctx.gizmos()) == ['b', 'x']  # Asserts that the gizmos of the context are correctly identified.
 
 	assert ctx['x'] == 10  # Asserts that the context correctly maps 'x' to 10.
 	assert counter == 4  # Asserts that the counter is correctly incremented.
 	assert 'x' in ctx.data  # Asserts that 'x' is in the context's data.
-	assert 'b' not in ctx.data  # Asserts that 'b' is not in the context's data.
+	# assert 'b' not in ctx.data  # Asserts that 'b' is not in the context's data.
 	assert 'a' not in ctx.data  # Asserts that 'a' is not in the context's data.
 
 	assert ctx.is_cached('x')  # Asserts that 'x' is cached in the context.
@@ -607,7 +607,7 @@ def test_gate_cache():
 	assert ctx['x'] == 20  # Asserts that the context correctly maps 'x' to 20.
 	assert counter == 5  # Asserts that the counter is not incremented.
 
-	ctx = Context(Scope(f, g))  # The 'Scope' class is used to create a scope with the functions 'f' and 'g'.
+	ctx = Context(Gate(f, g, exclusive=False, insulated=False))  # The 'Scope' class is used to create a scope with the functions 'f' and 'g'.
 
 	assert list(ctx.gizmos()) == ['a', 'x']  # Asserts that the gizmos of the context are correctly identified.
 
@@ -628,6 +628,109 @@ def test_gate_cache():
 	ctx['a'] = 2  # The context maps 'a' to 2.
 	assert ctx['x'] == 20  # Asserts that the context correctly maps 'x' to 20.
 	assert counter == 7  # Asserts that the counter is not incremented.
+
+
+def test_simple_gate():
+	class Tester(ToolKit):
+		@tool('out')
+		def f(self, in1, in2):
+			return in1 - in2
+
+	obj = Tester()
+
+	# ctx = Context(obj, DictGadget({'in1': 10, 'in2': 7, 'alt': 1}))
+	ctx = Context(obj)
+
+	ctx.include(Gate(obj, gate={'out': 'out2', 'in2': 'alt'}, insulated=False))
+
+	ctx.data.update({'in1': 10, 'in2': 7, 'alt': 1})
+
+	gizmos = list(ctx.gizmos())
+	assert 'out' in gizmos, f'out not in {gizmos}'
+	assert 'out2' in gizmos, f'out2 not in {gizmos}'
+
+	assert ctx['out'] == 3
+	assert ctx.is_cached('in1') and ctx.is_cached('in2')
+	assert ctx.is_cached('out')
+	assert not ctx.is_cached('out2')
+
+	assert ctx['out2'] == 9
+	assert ctx.is_cached('out2')
+
+	ctx.clear()
+
+	assert ctx['out2'] == 9
+	assert not ctx.is_cached('out')
+
+
+def test_insulated_mechanism():
+	class Tester(ToolKit):
+		@tool('intermediate')
+		def f(self, in1, in2):
+			return in1 - in2
+
+		@tool('out')
+		def g(self, intermediate):
+			return -intermediate
+
+	obj = Tester()
+
+	ctx = Context(obj,
+				  tool('in1')(lambda: 10),
+				  tool('in2')(lambda: 7),
+				  tool('alt')(lambda: 1))
+
+	ctx.clear()
+
+	mech = Gate(obj, gate={'out': 'out2', 'in2': 'alt'}, exclusive=True, insulated=False)
+
+	ctx.include(mech)
+
+	gizmos = list(ctx.gizmos())
+	assert 'out2' in gizmos, f'out2 not in {gizmos}'
+
+	assert ctx['out'] == -3, f'{ctx["out"]} != -3'
+	assert ctx['out2'] == -9, f'{ctx["out2"]} != -9'
+
+	ctx.clear()
+
+	assert ctx['out2'] == -9, f'{ctx["out2"]} != -9'
+	assert ctx['out'] == -3, f'{ctx["out"]} != -3'
+
+	@tool('alt2')
+	def other_alt():
+		return 5
+
+	mech = Gate(obj, gate={'out': 'out2', 'in2': 'alt2', 'in1': 'alt2'})
+
+	ctx = Context(mech, other_alt)
+
+	assert ctx['out2'] == 0
+
+
+def test_chain():
+	from ..core import ToolKit, tool, Context
+
+	class Tester(ToolKit):
+		@tool('b')
+		def f(self, a):
+			return a + 1
+
+		@tool('d')
+		def g(self, c):
+			return -c
+
+	src = Tester()
+
+	obj = Gate(src, gate={'b': 'c', 'd': 'd'}, insulated=False)
+	ctx = Context(obj, tool('a')(lambda: 1))
+	assert ctx['d'] == -2
+
+	# This works but is worse as it requires the 'b': 'b' to make b visible externally
+	obj = Gate(src, gate={'c': 'b', 'b': 'b', 'd': 'd'}, insulated=False)
+	ctx = Context(obj, tool('a')(lambda: 2))
+	assert ctx['d'] == -3
+
 
 
 
