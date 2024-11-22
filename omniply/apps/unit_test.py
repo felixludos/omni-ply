@@ -148,8 +148,6 @@ def test_gapped_gear():
 def test_simple_mechanism():
 	# from ..core import ToolKit, tool, Context
 
-	# Mechanism = Scope
-
 	class Tester(ToolKit):
 		@tool('out')
 		def f(self, in1, in2):
@@ -177,6 +175,52 @@ def test_simple_mechanism():
 
 	assert ctx['out2'] == 9
 	assert not ctx.is_cached('out')
+
+
+def test_mechanism_gears():
+	class Tester(ToolKit):
+		@tool('out')
+		def f(self, in1, in2):
+			return in1 - in2
+
+		@gear('out')
+		def g(self, in1, in2):
+			return in1 + in2
+
+		@gear('x')
+		def h(self):
+			return 299
+
+		@gear('y')
+		def i(self, x):
+			return x + 1
+
+		@gear('z')
+		def j(self):
+			return 4
+
+	class Tester2(ToolKit):
+		@gear('a')
+		def f(self, y):
+			return y + -100
+
+	obj = Tester()
+	obj2 = Tester2()
+
+	ctx = Context(obj, obj2)
+
+	mech = Mechanism(obj, apply={'x': 'out'}, select={'x': 'in1', 'z': 'in2', 'y': 'z'},
+					 insulate_in=False, insulate_out=False)
+
+	ctx.include(mech)
+
+	assert obj.g == 303
+	assert obj.h == 299
+	assert obj.i == 300
+	# note that when debugging this may appear to be 4 due to caching (since the debugger automatically gets properties)
+	assert obj.j == 304
+	assert obj2.f == 200
+
 
 def test_insulated_mechanism():
 

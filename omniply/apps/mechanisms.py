@@ -129,7 +129,6 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 			gizmo = self._reverse_select_map.get(gizmo, gizmo)
 			out = self._grab(gizmo)
 
-
 		if len(self._game_stack) and ctx is self._game_stack[-1]:
 			self._game_stack.pop()
 
@@ -137,7 +136,7 @@ class MechanismBase(LoopyGaggle, MutableGaggle, MultiGadgetBase, GaggleBase, Abs
 
 
 
-class GearedMechanism(MechanismBase, AbstractGeared):
+class GearedMechanismBase(MechanismBase, AbstractGeared):
 	def __init__(self, content, *, insulate_gears_in: bool = None, **kwargs):
 		super().__init__(content, **kwargs)
 		if insulate_gears_in is None:
@@ -163,7 +162,7 @@ class GearedMechanism(MechanismBase, AbstractGeared):
 
 
 
-class Mechanism(MechanismBase):
+class UngearedMechanism(MechanismBase):
 	def __init__(self, content: Union[AbstractGadget, list[AbstractGadget], tuple],
 				 apply: dict[str, str] | list[str] = None,
 				 select: dict[str, str] | list[str] = None, **kwargs):
@@ -179,7 +178,10 @@ class Mechanism(MechanismBase):
 			select = {k: k for k in select}
 		super().__init__(content=content, apply=apply, select=select, **kwargs)
 
-GearedMechanism.GearBox = Mechanism
+
+
+class Mechanism(UngearedMechanism, GearedMechanismBase):
+	_GearBox = UngearedMechanism
 
 
 
