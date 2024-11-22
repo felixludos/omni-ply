@@ -154,21 +154,6 @@ class MultiGadgetBase(AbstractGaggle):
 		"""
 		yield self
 
-	# def vendors(self, gizmo: Optional[str] = None) -> Iterator[AbstractGadget]:
-	# 	"""
-	# 	Lists all known sub-gadgets and sub-gaggles in this multi-gadget that can produce the given gizmo.
-	# 	Since this is a multi-gadget, it doesn't delegate to sub-gadgets, and instead yields itself.
-	#
-	# 	Args:
-	# 		gizmo (Optional[str]): If specified, yields only the gadgets that can produce this gizmo. In this case, it
-	# 		checks if this multi-gadget can produce the gizmo.
-	#
-	# 	Returns:
-	# 		Iterator[AbstractGadget]: An iterator over the known gadgets that can directly produce the given gizmo. Since
-	# 		this is a multi-gadget, it yields itself.
-	# 	"""
-	# 	yield self
-
 
 
 class LoopyGaggle(GaggleBase):
