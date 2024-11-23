@@ -1,9 +1,9 @@
 from .imports import *
 from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, NestableCraft
 from ..core.gaggles import LoopyGaggle
-from ..core import Context as _Context, ToolKit as _ToolKit, Gang as _Gang, Gate as _Gate
+from ..core import Context as _Context, ToolKit as _ToolKit, Mechanism as _Mechanism, Gate as _Gate
 from .abstract import AbstractGeared, AbstractMechanized
-from .gearbox import MutableMechanics, GearedGang, CraftyGearedGaggle
+from .gearbox import MutableMechanics, GearedMechanism, CraftyGearedGaggle
 from .mechanics import MechanizedBase, AutoMechanized, MechanizedGame, MutableMechanized, Mechanics
 from .gears import GearDecorator
 from .errors import GearFailed
@@ -38,12 +38,12 @@ class Context(MechanizedGame, _Context):
 
 
 
-class Gang(_Gang, GearedGang):
-	_GearGang = _Gang
+class Mechanism(_Mechanism, GearedMechanism):
+	_GearMechanism = _Mechanism
 
 
 
-class Gate(_Gate, Gang):
+class Gate(_Gate, Mechanism):
 	pass
 
 

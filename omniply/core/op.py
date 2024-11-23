@@ -1,11 +1,11 @@
 from typing import Iterable, Callable
-from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGate
+from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGang
 from .errors import GadgetFailed, MissingGadget
 from .tools import ToolCraftBase, AutoToolCraft, MIMOToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
 from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle, MutableCrafty
 from .games import CacheGame, GatedCache, TraceGame, RollingGame, ConsistentGame
-from .gangs import CachableGang, GateBase
+from .gangs import CachableMechanism, GateBase
 from .genetics import GeneticGaggle
 
 
@@ -111,7 +111,7 @@ class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggl
 
 
 
-class Gang(CachableGang, LoopyGaggle, MutableGaggle, AbstractGate):
+class Mechanism(CachableMechanism, LoopyGaggle, MutableGaggle, AbstractGang):
 	"""
 	The Gang class is a subclass of CachableGang, LoopyGaggle, and MutableGaggle.
 
@@ -145,7 +145,7 @@ class Gang(CachableGang, LoopyGaggle, MutableGaggle, AbstractGate):
 
 
 
-class Gate(Gang, GateBase):
+class Gate(Mechanism, GateBase):
 	"""
 	The Gate class is a subclass of GateBase, CachableGang, LoopyGaggle, and MutableGaggle.
 

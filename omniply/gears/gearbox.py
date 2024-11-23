@@ -1,7 +1,7 @@
 from .imports import *
 from ..core.gaggles import MutableGaggle, CraftyGaggle
-from ..core.gangs import GangBase
-from ..core import Context, ToolKit, Gang, Gate
+from ..core.gangs import GangBase, MechanismBase
+from ..core import Context, ToolKit, Mechanism, Gate
 from .abstract import AbstractMechanized, AbstractMechanics, AbstractMechanical, AbstractGearbox, AbstractGeared, AbstractGear
 from .gears import GearCraft, GearFailed
 
@@ -66,10 +66,10 @@ class CraftyGearedGaggle(CraftyGaggle, GearedGaggle):
 
 
 
-class GearedGang(GangBase, GearedGaggle):
-	_GearGang = None
+class GearedMechanism(MechanismBase, GearedGaggle):
+	_GearMechanism = None
 	def gearbox(self) -> AbstractGearbox:
-		return self._GearGang(super().gearbox(), aus=self._aus_gang, ein=self._ein_gang,
+		return self._GearMechanism(super().gearbox(), external=self._external_map, internal=self._internal_map,
 							  exclusive=self._exclusive, insulated=self._insulated)
 
 

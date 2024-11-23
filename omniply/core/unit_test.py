@@ -1,4 +1,4 @@
-from .op import tool, ToolKit, Context, Gang, Gate
+from .op import tool, ToolKit, Context, Mechanism, Gate
 
 
 def test_tool():
@@ -454,7 +454,7 @@ def test_scope():
 	kit = _Kit1()
 
 	# The 'Scope' class is used to create a scope with the '_Kit1' instance and a gizmo mapping from 'y' to 'a'.
-	scope = Gang(kit, aus={'y': 'a'}, insulated=False, exclusive=False)
+	scope = Mechanism(kit, external={'y': 'a'}, insulated=False, exclusive=False)
 
 	# Asserts that the gizmos of the scope are correctly identified.
 	assert list(scope.gizmos()) == ['a', 'z', 'w']
@@ -471,7 +471,7 @@ def test_scope():
 	assert ctx['a'] == 2
 
 	# The 'Context' class is used to create a new context with a new scope, which has a gizmo mapping from 'y' to 'a' and 'x' to 'b'.
-	ctx = Context(Gang(kit, aus={'y': 'a'}, ein={'x': 'b'}, exclusive=False))
+	ctx = Context(Mechanism(kit, external={'y': 'a'}, internal={'x': 'b'}, exclusive=False))
 
 	# Asserts that the gizmos of the new scope are correctly identified.
 	assert list(ctx.gizmos()) == ['a', 'z', 'w']

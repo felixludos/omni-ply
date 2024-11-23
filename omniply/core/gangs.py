@@ -1,67 +1,40 @@
 from typing import Any, Optional, Iterator, Iterable, Mapping, Type, Union
 
-from .abstract import AbstractGate, AbstractGame, AbstractGadget
+from .abstract import AbstractGang, AbstractGame, AbstractGadget
 from .gadgets import GadgetBase
 from .gaggles import MultiGadgetBase
 from .games import GatedCache, CacheGame
 
 
 
-class GangBase(MultiGadgetBase, GadgetBase, AbstractGate):
-	def __init__(self, aus: Mapping[str, str] = None, ein: Mapping[str, str] = None, *,
-				 exclusive: bool = True, insulated: bool = True, **kwargs):
-		"""
-		Sets up the ein and aus mappings of this gang.
+class GangBase(MultiGadgetBase, GadgetBase, AbstractGang):
+	"""This mixin that should be upstream of Goggles (such as LoopyGaggle)"""
 
-		Ausgang generally refers to gizmos that are produced by this gang, while eingang refers to the gizmos
-		that can be used as inputs (either internally or externally).
-
-		Args:
-			aus (Mapping[str, str]): internal gizmos that are exposed by this gang (internal -> external)
-			ein (Mapping[str, str]): relabeled gizmos accessible to this gang as inputs (original -> active)
-			exclusive (bool, True): If True, only internal gizmos mentioned in `aus` are exposed externally
-			insulated (bool, True): If True, only external gizmos mentioned in `ein` are accessible internally
-		"""
-		if aus is None: aus = {}
-		if ein is None: ein = {}
-		super().__init__(**kwargs)
-		self._aus_gang = aus
-		self._reverse_aus_gang = {v: k for k, v in aus.items()}
-		if len(self._reverse_aus_gang) != len(aus):
-			print(f'WARNING: duplicate external gizmos: {aus}')
-		self._ein_gang = ein
-		self._gang_stack = [] # of external contexts
-		self._exclusive = exclusive
-		self._insulated = insulated
-
-	def gizmo_to(self, internal: str) -> Optional[str]:
-		"""
-		Converts an internal gizmo to its external representation.
-
-		Returns None if the gizmo is not exposed.
-		"""
-		return self._aus_gang.get(internal, None if self._exclusive else internal)
-
-
-	def gizmo_from(self, external: str) -> Optional[str]:
-		"""
-		Converts an external gizmo to its internal representation.
-
-		Returns None if the gizmo is not accessible.
-		"""
-		return self._reverse_aus_gang.get(external)
-
-
-	def dependencies(self) -> Iterator[str]: # TODO: is this necessary? principled?
-		"""
-		Lists gizmos that may be accessed by this gang from external contexts.
-
-		using their external names. Crucially this filters out all the gizmos that can be produced "inhouse"
-		"""
-		inhouse = set(self._gizmos())
-		for req in self._ein_gang.values():
-			if req not in inhouse:
-				yield req
+	# def __init__(self, aus: Mapping[str, str] = None, ein: Mapping[str, str] = None, *,
+	# 			 exclusive: bool = True, insulated: bool = True, **kwargs):
+	# 	"""
+	# 	Sets up the ein and aus mappings of this gang.
+	#
+	# 	Ausgang generally refers to gizmos that are produced by this gang, while eingang refers to the gizmos
+	# 	that can be used as inputs (either internally or externally).
+	#
+	# 	Args:
+	# 		aus (Mapping[str, str]): internal gizmos that are exposed by this gang (internal -> external)
+	# 		ein (Mapping[str, str]): relabeled gizmos accessible to this gang as inputs (original -> active)
+	# 		exclusive (bool, True): If True, only internal gizmos mentioned in `aus` are exposed externally
+	# 		insulated (bool, True): If True, only external gizmos mentioned in `ein` are accessible internally
+	# 	"""
+	# 	if aus is None: aus = {}
+	# 	if ein is None: ein = {}
+	# 	super().__init__(**kwargs)
+	# 	self._aus_gang = aus
+	# 	self._reverse_aus_gang = {v: k for k, v in aus.items()}
+	# 	if len(self._reverse_aus_gang) != len(aus):
+	# 		print(f'WARNING: duplicate external gizmos: {aus}')
+	# 	self._ein_gang = ein
+	# 	self._gang_stack = [] # of external contexts
+	# 	self._exclusive = exclusive
+	# 	self._insulated = insulated
 
 
 	def gizmos(self) -> Iterator[str]:
@@ -87,6 +60,64 @@ class GangBase(MultiGadgetBase, GadgetBase, AbstractGate):
 		yield from super().gizmos()
 
 
+
+class MechanismBase(GangBase):
+	def __init__(self, external: Mapping[str, str] = None, internal: Mapping[str, str] = None, *,
+				 exclusive: bool = True, insulated: bool = True, **kwargs):
+		"""
+		Sets up the ein and aus mappings of this gang.
+
+		Ausgang generally refers to gizmos that are produced by this gang, while eingang refers to the gizmos
+		that can be used as inputs (either internally or externally).
+
+		Args:
+			external (Mapping[str, str]): internal gizmos that are exposed by this gang (internal -> external)
+			internal (Mapping[str, str]): relabeled gizmos accessible to this gang as inputs (original -> active)
+			exclusive (bool, True): If True, only internal gizmos mentioned in `aus` are exposed externally
+			insulated (bool, True): If True, only external gizmos mentioned in `ein` are accessible internally
+		"""
+		if external is None: external = {}
+		if internal is None: internal = {}
+		super().__init__(**kwargs)
+		self._external_map = external
+		self._reverse_external_map = {v: k for k, v in external.items()}
+		if len(self._reverse_external_map) != len(external):
+			print(f'WARNING: duplicate external gizmos: {external}')
+		self._internal_map = internal
+		self._gang_stack = [] # of external contexts
+		self._exclusive = exclusive
+		self._insulated = insulated
+
+	def gizmo_to(self, internal: str) -> Optional[str]:
+		"""
+		Converts an internal gizmo to its external representation.
+
+		Returns None if the gizmo is not exposed.
+		"""
+		return self._external_map.get(internal, None if self._exclusive else internal)
+
+
+	def gizmo_from(self, external: str) -> Optional[str]:
+		"""
+		Converts an external gizmo to its internal representation.
+
+		Returns None if the gizmo is not accessible.
+		"""
+		return self._reverse_external_map.get(external)
+
+
+	def dependencies(self) -> Iterator[str]: # TODO: is this necessary? principled?
+		"""
+		Lists gizmos that may be accessed by this gang from external contexts.
+
+		using their external names. Crucially this filters out all the gizmos that can be produced "inhouse"
+		"""
+		inhouse = set(self._gizmos())
+		for req in self._internal_map.values():
+			if req not in inhouse:
+				yield req
+
+
 	def _grab(self, internal: str) -> Any:
 		"""
 		Internal grab the gizmo
@@ -110,12 +141,12 @@ class GangBase(MultiGadgetBase, GadgetBase, AbstractGate):
 			Any: The grabbed gizmo.
 		"""
 		if ctx is None or ctx is self: # internal grab
-			internal = self._ein_gang.get(gizmo, gizmo)
+			internal = self._internal_map.get(gizmo, gizmo)
 			try:
 				out = self._grab(internal)
 			except (self._GadgetFailure, self._MissingGadgetError):
 				# default to parent/s
-				if self._insulated and gizmo not in self._ein_gang:
+				if self._insulated and gizmo not in self._internal_map:
 					raise
 				for parent in reversed(self._gang_stack):
 					try:
@@ -129,7 +160,7 @@ class GangBase(MultiGadgetBase, GadgetBase, AbstractGate):
 
 		else: # was called from an external context
 			self._gang_stack.append(ctx)
-			gizmo = self._reverse_aus_gang.get(gizmo, gizmo)
+			gizmo = self._reverse_external_map.get(gizmo, gizmo)
 			out = self._grab(gizmo)
 
 		if len(self._gang_stack) and ctx is self._gang_stack[-1]:
@@ -139,7 +170,7 @@ class GangBase(MultiGadgetBase, GadgetBase, AbstractGate):
 
 
 
-class GateBase(GangBase):
+class GateBase(MechanismBase):
 	"""A simplified gang that only relabels gizmos"""
 	def __init__(self, select: Iterable[str] = None, gate: Mapping[str, str] = None, *,
 				 exclusive: bool = None, insulated: bool = None, **kwargs):
@@ -156,14 +187,14 @@ class GateBase(GangBase):
 		if insulated is None: insulated = gate is not None
 		if exclusive is None: exclusive = select is not None
 		if gate is None: gate = {}
-		aus = gate if select is None else {k: gate.get(k, k) for k in select}
-		ein = gate
-		assert 'aus' not in kwargs and 'ein' not in kwargs, f'{kwargs}'
-		super().__init__(aus=aus, ein=ein, exclusive=exclusive, insulated=insulated, **kwargs)
+		external = gate if select is None else {k: gate.get(k, k) for k in select}
+		internal = gate
+		assert 'external' not in kwargs and 'internal' not in kwargs, f'{kwargs}'
+		super().__init__(external=external, internal=internal, exclusive=exclusive, insulated=insulated, **kwargs)
 
 
 
-class CachableGang(GangBase):
+class CachableMechanism(MechanismBase):
 	_GateCacheMiss = KeyError # TODO: create a dedicated subclass for this exception
 	def _grab(self, gizmo: str) -> Any:
 		"""

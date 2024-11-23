@@ -5,11 +5,13 @@ from tabulate import tabulate
 import logging, time
 from ...core import Context as _Context, ToolKit, tool, AbstractGame, AbstractGadget, MissingGadget
 from ...core.gaggles import LoopyGaggle
+from ...core.gangs import GangBase
 from ...core.games import CacheGame, GameBase, GatedCache
+from ...core import Gate as _Gate, Mechanism as _Mechanism
 
 from .util import report_time, SPECIAL_CHARACTER
 
-from ..mechanisms import MechanismBase, Mechanism as _Mechanism
+# from ..mechanisms import MechanismBase, Mechanism as _Mechanism
 
 
 
@@ -147,7 +149,7 @@ class RecordingCached(CacheGame, RecordableBase):
 		return val
 
 
-class RecordingMechanism(MechanismBase, RecordingGaggle):
+class Mechanism(_Mechanism, RecordingGaggle):
 	def _grab(self, gizmo: str) -> Any:
 		"""
 		Tries to grab a gizmo from the gate. If the gizmo is not found in the gate's cache, it checks the cache using
@@ -159,9 +161,10 @@ class RecordingMechanism(MechanismBase, RecordingGaggle):
 		Returns:
 			Any: The grabbed gizmo.
 		"""
-		if len(self._game_stack):
+		if len(self._gang_stack):
 			# check cache (if one exists)
-			for parent in reversed(self._game_stack):
+			ext = self.gizmo_to(gizmo)
+			for parent in reversed(self._gang_stack):
 				if isinstance(parent, GatedCache):
 					try:
 						out = parent.check_gate_cache(self, gizmo)
@@ -171,20 +174,16 @@ class RecordingMechanism(MechanismBase, RecordingGaggle):
 						if self._active_recording:
 							self._active_recording.cached(gizmo, out)
 						return out
-
-			# if it can't be found in my cache, check the cache using the external gizmo name
-			ext = self._select_map.get(gizmo)
-			if ext is not None:
-				for parent in reversed(self._game_stack):
-					if isinstance(parent, GatedCache) and parent.is_cached(ext):
-						return parent.grab(ext)
+				# if it can't be found in my cache, check the cache using the external gizmo name
+				if ext is not None and isinstance(parent, CacheGame) and parent.is_cached(ext):
+					return parent.grab(ext)
 
 		# if it can't be found in any cache, grab it from my gadgets
-		out = super(MechanismBase, self).grab_from(self, gizmo)
+		out = super(GangBase, self).grab_from(self, gizmo)
 
 		# update my cache
-		if len(self._game_stack):
-			for parent in reversed(self._game_stack):
+		if len(self._gang_stack):
+			for parent in reversed(self._gang_stack):
 				if isinstance(parent, GatedCache):
 					parent.update_gate_cache(self, gizmo, out)
 					break
@@ -204,20 +203,20 @@ class RecordingMechanism(MechanismBase, RecordingGaggle):
 			Any: The grabbed gizmo.
 		"""
 		if ctx is None or ctx is self: # internal grab
-			fixed = self._apply_map.get(gizmo, gizmo)
+			internal = self._internal_map.get(gizmo, gizmo)
 			if self._active_recording:
-				self._active_recording.relabel(fixed, gizmo, 'internal')
+				self._active_recording.relabel(internal, gizmo, 'internal')
 			try:
-				out = self._grab(fixed)
-			except (self._GadgetFailure, self._MissingGadgetError) as e: # important change
+				out = self._grab(internal)
+			except (self._GadgetFailure, self._MissingGadgetError) as e:
 				# default to parent/s
-				if self._insulate_in and gizmo not in self._apply_map:
+				if self._insulated and gizmo not in self._internal_map:
 					if self._active_recording:
 						self._active_recording.failure(gizmo, None, e)
 					raise
-				for parent in reversed(self._game_stack):
+				for parent in reversed(self._gang_stack):
 					try:
-						out = parent.grab(fixed)
+						out = parent.grab(internal)
 					except self._GadgetFailure:
 						pass
 					else:
@@ -227,29 +226,28 @@ class RecordingMechanism(MechanismBase, RecordingGaggle):
 						self._active_recording.failure(gizmo, None, e)
 					raise
 
-		else: # grab from external context
-			self._game_stack.append(ctx)
+		else: # was called from an external context
+			self._gang_stack.append(ctx)
 			rec = getattr(ctx, '_active_recording', None)
 			if rec is not None:
 				self._active_recording = rec
 			prev = gizmo
-			gizmo = self._reverse_select_map.get(gizmo, gizmo)
+			gizmo = self._reverse_external_map.get(gizmo, gizmo)
 			if self._active_recording:
 				self._active_recording.relabel(prev, gizmo, 'external')
 			out = self._grab(gizmo)
 
-
-		if len(self._game_stack) and ctx is self._game_stack[-1]:
-			if (len(self._game_stack) == 1
-					and self._active_recording is getattr(self._game_stack[-1], '_active_recording', None)):
+		if len(self._gang_stack) and ctx is self._gang_stack[-1]:
+			if (len(self._gang_stack) == 1
+					and self._active_recording is getattr(self._gang_stack[-1], '_active_recording', None)):
 				self._active_recording = None
-			self._game_stack.pop()
+			self._gang_stack.pop()
 
 		return out
 
 
-class Mechanism(_Mechanism, RecordingMechanism):
-	pass
+# class Mechanism(_Mechanism, RecordingMechanism):
+# 	pass
 
 
 class EventRecorder(RecorderBase):
@@ -647,163 +645,6 @@ class Context(_Context, RecordingCached, GameBase, RecordingGaggle):
 				return ctx.grab(gizmo)
 		raise error from error
 
-
-
-def test_recording():
-
-	from ..gaps import tool, ToolKit
-	from ...core import GadgetFailed, MissingGadget, GrabError
-
-	class Tester(ToolKit):
-		@tool('a')
-		def f(self):
-			return 10
-
-		@tool('b')
-		def g(self, a):
-			return a + 10
-
-		@tool('c')
-		def h(self, b, d):
-			return b - d
-
-	@tool('b')
-	def i():
-		raise GadgetFailed
-
-	ctx = Context(i, Tester(gap={'a': 'x'}))
-
-	ctx['d'] = 5
-
-	ctx.record()
-
-	assert ctx.grab('c') == 15
-
-	ctx.clear_cache()
-
-	assert ctx.grab('x') == 10
-	assert ctx.grab('b') == 20
-
-	try:
-		ctx.grab('c') # d is missing
-	except GrabError:
-		pass
-
-	assert ctx.grab('x') == 10
-
-	report = ctx.report(ret_ctx=True)
-
-	print()
-
-	pretty = ctx.report()
-	print(pretty)
-	print()
-
-
-def test_loopy():
-	from ...core import tool, ToolKit
-
-	@tool('a')
-	def i():
-		return 5
-
-	@tool('a')
-	def j(a):
-		return a - 1
-
-	ctx = Context(j, i)
-
-	ctx.record()
-
-	assert ctx.grab('a') == 4
-
-	report = ctx.report(ret_ctx=True)
-
-	print()
-
-	pretty = ctx.report()
-	print(pretty)
-	print()
-
-
-def test_mech_recording():
-
-	from ...core import tool, ToolKit
-	from ...core import GadgetFailed, MissingGadget, GrabError
-
-	class Tester(ToolKit):
-		@tool('a')
-		def f(self):
-			return 10
-
-		@tool('b')
-		def g(self, a):
-			return a + 4
-
-		@tool('c')
-		def h(self, a, b):
-			return b - a
-
-	src = Tester()
-	mech = Mechanism(src, select={'c': 'd'}, apply={'b': 'a'})
-	ctx = Context(src, mech)
-
-	print()
-	ctx.record()
-
-	assert ctx.grab('c') == 4
-
-	print(ctx.report())
-
-	ctx.clear_cache()
-	print()
-	ctx.record()
-
-	assert ctx.grab('d') == 0
-
-	print(ctx.report())
-
-
-def test_double_mech_recording():
-	from ...core import tool, ToolKit
-	from ..simple import DictGadget
-
-	class Tester1(ToolKit):
-		@tool('hidden')
-		def f(self):
-			return 5
-
-		@tool('a')
-		def g(self, x):
-			return 50 - x
-
-	class Tester2(ToolKit):
-		@tool('b')
-		def h(self):
-			return 100
-
-		@tool('c')
-		def h(self, b):
-			return b - 10
-
-	mech1 = Mechanism(Tester1(), select={'a': 'y', 'hidden': 'b'}, apply={'x': 'b'})
-	mech2 = Mechanism(Tester2(), select={'c': 'out'}, apply={'b': 'y'})
-	ctx = Context(mech1, mech2)
-
-	print()
-	ctx.record()
-
-	assert list(ctx.gizmos()) == ['b', 'y', 'out']
-
-	assert ctx.grab('out') == 35
-
-	print(ctx.report())
-
-	ctx.clear_cache()
-	print()
-	# ctx.record()
-	# assert ctx.grab('d') == 0
-	# print(ctx.report())
 
 
 

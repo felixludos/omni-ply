@@ -214,9 +214,9 @@ class AbstractGame(AbstractGaggle):
 			return default
 
 
-class AbstractGate(AbstractGame):
+class AbstractGang(AbstractGame):
 	"""
-	Gates are a special kind of game that relabels gizmos. It behaves a bit like a local/internal scope
+	Gangs are a special kind of game that relabels gizmos. It behaves a bit like a local/internal scope
 	for its sub-gadgets, and can default to the global/external scope if necessary.
 
 	This class must be typically subclassed to create a specific type of gate.

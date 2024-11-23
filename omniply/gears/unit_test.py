@@ -1,5 +1,5 @@
 from .imports import *
-from .op import Context, ToolKit, Structured, gear, Mechanics, Mechanized, Gang, Gate
+from .op import Context, ToolKit, Structured, gear, Mechanics, Mechanized, Mechanism, Gate
 from .. import GrabError
 from .errors import GearFailed
 
@@ -286,7 +286,7 @@ def test_gang_gears():
 
 	ctx = Context(obj, obj2).mechanize()
 
-	mech = Gang(obj, ein={'x': 'out'}, aus={'x': 'in1', 'z': 'in2', 'y': 'z'},
+	mech = Mechanism(obj, internal={'x': 'out'}, external={'x': 'in1', 'z': 'in2', 'y': 'z'},
 					 insulated=False, exclusive=False)
 
 	ctx.include(mech)

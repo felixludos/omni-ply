@@ -1,6 +1,5 @@
 from .gaps import tool, Context, Structured, ToolKit, gear, Table, DictGadget
-# from .mechanisms import SimpleMechanism, Mechanism
-from .. import Gate, Gang
+from .. import Gate, Mechanism
 
 # region Gauges and Gaps
 
@@ -208,9 +207,9 @@ def test_rebuild_chain():
 
 	src = Tester()
 
-	resp = Gang(src, aus={'lat': 'response'}, ein={'obs': 'rec', 'lat': 'probe'})
-	resp2 = Gang(src, aus={'lat': 'resp2', 'rec': 'prec'},
-					  ein={'obs': 'rec', 'lat': 'probe2'})
+	resp = Mechanism(src, external={'lat': 'response'}, internal={'obs': 'rec', 'lat': 'probe'})
+	resp2 = Mechanism(src, external={'lat': 'resp2', 'rec': 'prec'},
+					  internal={'obs': 'rec', 'lat': 'probe2'})
 	ctx = Context(src, resp, resp2, DictGadget({'obs': 1, 'probe': 10, 'probe2': 100}))
 
 	assert ctx['rec'] == -2
@@ -220,8 +219,6 @@ def test_rebuild_chain():
 
 
 # endregion
-
-
 
 
 

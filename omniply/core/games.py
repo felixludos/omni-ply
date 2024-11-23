@@ -2,7 +2,7 @@ from typing import Any, Optional, Iterator, Iterable, TypeVar
 from collections import UserDict
 from omnibelt import filter_duplicates
 
-from .abstract import (AbstractGadget, AbstractGaggle, AbstractGame, AbstractGate, AbstractGadgetError,
+from .abstract import (AbstractGadget, AbstractGaggle, AbstractGame, AbstractGang, AbstractGadgetError,
 					   AbstractConsistentGame)
 from .errors import GadgetFailed, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
@@ -253,12 +253,12 @@ class GatedCache(CacheGame): # TODO: rename to GangCache
 						yield external
 		yield from filter_duplicates(super().cached(), _gate_cached())
 
-	def check_gate_cache(self, gate: AbstractGate, gizmo: str):
+	def check_gate_cache(self, gate: AbstractGang, gizmo: str):
 		"""
 		Checks a gate cache for a gizmo.
 
 		Args:
-			gate (AbstractGate): The gate to check.
+			gate (AbstractGang): The gate to check.
 			gizmo (str): The name of the gizmo to check.
 
 		Returns:
@@ -266,12 +266,12 @@ class GatedCache(CacheGame): # TODO: rename to GangCache
 		"""
 		return self._gate_cache[gate][gizmo]
 
-	def update_gate_cache(self, gate: AbstractGate, gizmo: str, val: Any):
+	def update_gate_cache(self, gate: AbstractGang, gizmo: str, val: Any):
 		"""
 		Updates a gate cache with a gizmo and its value.
 
 		Args:
-			gate (AbstractGate): The gate to update.
+			gate (AbstractGang): The gate to update.
 			gizmo (str): The name of the gizmo to update.
 			val (Any): The value of the gizmo to update.
 		"""
