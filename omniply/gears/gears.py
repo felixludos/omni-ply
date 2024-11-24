@@ -1,11 +1,15 @@
 from .imports import *
 from omnibelt.crafts import AbstractCraft
 from .abstract import AbstractGear, AbstractGeared, AbstractMechanical
-from .errors import MissingMechanicsError, GearFailed
+from .errors import MissingMechanicsError, GearFailed, GearGrabError
 from ..core import AbstractGame
 from ..core.gadgets import GadgetFailed, SingleGadgetBase
 from ..core.genetics import AutoFunctionGadget, FunctionGadget
 from ..core.tools import AbstractCrafty, AbstractSkill, SkillBase, CraftBase#, ToolDecoratorBase, MIMOToolDecorator, AutoToolDecorator
+
+
+class GearContext(Context):
+	_GrabError = GearGrabError
 
 
 
@@ -41,7 +45,7 @@ class GearCraftBase(CraftBase):
 		if isinstance(geared, AbstractMechanical):
 			mech = geared.mechanics()
 		if mech is None:
-			return Context(geared.gearbox()) # effectively no caching, and all dependencies must be local
+			return GearContext(geared.gearbox()) # effectively no caching, and all dependencies must be local
 		return mech
 
 

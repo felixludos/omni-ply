@@ -1,5 +1,5 @@
 from .imports import *
-from ..core.errors import GadgetFailed
+from ..core.errors import GadgetFailed, GrabError
 
 
 class MissingMechanicsError(Exception):
@@ -11,3 +11,6 @@ class GearFailed(GadgetFailed):
 	'''alias for gadget failed, no change in behavior'''
 	pass
 
+
+class GearGrabError(GrabError):
+	pass

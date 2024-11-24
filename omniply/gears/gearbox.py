@@ -2,7 +2,8 @@ from .imports import *
 from ..core.gaggles import MutableGaggle, CraftyGaggle
 from ..core.gangs import GangBase, MechanismBase
 from ..core import Context, ToolKit, Mechanism, Gate
-from .abstract import AbstractMechanized, AbstractMechanics, AbstractMechanical, AbstractGearbox, AbstractGeared, AbstractGear
+from .abstract import (AbstractMechanized, AbstractMechanics, AbstractMechanical,
+					   AbstractGearbox, AbstractGeared, AbstractGear)
 from .gears import GearCraft, GearFailed
 
 # TODO: include a back reference of Gearboxes to their owners (for exclude)
