@@ -20,8 +20,7 @@ class GearBox(ToolKit, AbstractGearbox):
 class MutableMechanics(MutableGaggle, AbstractMechanics):
 	'''A mutable gaggle that includes gearboxes from included gadgets that are geared'''
 	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
-		return super().extend(gadget.gearbox() if isinstance(gadget, AbstractGeared) else gadget
-							  for gadget in gadgets)
+		return super().extend(gadget.gearbox() for gadget in gadgets if isinstance(gadget, AbstractGeared))
 
 
 	def exclude(self, *gadgets: AbstractGadget) -> Self:
@@ -63,7 +62,7 @@ class CraftyGearedGaggle(CraftyGaggle, GearedGaggle):
 
 
 	def gearbox(self) -> AbstractGearbox:
-		return super().gearbox(*self._gears_list)
+		return super().gearbox(*reversed(self._gears_list))
 
 
 

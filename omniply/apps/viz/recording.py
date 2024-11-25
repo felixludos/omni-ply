@@ -7,7 +7,8 @@ from ...core import Context as _Context, ToolKit, tool, AbstractGame, AbstractGa
 from ...core.gaggles import LoopyGaggle
 from ...core.gangs import GangBase
 from ...core.games import CacheGame, GameBase, GatedCache
-from ...core import Gate as _Gate, Mechanism as _Mechanism
+from ...core import Gate as _Gate
+from ..gaps import Mechanism as _Mechanism
 
 from .util import report_time, SPECIAL_CHARACTER
 

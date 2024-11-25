@@ -6,7 +6,7 @@ from ..core.games import CacheGame
 from ..core.tools import ToolCraft, AutoToolCraft
 from ..core.genetics import AutoMIMOFunctionGadget, AutoFunctionGadget
 from .. import (ToolKit as _ToolKit, tool as _tool, Context as _Context, gear as _gear, Mechanics as _Mechanics,
-				Structured as _Structured)
+				Structured as _Structured, Mechanism as _Mechanism)
 from ..gears.gears import GearCraft, AutoGearCraft, GearSkill, StaticGearCraft# as _StaticGearCraft
 from ..gears.gearbox import GearedGaggle, GearBox as _GearBox
 from ..gears.mechanics import MechanizedBase
@@ -163,6 +163,10 @@ class GappedAutoTool(AutoFunctionGapped, AutoToolCraft):
 class Mechanics(_Mechanics, GaugedGame):
 	pass
 
+
+class Mechanism(GaugedMechanized, GaugedGearedGaggle, GaugedGaggle, _Mechanism):
+	class _GearMechanism(Gapped, GaugedGaggle, _Mechanism._GearMechanism):
+		pass
 
 
 class ToolKit(Gapped, GaugedMechanized, GaugedGearedGaggle, GaugedGaggle, _ToolKit):
