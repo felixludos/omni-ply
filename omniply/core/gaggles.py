@@ -299,13 +299,15 @@ class CraftyGaggle(GaggleBase, InheritableCrafty):
 
 
 	def _process_skill(self, skill: AbstractSkill):
-		self._gadgets_list.append(skill)
-		for gizmo in skill.gizmos():
-			self._gadgets_table.setdefault(gizmo, []).append(skill)
+		if isinstance(skill, AbstractGadget):
+			self._gadgets_list.append(skill)
+			for gizmo in skill.gizmos():
+				self._gadgets_table.setdefault(gizmo, []).append(skill)
 
 
 
 class MutableCrafty(MutableGaggle, CraftyGaggle):
 	def _process_skill(self, skill):
-		self.include(skill)
+		if isinstance(skill, AbstractGadget):
+			self.include(skill)
 
