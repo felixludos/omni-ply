@@ -264,7 +264,7 @@ class MutableGaggle(GaggleBase, AbstractMutable):
 			for gizmo in gadget.gizmos():
 				if gizmo in self._gadgets_table and gadget in self._gadgets_table[gizmo]:
 					self._gadgets_table[gizmo].remove(gadget)
-			if gadget in self._gadget_list:
+			if gadget in self._gadgets_list:
 				self._gadgets_list.remove(gadget)
 		return self
 
