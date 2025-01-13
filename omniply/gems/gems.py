@@ -16,10 +16,8 @@ class GemBase(NestableCraft, AbstractGem):
 		self._content = []
 		self._fn = None
 
-
 	def _wrapped_content(self): # wrapped method
 		return self._fn
-
 
 	def __call__(self, fn: Optional[Union['GemBase', Callable]] = None, **content: str):
 		if fn is not None:
@@ -29,22 +27,12 @@ class GemBase(NestableCraft, AbstractGem):
 			self._content.append(content)
 		return self
 
+	def __repr__(self):
+		return f'{self.__class__.__name__}({self._name})'
 
 	def __set_name__(self, owner, name):
 		self._name = name
 		self._owner = owner
-
-
-	def __get__(self, instance, owner):
-		return self.resolve(instance)
-
-
-	def __set__(self, instance, value):
-		raise NotImplementedError
-
-
-	def __delete__(self, instance):
-		raise NotImplementedError
 
 
 
@@ -53,34 +41,35 @@ class CachableGem(GemBase):
 		super().__init__(default=default, **kwargs)
 		self._cache = cache
 
-
 	def resolve(self, instance: InheritableCrafty):
-		if not self._cache:
-			return self.realize(instance)
-
 		val = instance.__dict__.get(self._name, self._no_value)
 		if val is self._no_value:
 			val = self.realize(instance)
-			instance.__dict__[self._name] = val
+			if self._cache:
+				assert self._name is not None, f'name is missing'
+				instance.__dict__[self._name] = val
 		return val
-
 
 	def realize(self, instance: InheritableCrafty):
 		if self._default is self._no_value:
 			return self._fn(instance)
 		return self._default
 
+	def revise(self, instance, value):
+		assert self._name is not None, f'name is missing'
+		instance.__dict__[self._name] = value
 
 
-class FinalizedGem(GemBase):
-	def __init__(self, default: Optional[Any] = GemBase._no_value, *, final: bool = True, **kwargs):
+
+class FinalizedGem(CachableGem):
+	def __init__(self, default: Optional[Any] = GemBase._no_value, *, final: bool = False, **kwargs):
 		super().__init__(default=default, **kwargs)
 		self._final = final
 
-	def __set__(self, instance, value):
+	def revise(self, instance, value):
 		if self._final:
 			raise AttributeError(f'cannot set `final` gem {self._name}')
-		super().__set__(instance, value)
+		super().revise(instance, value)
 
 
 

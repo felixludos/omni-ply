@@ -5,7 +5,15 @@ T = TypeVar('T')
 
 
 class AbstractGem:
-	pass
+	@property
+	def inherit(self):
+		raise NotImplementedError
+
+	def resolve(self, instance):
+		raise NotImplementedError
+
+	def revise(self, instance, value):
+		raise NotImplementedError
 
 
 

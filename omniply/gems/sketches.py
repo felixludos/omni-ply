@@ -33,6 +33,15 @@ class Equivariance3(Structured):
 
 	metric = part.metric('mse')(output='loss', input='ABx', target='BAx')
 
+
+class Equivariance4(Structured):
+	A = submodule(inherit=True)(output='Ax', input='x')(submodule()(output='ABx', input='Bx'))
+	B = submodule(final=True)(output='Bx', input='x')(submodule()(output='BAx', input='Ax'))
+
+	metric = part.metric('mse')(output='loss', input='ABx', target='BAx')
+
+
+
 # part = prior_art (!)
 
 @part.metric.register('mse')
