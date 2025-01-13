@@ -99,7 +99,10 @@ class AbstractTrainer:
 	def environment(self) -> Dict[str, Any]:
 		'''prepare the dataset for training'''
 		raise NotImplementedError
-
+	
+	
+	def bearings(self):
+		pass
 
 
 class AbstractPlanner:
