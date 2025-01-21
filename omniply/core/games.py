@@ -379,7 +379,7 @@ class ConsistentGame(TraceGame, AbstractConsistentGame):
 		return self
 
 	def set_cache(self, gizmo: str, val: Any):
-		if gizmo in self.data and val != self.data[gizmo]:
+		if gizmo in self.data:# and val != self.data[gizmo]:
 			self.purge(gizmo)
 		return super().set_cache(gizmo, val)
 
