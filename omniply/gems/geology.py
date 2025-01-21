@@ -32,6 +32,16 @@ class GeologistBase(CraftyGaggle, AbstractGeologist):
 
 
 
+class GeodelogistBase(GeologistBase):
+	_geode_wrapper = None
+
+	# def _process_crafts(self):
+	# 	super()._process_crafts()
+	#
+	# 	pass # instead of including geodes top-down, geodes should add themselves (when set)
+
+
+	pass
 
 
 

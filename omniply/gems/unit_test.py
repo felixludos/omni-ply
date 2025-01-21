@@ -29,6 +29,12 @@ def test_gem():
 	assert m3.b == 200
 
 
+def test_geode():
+
+	class M(Geologist):
+		sub1 = geode()(input='x', output='z')
+		sub2 = geode(None)(input='z', target='y', output='loss')
+
 
 
 
