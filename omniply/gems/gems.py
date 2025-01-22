@@ -82,3 +82,18 @@ class InheritableGem(GemBase):
 	def inherit(self):
 		return self._inherit
 
+
+
+class GeodeBase(GemBase):
+	def init(self, fn: Callable[[Any], Any]):
+		pass
+
+	def build(self, fn: Callable[[Any], Any]):
+		pass
+
+	def stage(self, fn: Callable[[Any], Any]):
+		pass
+
+	pass
+
+

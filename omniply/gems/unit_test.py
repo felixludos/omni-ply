@@ -29,6 +29,7 @@ def test_gem():
 	assert m3.b == 200
 
 
+
 def test_geode():
 
 	class M(Geologist):
