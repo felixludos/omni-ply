@@ -1,7 +1,7 @@
 from .imports import *
 
 from .datasets import Dataset
-from .trainers import DynamicTrainerBase
+from .trainers import TrainerBase
 
 
 
@@ -54,7 +54,7 @@ def test_dataset():
 def test_trainer():
     import numpy as np
 
-    class _Trainer(DynamicTrainerBase):
+    class _Trainer(TrainerBase):
         def learn(self, batch):
             print(f'learning with loss={batch.grab("loss"):.2g}')
             return batch

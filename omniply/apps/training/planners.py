@@ -4,17 +4,9 @@ from .abstract import AbstractDataset, AbstractBatch, AbstractPlanner
 
 
 class InfiniteUnindexed(AbstractPlanner):
-	def __init__(self, **kwargs):
-		super().__init__(**kwargs)
-		self.reset()
-
-
-	def setup(self, src: AbstractDataset) -> Self:
-		self.reset()
-		return self
-
-
-	def reset(self):
+	def __init__(self, src: AbstractDataset, **kwargs):
+		super().__init__(src=src, **kwargs)
+		self._dataset_size = src.size
 		self._num_iterations = 0
 		self._drawn_samples = 0
 		self._drawn_batches = 0
@@ -46,38 +38,26 @@ class InfiniteUnindexed(AbstractPlanner):
 
 
 class InfiniteIndexed(InfiniteUnindexed):
-	def __init__(self, dataset_size: int = None, *, shuffle: bool = True, 
+	def __init__(self, src: AbstractDataset, *, shuffle: bool = True,
 			  	 multi_epoch: bool = True, seed: int = None, sort_indices: bool = True,
 				 **kwargs):
 		if seed is None:
 			seed = random.randint(1, 2**32-1)
-		super().__init__(**kwargs)
-		self._dataset_size = dataset_size
+		super().__init__(src=src, **kwargs)
 		self._shuffle = shuffle
 		self._multi_epoch = multi_epoch
 		self._sort_indices = sort_indices
 		self._seed = seed
 		self._initial_seed = seed
-		self.reset()
+		self._order = None
+		self._offset = 0
+		self._drawn_epochs = 0
 
-
-	def setup(self, src: AbstractDataset) -> Self:
-		self._dataset_size = src.size
-		return super().setup(src)
-	
 
 	@staticmethod
 	def _increment_seed(seed: int) -> int:
 		'''deterministically change the seed'''
 		return random.Random(seed).randint(1, 2**32-1)
-
-
-	def reset(self):
-		self._order = None
-		self._offset = 0
-
-		self._drawn_epochs = 0
-		super().reset()
 
 
 	def _draw_indices(self, n: int):
@@ -130,14 +110,14 @@ class BudgetExceeded(Exception):
 class Unindexed(InfiniteUnindexed):
 	_BudgetExceeded = BudgetExceeded
 
-	def __init__(self, *, max_samples: int = None, max_batches: int = None, 
+	def __init__(self, src: AbstractDataset, *, max_samples: int = None, max_batches: int = None,
 				 hard_budget: bool = False, drop_last: bool = True, 
 				 max_iterations: int = None, **kwargs):
 		'''
 		:param hard_budget: if True, raise BudgetExceeded before drawing the batch that exceeds the budget, otherwise raise in the next draw
 		:param drop_last: if True, drop the last batch if the last batch partially exceeds the budget, otherwise return the partial batch (only has an effect if hard_budget is False) (note: the only way for the draw to return a different number of samples than requested is if drop_last is False)
 		'''
-		super().__init__(**kwargs)
+		super().__init__(src=src, **kwargs)
 		assert max_samples is None or max_samples > 0, 'max_samples must be positive'
 		assert max_batches is None or max_batches > 0, 'max_batches must be positive'
 		assert max_iterations is None or max_iterations > 0, 'max_iterations must be positive'
@@ -147,18 +127,6 @@ class Unindexed(InfiniteUnindexed):
 
 		self._hard_budget = hard_budget
 		self._drop_last = drop_last
-
-
-	def setup(self, src: AbstractDataset, *, max_samples: int = None, max_batches: int = None, 
-			  max_iterations: int = None, **kwargs):
-		if max_samples is not None:
-			self._max_samples = max_samples
-		if max_batches is not None:
-			self._max_batches = max_batches
-		if max_iterations is not None:
-			self._max_iterations = max_iterations
-		return super().setup(src, **kwargs)
-	
 
 	def remaining_samples(self) -> Optional[int]:
 		return self._max_samples - self._drawn_samples if self._max_samples is not None else None
@@ -210,16 +178,10 @@ class Unindexed(InfiniteUnindexed):
 
 
 class Indexed(Unindexed, InfiniteIndexed):
-	def __init__(self, dataset_size: int = None, *, max_epochs: int = None, **kwargs):
-		super().__init__(dataset_size=dataset_size, **kwargs)
+	def __init__(self, src: AbstractDataset, *, max_epochs: int = None, **kwargs):
+		super().__init__(src=src, **kwargs)
 		assert max_epochs is None or max_epochs > 0, 'max_epochs must be positive'
 		self._max_epochs = max_epochs
-
-
-	def setup(self, src: AbstractDataset, *, max_epochs: int = None, **kwargs):
-		if max_epochs is not None:
-			self._max_epochs = max_epochs
-		return super().setup(src, **kwargs)
 
 
 	def remaining_epochs(self) -> Optional[int]:
@@ -244,7 +206,7 @@ class Indexed(Unindexed, InfiniteIndexed):
 
 	def expected_iterations(self, step_size: int) -> Optional[int]:
 		num = super().expected_iterations(step_size)
-		if num is None and self._max_epochs is not None:
+		if num is None and self._max_epochs is not None and self._dataset_size is not None:
 			remaining = self._max_epochs * self._dataset_size - self._drawn_samples
 			return (remaining // step_size) + (1 if (remaining % step_size > 0 and not (self._hard_budget and self._drop_last)) else 0)
 		return num

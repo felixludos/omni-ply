@@ -9,11 +9,11 @@ from ..core.gadgets import GadgetBase
 from ..core.genetics import GeneticGadget
 
 
+
 class DictGadget(GeneticGadget):
-	def __init__(self, *srcs: dict, **data):
-		super().__init__()
-		self.data = {**data}
-		self._srcs = srcs
+	def __init__(self, data: dict[str, Any], **kwargs):
+		super().__init__(**kwargs)
+		self.data = data
 
 
 	def __delitem__(self, key):
@@ -23,14 +23,11 @@ class DictGadget(GeneticGadget):
 	def __getitem__(self, item):
 		if item in self.data:
 			return self.data[item]
-		for src in self._srcs:
-			if item in src:
-				return src[item]
 		raise KeyError(f'Key not found: {item}')
 
 
 	def gizmos(self) -> Iterator[str]:
-		yield from filter_duplicates(self.data.keys(), *map(lambda x: x.keys(), self._srcs))
+		yield from self.data.keys()
 
 
 	def _genetic_information(self, gizmo: str):

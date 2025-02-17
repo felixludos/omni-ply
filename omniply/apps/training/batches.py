@@ -8,10 +8,16 @@ class NoNewBatches(Exception):
 
 
 
+class BatchInfo(DictGadget):
+    pass
+
+
+
 class Batch(Context, AbstractBatch):
+    _BatchInfo = BatchInfo
     def __init__(self, info: dict[str, Any], *, planner: AbstractPlanner, allow_draw: bool = True, **kwargs):
         if isinstance(info, dict):
-            info = DictGadget(info)
+            info = self._BatchInfo(info)
         super().__init__(**kwargs)
         self._info = info
         self._planner = planner
@@ -37,7 +43,7 @@ class Batch(Context, AbstractBatch):
             allow_draw = self._allow_draw
         if size is None:
             size = self.size
-        new = self.__class__(self._planner.draw(size), planner=self._planner, allow_draw=self._allow_draw, **kwargs)
+        new = self.__class__(planner.draw(size), planner=planner, allow_draw=allow_draw, **kwargs)
         new.extend(tuple(self.gadgetry()))
         return new
 

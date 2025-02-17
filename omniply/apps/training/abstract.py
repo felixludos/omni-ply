@@ -38,6 +38,34 @@ from .imports import *
 
 
 
+class AbstractEvent(AbstractSetup, AbstractGadget):
+	def setup(self, *args, **kwargs) -> None:
+		raise NotImplementedError
+
+
+	def step(self, ctx: AbstractGame) -> None:
+		pass
+
+
+	def end(self, last_ctx: Optional[AbstractGame] = None) -> None:
+		pass
+
+
+
+class AbstractEngine(AbstractEvent):
+	def gadgetry(self) -> Iterator[AbstractGadget]:
+		raise NotImplementedError
+
+
+	def loop(self) -> Iterator[AbstractGame]:
+		raise NotImplementedError
+
+
+	def run(self) -> JSONABLE:
+		for _ in self.loop(): pass
+
+
+
 class AbstractDataset:
 	@property
 	def size(self) -> Optional[int]:
@@ -56,7 +84,7 @@ class AbstractBatch(AbstractDataset, AbstractGame): # AbstractMogul
 		raise NotImplementedError
 	
 
-	@property	
+	@property
 	def size(self) -> int:
 		'''size of the batch'''
 		raise NotImplementedError
@@ -105,10 +133,11 @@ class AbstractTrainer:
 		pass
 
 
+
 class AbstractPlanner:
-	def setup(self, src: AbstractDataset) -> Self:
+	def __init__(self, src: AbstractDataset, **kwargs):
 		'''prepare the planner for a new dataset'''
-		raise NotImplementedError
+		super().__init__(**kwargs)
 
 
 	def step(self, size: int) -> Dict[str, Any]:

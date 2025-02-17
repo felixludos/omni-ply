@@ -22,6 +22,9 @@ class AbstractGauged(AbstractGadget):
 	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		raise NotImplementedError
 
+	def guage_clear(self):
+		raise NotImplementedError
+
 
 
 class AbstractGapped(AbstractGauged):
@@ -53,6 +56,10 @@ class Gauged(AbstractGauged):
 				self._gauge[gizmo] = new.pop(gap)
 		self._gauge.update(new)
 		return self
+
+
+	def gauge_clear(self):
+		self._gauge.clear()
 
 
 
@@ -90,6 +97,15 @@ class GaugedGaggle(MutableGaggle, Gauged):
 		self._gadgets_table.update(table)
 		return self
 
+	def gauge_clear(self):
+		for gadget in self.vendors():
+			if isinstance(gadget, AbstractGauged):
+				gadget.guage_clear()
+		super().guage_clear()
+
+
+class GaugeClearError(ValueError):
+	pass
 
 
 class GaugedGame(CacheGame, GaugedGaggle):
@@ -100,6 +116,11 @@ class GaugedGame(CacheGame, GaugedGaggle):
 			del self.data[key]
 		self.data.update({gauge[key]: value for key, value in cached.items()})
 		return self
+
+	def guage_clear(self):
+		if len(self.data):
+			raise GaugeClearError()
+		super().gauge_clear()
 
 
 
@@ -127,6 +148,10 @@ class AutoFunctionGapped(GappedGadget, AutoFunctionGadget):
 		return self
 
 
+	def gauge_clear(self):
+		self._arg_map.clear()
+
+
 
 class GearBox(Gapped, _GearBox, GaugedGaggle):
 	pass
@@ -145,6 +170,10 @@ class GaugedMechanized(MechanizedBase, Gauged):
 		if self._mechanics is not None:
 			self._mechanics.gauge_apply(gauge)
 		return super().gauge_apply(gauge)
+
+
+	def gauge_clear(self):
+		self._mechanics.clear_gauge()
 
 
 
@@ -223,18 +252,30 @@ from .simple import DictGadget as _DictGadget, Table as _Table
 
 
 class DictGadget(Gauged, _DictGadget): # TODO: unit test this and the GappedCap
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
+	def __init__(self, data: dict[str, Any], **kwargs):
+		super().__init__(data=data, **kwargs)
 		self.gauge_apply(self._gauge)
+		self._past_gauge = {}
 
 	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		super().gauge_apply(gauge)
-		for src in [self.data, *self._srcs]:
-			for key in list(src.keys()):
-				fix = gauge.get(key, key)
-				if fix != key:
-					src[fix] = src[key]
-					del src[key]
+		src = self.data
+		for key in list(src.keys()):
+			fix = gauge.get(key, key)
+			if fix != key:
+				self._past_gauge[fix] = key
+				src[fix] = src[key]
+				del src[key]
+		return self
+
+	def gauge_clear(self):
+		src = self.data
+		for key in list(src.keys()):
+			if key in self._past_gauge:
+				src[self._past_gauge[key]] = src[key]
+				del src[key]
+		self._past_gauge.clear()
+		super().gauge_clear()
 		return self
 
 
@@ -259,6 +300,8 @@ class Table(Gapped, _Table): # TODO: unit test this
 					del self.data[key]
 		return self
 
+	def gauge_clear(self):
+		raise NotImplementedError
 
 
 

@@ -7,12 +7,9 @@ from .datasets import Dataset
 
 
 
-class TrainerBase(AbstractTrainer):
-	def __init__(self, *, planner: AbstractPlanner = None, batch_size: int = None, **kwargs):
-		if planner is None:
-			planner = self._Planner()
+class TrainerBase(ToolKit, AbstractTrainer):
+	def __init__(self, *, batch_size: int = None, **kwargs):
 		super().__init__(**kwargs)
-		self._planner = planner
 		self._batch_size = batch_size
 
 
@@ -30,7 +27,7 @@ class TrainerBase(AbstractTrainer):
 	_Batch = None #Batch
 	def fit_loop(self, src: Dataset, **settings: Any) -> Iterator[Batch]:
 		'''train the model'''
-		planner = self._planner.setup(src, **settings)
+		planner = self._Planner(src, **settings)
 
 		batch_size = 32 if self._batch_size is None else self._batch_size
 
@@ -38,7 +35,7 @@ class TrainerBase(AbstractTrainer):
 
 		batch_cls = self._Batch or getattr(src, '_Batch', None) or Batch
 		for info in planner.generate(batch_size):
-			batch = batch_cls(info, planner=planner).include(src).extend(tuple(self.gadgetry()))
+			batch = batch_cls(info, planner=planner).include(src, self)
 
 			# Note: this runs the optimization step before yielding the batch
 			yield self.learn(batch)
@@ -59,33 +56,33 @@ class TrainerBase(AbstractTrainer):
 
 
 
-class DynamicTrainerBase(TrainerBase):
-	def __init__(self, **kwargs):
-		super().__init__(**kwargs)
-		self._gadgetry = []
-
-
-	def include(self, *gadgets: AbstractGadget) -> Self:
-		'''include gadgets in the batch'''
-		self._gadgetry.extend(gadgets)
-		return self
-
-
-	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
-		'''extend the batch with gadgets'''
-		self._gadgetry.extend(gadgets)
-		return self
-
-
-	def exclude(self, *gadgets: AbstractGadget) -> Self:
-		'''exclude gadgets from the batch'''
-		for gadget in gadgets:
-			self._gadgetry.remove(gadget)
-		return self
-
-
-	def gadgetry(self) -> ToolKit:
-		'''gadgets to include in the batch'''
-		yield from self._gadgetry
+# class DynamicTrainerBase(TrainerBase):
+# 	def __init__(self, **kwargs):
+# 		super().__init__(**kwargs)
+# 		self._gadgetry = []
+#
+#
+# 	def include(self, *gadgets: AbstractGadget) -> Self:
+# 		'''include gadgets in the batch'''
+# 		self._gadgetry.extend(gadgets)
+# 		return self
+#
+#
+# 	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
+# 		'''extend the batch with gadgets'''
+# 		self._gadgetry.extend(gadgets)
+# 		return self
+#
+#
+# 	def exclude(self, *gadgets: AbstractGadget) -> Self:
+# 		'''exclude gadgets from the batch'''
+# 		for gadget in gadgets:
+# 			self._gadgetry.remove(gadget)
+# 		return self
+#
+#
+# 	def gadgetry(self) -> Iterator[ToolKit]:
+# 		'''gadgets to include in the batch'''
+# 		yield from self._gadgetry
 
 

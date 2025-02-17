@@ -99,7 +99,7 @@ def test_double_gap():
 
 def test_gapped_apps():
 
-	d = DictGadget({'a': 1}, {'b': 2}, c=10)
+	d = DictGadget({'c':10, 'a': 1, 'b': 2})
 
 	ctx = Context(d)
 

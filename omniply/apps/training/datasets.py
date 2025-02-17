@@ -12,7 +12,7 @@ class Dataset(ToolKit, AbstractDataset):
         if batch_size is None:
             batch_size = 1
         
-        planner = self._Planner(dataset_size=self.size, max_epochs=1, shuffle=False, hard_budget=True, drop_last=False)
+        planner = self._Planner(self, max_epochs=1, shuffle=False, hard_budget=True, drop_last=False)
 
         for info in planner.generate(batch_size):
             batch = self._Batch(info, planner=planner, allow_draw=False)
