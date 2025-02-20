@@ -152,10 +152,36 @@ class Table(GeneticGadget):
 
 
 
+# flags and conds
+from ..core import tool
+from ..core.tools import AutoToolCraft, ToolCraftBase, ToolSkill, ToolDecoratorBase
+from ..core.genetics import AutoFunctionGadget
 
 
 
+class AutoFlagCraft(AutoFunctionGadget, ToolCraftBase):
+	class _ToolSkill(AutoFunctionGadget, ToolSkill): # note that technically `ToolSkill` is MIMO
+		def _grab_from(self, ctx):
+			return super()._grab_from(ctx) or ctx.grab(self._gizmo, False)
 
+
+class flag(ToolDecoratorBase):
+	_ToolCraft = AutoFlagCraft
+
+
+
+class AutoCondCraft(AutoFunctionGadget, ToolCraftBase):
+	class _ToolSkill(AutoFunctionGadget, ToolSkill):
+		def _grab_from(self, ctx):
+			return super()._grab_from(ctx) and ctx.grab(self._gizmo, False)
+
+
+class cond(ToolDecoratorBase):
+	_ToolCraft = AutoCondCraft
+
+
+# TODO: flags and conds from_context
+# TODO: implement gapped flags and conds
 
 
 

@@ -1,5 +1,55 @@
 from .gaps import tool, Context, Structured, ToolKit, gear, Table, DictGadget
 from .. import Gate, Mechanism
+from .simple import flag, cond
+
+# region Flags and Conds
+
+def test_flag():
+
+	class K1(ToolKit):
+		@flag('a')
+		def f(self):
+			return True
+		
+		@flag('b')
+		def g(self, x=0):
+			return x > 0
+		
+	class K2(ToolKit):
+		@flag('a')
+		def h(self, y=0):
+			raise Exception('Should not be called')
+		
+		@flag('b')
+		def i(self, y=0):
+			assert y >= 0
+			return y > 0
+
+
+	k1 = K1()
+	k2 = K2()
+
+	ctx = Context(k1, k2)
+
+	assert ctx['a'] is True
+	assert ctx['b'] is False
+	
+	ctx.clear_cache()
+	ctx['x'] = 1
+	ctx['y'] = -1
+
+	assert ctx['b'] is True
+
+	ctx.clear_cache()
+	ctx['x'] = -10
+	ctx['y'] = 1
+
+	assert ctx['b'] is True
+
+
+
+
+# endregion
 
 # region Gauges and Gaps
 
