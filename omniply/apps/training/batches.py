@@ -36,6 +36,11 @@ class Batch(Context, AbstractBatch):
         return self.grab('size')
 
 
+    @property
+    def plan(self) -> AbstractPlanner:
+        return self._planner
+
+
     def _new(self, size: int = None, *, planner=None, allow_draw=None, **kwargs) -> 'Batch':
         if planner is None:
             planner = self._planner

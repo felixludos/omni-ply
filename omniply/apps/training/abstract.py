@@ -90,6 +90,12 @@ class AbstractBatch(AbstractDataset, AbstractGame): # AbstractMogul
 		raise NotImplementedError
 
 
+	@property
+	def plan(self) -> 'AbstractPlanner':
+		'''planner for the batch'''
+		raise NotImplementedError
+
+
 
 class AbstractEvaluator:
 	def evaluate_loop(self, src: AbstractDataset) -> Iterator[AbstractBatch]:

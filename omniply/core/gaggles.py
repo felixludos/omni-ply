@@ -268,6 +268,15 @@ class MutableGaggle(GaggleBase, AbstractMutable):
 				self._gadgets_list.remove(gadget)
 		return self
 
+
+	def _reset_vendors(self):
+		vendors = self._gadgets_list.copy()
+		self._gadgets_list.clear()
+		self._gadgets_table.clear()
+		self.extend(reversed(vendors))
+
+
+
 class CraftyGaggle(GaggleBase, InheritableCrafty):
 	"""
 	The CraftyGaggle class is a mix-in for custom gaggles to handle crafts such as `tool`.

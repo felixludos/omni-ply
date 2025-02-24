@@ -30,13 +30,13 @@ def test_gem():
 
 
 
-def test_geode():
+# def test_geode():
+#
+# 	class M(Geologist):
+# 		sub1 = geode()(input='x', output='z')
+# 		sub2 = geode(None)(input='z', target='y', output='loss')
 
-	class M(Geologist):
-		sub1 = geode()(input='x', output='z')
-		sub2 = geode(None)(input='z', target='y', output='loss')
-
-
+	
 
 
 

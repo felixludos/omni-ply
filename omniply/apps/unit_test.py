@@ -147,6 +147,30 @@ def test_double_gap():
 
 
 
+def test_clear_gap():
+	@tool('a', 'b')
+	def f(x, y):
+		return x + y, x - y
+
+	ctx = Context(f, DictGadget({'x': 10, 'y': 2}))
+
+	assert list(ctx.gizmos()) == ['a', 'b', 'x', 'y']
+	assert ctx['a'] == 12
+	ctx.clear_cache()
+
+	ctx.gauge_apply({'a': 'z'}) # a becomes z
+
+	assert list(ctx.gizmos()) == ['z', 'b', 'x', 'y']
+	assert ctx['z'] == 12
+	ctx.clear_cache()
+
+	ctx.gauge_clear()
+
+	assert list(ctx.gizmos()) == ['a', 'b', 'x', 'y']
+	assert ctx['a'] == 12
+
+
+
 def test_gapped_apps():
 
 	d = DictGadget({'c':10, 'a': 1, 'b': 2})

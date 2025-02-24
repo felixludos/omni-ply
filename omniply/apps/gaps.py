@@ -22,7 +22,7 @@ class AbstractGauged(AbstractGadget):
 	def gauge_apply(self: Self, gauge: GAUGE) -> Self:
 		raise NotImplementedError
 
-	def guage_clear(self):
+	def gauge_clear(self):
 		raise NotImplementedError
 
 
@@ -100,8 +100,9 @@ class GaugedGaggle(MutableGaggle, Gauged):
 	def gauge_clear(self):
 		for gadget in self.vendors():
 			if isinstance(gadget, AbstractGauged):
-				gadget.guage_clear()
-		super().guage_clear()
+				gadget.gauge_clear()
+		super().gauge_clear()
+		self._reset_vendors()
 
 
 class GaugeClearError(ValueError):
@@ -117,7 +118,7 @@ class GaugedGame(CacheGame, GaugedGaggle):
 		self.data.update({gauge[key]: value for key, value in cached.items()})
 		return self
 
-	def guage_clear(self):
+	def gauge_clear(self):
 		if len(self.data):
 			raise GaugeClearError()
 		super().gauge_clear()
