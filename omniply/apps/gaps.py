@@ -1,10 +1,10 @@
 from typing import Iterable, Mapping, Any, Iterator, TypeVar
 
-from .. import AbstractGadget, AbstractGaggle
+from .. import AbstractGadget, AbstractGaggle, Gate
 from ..core.gaggles import CraftyGaggle, MutableGaggle
 from ..core.games import CacheGame
 from ..core.tools import ToolCraft, AutoToolCraft
-from ..core.genetics import AutoMIMOFunctionGadget, AutoFunctionGadget
+from ..core.genetics import AutoMIMOFunctionGadget, AutoFunctionGadget, FunctionGadget
 from .. import (ToolKit as _ToolKit, tool as _tool, Context as _Context, gear as _gear, Mechanics as _Mechanics,
 				Structured as _Structured, Mechanism as _Mechanism)
 from ..gears.gears import GearCraft, AutoGearCraft, GearSkill, StaticGearCraft# as _StaticGearCraft
@@ -178,10 +178,19 @@ class GaugedMechanized(MechanizedBase, Gauged):
 
 
 
-class GappedTool(Gapped, ToolCraft):
-	class _ToolSkill(Gapped, ToolCraft._ToolSkill):
-		pass
+class GappedGated(Gapped, FunctionGadget):
+	_GrabGate = Gate
+	def _grab_from(self, ctx: 'AbstractGame') -> Any:
+		if len(self._gauge):
+			ctx = self._GrabGate(ctx, gate=self._gauge, insulated=False)
+		return super()._grab_from(ctx)
 
+
+
+class GappedTool(GappedGated, ToolCraft):
+	class _ToolSkill(GappedGated, ToolCraft._ToolSkill):
+		def get_parents(self):
+			yield from map(self.gap, super().get_parents())
 
 
 class GappedAutoTool(AutoFunctionGapped, AutoToolCraft):

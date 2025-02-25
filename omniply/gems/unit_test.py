@@ -36,7 +36,7 @@ def test_gem():
 # 		sub1 = geode()(input='x', output='z')
 # 		sub2 = geode(None)(input='z', target='y', output='loss')
 
-	
+
 
 
 

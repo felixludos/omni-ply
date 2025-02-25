@@ -1,4 +1,4 @@
-from typing import Iterator, Callable, Optional, Any, Iterable
+from typing import Iterator, Callable, Optional, Any, Iterable, Tuple
 import inspect
 from functools import cache, cached_property
 from omnibelt import extract_missing_args
@@ -130,7 +130,7 @@ class GeneticGadget(GeneticBase, GadgetBase):
 
 
 class GeneticGaggle(GaggleBase, AbstractGenetic):
-	def genes(self, gizmo: str) -> AbstractGene:
+	def genes(self, gizmo: str) -> Iterator[AbstractGene]:
 		for vendor in self._gadgets(gizmo):
 			if isinstance(vendor, AbstractGenetic):
 				yield from vendor.genes(gizmo)
@@ -275,11 +275,11 @@ class Parentable(NestableCraft):
 		return skill
 
 class ParentedSkill(AbstractGenetic):
-	def get_parents(self):
+	def get_parents(self) -> Iterator[str]:
 		if self._parents is not None:
-			return tuple(self._parents)
+			yield from self._parents
 		elif self._parents_fn is not None:
-			return tuple(self._parents_fn())
+			yield from self._parents_fn()
 
 	_parents = None
 	def _set_parents(self, parents: tuple):

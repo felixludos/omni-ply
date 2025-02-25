@@ -94,7 +94,7 @@ class ToolSkill(ParentedSkill, MIMOGadgetBase, SkillBase):
 			siblings = None
 		else:
 			siblings = tuple(sibling if sibling != gizmo else None for sibling in self.gizmos())
-		yield self._Gene(gizmo, self, parents=self.get_parents(), siblings=siblings, endpoint=self._fn)
+		yield self._Gene(gizmo, self, parents=tuple(self.get_parents()), siblings=siblings, endpoint=self._fn)
 
 
 

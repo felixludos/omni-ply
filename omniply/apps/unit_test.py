@@ -100,15 +100,20 @@ def test_gapped_tools():
 	class Kit(ToolKit):
 		@tool.from_context('x', 'y')
 		def f(self, game):
-			return game[self.gap('a')], game[self.gap('b')] + game[self.gap('c')]
+			# return game[self.gap('a')], game[self.gap('b')] + game[self.gap('c')]
+			return game['a'], game['b'] + game['c']
 		@f.parents
 		def _f_parents(self):
-			return map(self.gap, ['a', 'b', 'c'])
+			return ['a', 'b', 'c']
+
+		@tool.from_context('w', parents=['u'])
+		def g(self, game):
+			return game['u'] * 2
 
 
 	kit = Kit(gap={'a': 'z'})
 
-	assert list(kit.gizmos()) == ['x', 'y']
+	assert list(kit.gizmos()) == ['x', 'y', 'w']
 
 	ctx = Context(kit)
 
@@ -119,6 +124,14 @@ def test_gapped_tools():
 	gene = next(kit.genes('x'))
 
 	assert gene.parents == ('z', 'b', 'c')
+
+	ctx.gauge_apply({'u': 'c'})
+
+	gene = next(kit.genes('w'))
+
+	assert gene.parents == ('c',)
+
+	assert ctx['w'] == 6
 
 
 
