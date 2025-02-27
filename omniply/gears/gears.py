@@ -1,6 +1,6 @@
 from .imports import *
 from omnibelt.crafts import AbstractCraft
-from .abstract import AbstractGear, AbstractGeared, AbstractMechanical
+from .abstract import AbstractGear, AbstractGeared, AbstractMechanical, AbstractMechanics
 from .errors import MissingMechanicsError, GearFailed, GearGrabError
 from ..core import AbstractGame
 from ..core.gadgets import GadgetFailed, SingleGadgetBase
@@ -13,16 +13,43 @@ class GearContext(Context):
 
 
 
-class GearSkillBase(SingleGadgetBase, AbstractSkill):
+# class GearSkillBase(SingleGadgetBase, AbstractSkill):
+# 	_no_value = object()
+# 	def __init__(self, *, base: Optional[AbstractCraft] = None, **kwargs):
+# 		super().__init__(**kwargs)
+# 		self._base = base
+# 		self._cached = self._no_value
+#
+# 	def _grab_from(self, ctx: AbstractMechanics) -> Any:
+# 		raise NotImplementedError
+#
+#
+#
+# class GearSkill(FunctionGadget, GearSkillBase, SkillBase, AbstractGear):
+# 	def _grab_from(self, ctx: AbstractMechanics) -> Any:
+# 		if self._fn is None: # for "ghost" gears
+# 			raise GearFailed
+# 		return super()._grab_from(ctx)
+
+
+
+class GearSkill(FunctionGadget, SkillBase, AbstractGear):
+	_no_value = object()
+
 	def __init__(self, *, base: Optional[AbstractCraft] = None, **kwargs):
 		super().__init__(**kwargs)
 		self._base = base
+		self._cached = self._no_value
 
 
+	def update_cache(self, value: Any):
+		self._cached = value
 
-class GearSkill(FunctionGadget, GearSkillBase, SkillBase, AbstractGear):
-	def _grab_from(self, ctx: AbstractGame) -> Any:
-		if self._fn is None: # for "ghost" gears
+
+	def _grab_from(self, ctx: AbstractMechanics) -> Any:
+		if self._cached is not self._no_value:
+			return self._cached
+		if self._fn is None:  # for "ghost" gears
 			raise GearFailed
 		return super()._grab_from(ctx)
 
@@ -34,8 +61,8 @@ class GearCraftBase(CraftBase):
 		self._gizmo = gizmo
 
 
-	_GearSkill: Type[GearSkillBase]
-	def as_skill(self, owner: AbstractCrafty, *, gizmo: str = None, **kwargs) -> GearSkillBase:
+	_GearSkill: Type[GearSkill]
+	def as_skill(self, owner: AbstractCrafty, *, gizmo: str = None, **kwargs) -> GearSkill:
 		return self._GearSkill(gizmo=gizmo or self._gizmo, base=self, **kwargs)
 
 
@@ -55,6 +82,16 @@ class GearCraftBase(CraftBase):
 		'''
 		ctx = self._find_context(instance)
 		return ctx.grab(self._gizmo)
+
+
+	def __set__(self, instance: AbstractGeared, value):
+		'''
+		Setting a gear craft is not allowed
+		'''
+		box = instance.gearbox()
+		for gear in box.vendors(self._gizmo):
+			gear.update_cache(value)
+			break
 
 
 
@@ -107,25 +144,25 @@ class GearDecorator(AutoGearCraft):
 
 
 
-class StaticGearSkill(GearSkillBase, AbstractGear):
-	def __init__(self, gizmo: str, value: Any, **kwargs):
-		super().__init__(gizmo=gizmo, **kwargs)
-		self._value = value
-
-	def _grab_from(self, ctx: 'AbstractGame') -> Any:
-		return self._value
-
-
-
-class StaticGearCraft(GearCraftBase):
-	def __init__(self, gizmo: str, value: Any, **kwargs):
-		super().__init__(gizmo=gizmo, **kwargs)
-		self._value = value
-
-
-	_no_value = object()
-	_GearSkill = StaticGearSkill
-	def as_skill(self, owner: 'AbstractCrafty', value: Any = _no_value, **kwargs) -> StaticGearSkill:
-		return super().as_skill(owner, value=self._value if value is self._no_value else value, **kwargs)
+# class StaticGearSkill(GearSkillBase, AbstractGear):
+# 	def __init__(self, gizmo: str, value: Any, **kwargs):
+# 		super().__init__(gizmo=gizmo, **kwargs)
+# 		self._value = value
+#
+# 	def _grab_from(self, ctx: 'AbstractGame') -> Any:
+# 		return self._value
+#
+#
+#
+# class StaticGearCraft(GearCraftBase):
+# 	def __init__(self, gizmo: str, value: Any, **kwargs):
+# 		super().__init__(gizmo=gizmo, **kwargs)
+# 		self._value = value
+#
+#
+# 	_no_value = object()
+# 	_GearSkill = StaticGearSkill
+# 	def as_skill(self, owner: 'AbstractCrafty', value: Any = _no_value, **kwargs) -> StaticGearSkill:
+# 		return super().as_skill(owner, value=self._value if value is self._no_value else value, **kwargs)
 
 # endregion

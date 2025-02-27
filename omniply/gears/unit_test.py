@@ -20,6 +20,10 @@ def test_gears():
 	assert src.something == 10
 	assert src.something_else == 15
 
+	src.something = 20
+
+	assert src.something == 20
+
 
 
 def test_auto_mechanized(): # subclassing Mechanized automatically mechanizes

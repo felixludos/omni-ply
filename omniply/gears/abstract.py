@@ -3,7 +3,8 @@ from .imports import *
 
 
 class AbstractGear(AbstractGadget):
-	pass
+	def update_cache(self, value: Any):
+		raise NotImplementedError
 
 
 
@@ -23,7 +24,8 @@ class AbstractGeared(AbstractGadget):
 
 
 
-class AbstractMechanical(AbstractGadget):
+
+class AbstractMechanical(AbstractGadget): # TODO: probably should be a subclass of AbstractGeared (?)
 	'''gadget with synchronized gears'''
 	def mechanics(self) -> Optional['AbstractMechanics']:
 		raise NotImplementedError
