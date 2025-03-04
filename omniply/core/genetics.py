@@ -43,7 +43,7 @@ class AbstractGene:
 
 
 class AbstractGenetic(AbstractGadget):
-	def genes(self, gizmo: str) -> Iterator[AbstractGene]:
+	def genes(self, gizmo: str = None) -> Iterator[AbstractGene]:
 		"""
 		Returns all the gizmos that may be needed to produce the given gizmo.
 
@@ -116,11 +116,15 @@ class GeneticBase(AbstractGenetic):
 
 
 	def _genetic_information(self, gizmo: str):
-		return {'name': gizmo, 'gadget': self}
+		return {'name': gizmo, 'source': self}
 
 
-	def genes(self, gizmo: str) -> AbstractGene:
-		return self._Gene(**self._genetic_information(gizmo))
+	def genes(self, gizmo: str = None) -> AbstractGene:
+		if gizmo is None:
+			for gizmo in self.gizmos():
+				yield from self.genes(gizmo)
+		else:
+			yield self._Gene(**self._genetic_information(gizmo))
 
 
 
@@ -130,10 +134,14 @@ class GeneticGadget(GeneticBase, GadgetBase):
 
 
 class GeneticGaggle(GaggleBase, AbstractGenetic):
-	def genes(self, gizmo: str) -> Iterator[AbstractGene]:
-		for vendor in self._gadgets(gizmo):
-			if isinstance(vendor, AbstractGenetic):
-				yield from vendor.genes(gizmo)
+	def genes(self, gizmo: str = None) -> Iterator[AbstractGene]:
+		if gizmo is None:
+			for gizmo in self.gizmos():
+				yield from self.genes(gizmo)
+		else:
+			for vendor in self._gadgets(gizmo):
+				if isinstance(vendor, AbstractGenetic):
+					yield from vendor.genes(gizmo)
 
 
 
@@ -153,9 +161,13 @@ class AutoFunctionGadget(FunctionGadget, AbstractGenetic):
 		return extract_missing_args(fn, args=args, kwargs=kwargs, skip_first=isinstance(fn, classmethod))
 
 	_Gene = Gene
-	def genes(self, gizmo: str) -> Iterator[AbstractGene]:
-		parents = [self._arg_map.get(param.name, param.name) for param in self._extract_missing_genes()]
-		yield self._Gene(gizmo, self, parents=tuple(parents), endpoint=self._fn)
+	def genes(self, gizmo: str = None) -> Iterator[AbstractGene]:
+		if gizmo is None:
+			for gizmo in self.gizmos():
+				yield from self.genes(gizmo)
+		else:
+			parents = [self._arg_map.get(param.name, param.name) for param in self._extract_missing_genes()]
+			yield self._Gene(gizmo, self, parents=tuple(parents), endpoint=self._fn)
 
 	def _find_missing_gene(self, ctx: 'AbstractGame', param: inspect.Parameter) -> dict[str, Any]:
 		try:
@@ -240,12 +252,16 @@ class MIMOGadgetBase(FunctionGadget, AbstractGenetic):
 
 
 class AutoMIMOFunctionGadget(MIMOGadgetBase, AutoFunctionGadget):
-	def genes(self, gizmo: str) -> Iterator[AbstractGene]:
-		parents = [self._arg_map.get(param.name, param.name) for param in self._extract_missing_genes()]
-		siblings = self._multi_output_order(gizmo)
-		if siblings is not None:
-			siblings = tuple(sibling if sibling != gizmo else None for sibling in siblings)
-		yield self._Gene(gizmo, self, parents=tuple(parents), siblings=siblings, endpoint=self._fn)
+	def genes(self, gizmo: str = None) -> Iterator[AbstractGene]:
+		if gizmo is None:
+			for gizmo in self.gizmos():
+				yield from self.genes(gizmo)
+		else:
+			parents = [self._arg_map.get(param.name, param.name) for param in self._extract_missing_genes()]
+			siblings = self._multi_output_order(gizmo)
+			if siblings is not None:
+				siblings = tuple(sibling if sibling != gizmo else None for sibling in siblings)
+			yield self._Gene(gizmo, self, parents=tuple(parents), siblings=siblings, endpoint=self._fn)
 
 
 	def _multi_output_order(self, gizmo: str = None):
@@ -273,6 +289,8 @@ class Parentable(NestableCraft):
 			fn = self._parents_fn.__get__(owner, type(owner))
 			skill._set_parents_fn(fn)
 		return skill
+
+
 
 class ParentedSkill(AbstractGenetic):
 	def get_parents(self) -> Iterator[str]:

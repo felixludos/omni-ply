@@ -48,12 +48,12 @@ class Table(GeneticGadget):
 	'''
 	_index_gizmo = 'index'
 	_index_attribute = None
+	_columns = None
 
 	def __init__(self, data_in_columns: dict[str, list[Any]] = None, **kwargs):
 		super().__init__(**kwargs)
 		assert self._index_gizmo is None or self._index_attribute is None, \
 			f'Cannot specify both index_gizmo and index_attribute'
-		self._columns = None
 		self.data = data_in_columns
 		self._loaded_data = data_in_columns is not None
 
@@ -99,13 +99,9 @@ class Table(GeneticGadget):
 
 
 	def _genetic_information(self, gizmo: str) -> Iterator[str]:
-
-		parents = [self._index_gizmo] if self._index_attribute is None else []
-
-
-
-		if self._index_attribute is None:
-			yield self._index_gizmo
+		info = super()._genetic_information(gizmo)
+		info['parents'] = [self._index_gizmo] if self._index_attribute is None else []
+		return info
 
 
 	def __len__(self):

@@ -36,10 +36,10 @@ class GearContext(Context):
 class GearSkill(FunctionGadget, SkillBase, AbstractGear):
 	_no_value = object()
 
-	def __init__(self, *, base: Optional[AbstractCraft] = None, **kwargs):
+	def __init__(self, *, base: Optional[AbstractCraft] = None, value: Optional[Any] = _no_value, **kwargs):
 		super().__init__(**kwargs)
 		self._base = base
-		self._cached = self._no_value
+		self._cached = value
 
 
 	def update_cache(self, value: Any):

@@ -60,5 +60,13 @@ class Batch(Context, AbstractBatch):
 
 
 
+class Frame(Batch):
+    @property
+    def size(self) -> int:
+        return 1
+
+
+    def new(self):
+        return super().new(1)
 
 
