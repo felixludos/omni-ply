@@ -115,6 +115,10 @@ class Table(GeneticGadget):
 		return {col: self.data[col][index] for col in self.columns}
 
 
+	def getvalue(self, col: str, index: int) -> Any:
+		return self.data[col][index]
+
+
 	def __repr__(self):
 		rows = self.number_of_rows
 		cols = self.columns
