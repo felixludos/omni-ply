@@ -1,7 +1,6 @@
 from .imports import *
 
 
-
 class AbstractGear(AbstractGadget):
 	def update_cache(self, value: Any):
 		raise NotImplementedError

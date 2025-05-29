@@ -2,42 +2,6 @@ from .imports import *
 
 
 
-# class AbstractDriver:
-# 	def gadgetry(self) -> Iterator[AbstractGadget]:
-# 		'''gadgets that should be included in the game'''
-# 		raise NotImplementedError
-
-
-
-# class AbstractMogul:
-# 	def iterate(self, cond: Optional[Any] = None, /, **settings: Any) -> Iterator[AbstractGame]:
-# 		raise NotImplementedError
-	
-
-# 	def __iter__(self):
-# 		return self.iterate()
-	
-
-# 	def __next__(self):
-# 		return next(self.iterate())
-
-
-
-# class AbstractGuru(AbstractMogul):
-# 	'''can use goals to create games'''
-# 	def iterate(self, cond: Union[AbstractGod, None] = None, /, **settings: Any) -> Iterator[AbstractGame]:
-# 		if isinstance(cond, AbstractGod):
-# 			for goal in cond.grant(self):
-# 				yield self.glean(goal)
-# 		raise NotImplementedError
-	
-
-# 	def glean(self, goal: AbstractGame) -> AbstractGame:
-# 		'''create a game using the meta (goal)'''
-# 		raise NotImplementedError
-
-
-
 class AbstractEvent(AbstractSetup, AbstractGadget):
 	def setup(self, *args, **kwargs) -> None:
 		raise NotImplementedError
@@ -66,12 +30,28 @@ class AbstractEngine(AbstractEvent):
 
 
 
-class AbstractDataset:
+class AbstractSource:
 	@property
 	def size(self) -> Optional[int]:
 		raise NotImplementedError
-	
-	
+
+
+	def batch_type(self, ) -> Type['AbstractBatch']:
+		raise NotImplementedError
+
+
+
+class AbstractDataset(AbstractSource):
+	pass
+
+
+
+class AbstractSystem(AbstractSource):
+	@property
+	def source(self):
+		raise NotImplementedError
+
+
 
 class AbstractBatch(AbstractDataset, AbstractGame): # AbstractMogul
 	def gadgetry(self) -> Iterator[AbstractGadget]:

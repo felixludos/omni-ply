@@ -307,6 +307,27 @@ def test_rebuild_chain():
 
 # endregion
 
+# region Staging
 
+# def test_staged():
+# 	from .staging import Staged, AutoStaged, Scape
+#
+# 	class A(AutoStaged, Structured):
+# 		@gear('x')
+# 		def x_value(self):
+# 			return 0
+#
+# 	class B(AutoStaged, Structured):
+# 		def setup(self, x, y = 10, z = 100):
+# 			super().setup(x, y*2)
+# 			self.z = x + y
+#
+# 	a = A()
+# 	b = B()
+# 	ctx = Context(a, b)
+#
+# 	ctx.stage()
+#
+# 	# assert
 
-
+# endregion

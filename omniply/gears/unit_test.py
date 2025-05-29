@@ -1,6 +1,6 @@
 from .imports import *
 from .op import Context, ToolKit, Structured, gear, Mechanics, Mechanized, Mechanism, Gate
-from .. import GrabError
+from .. import GrabError, tool
 from .errors import GearFailed
 
 

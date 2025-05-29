@@ -7,7 +7,7 @@ from ..core.tools import ToolCraft, AutoToolCraft
 from ..core.genetics import AutoMIMOFunctionGadget, AutoFunctionGadget, FunctionGadget
 from .. import (ToolKit as _ToolKit, tool as _tool, Context as _Context, gear as _gear, Mechanics as _Mechanics,
 				Structured as _Structured, Mechanism as _Mechanism)
-from ..gears.gears import GearCraft, AutoGearCraft, GearSkill#, StaticGearCraft# as _StaticGearCraft
+from ..gears.gears import GearCraft, AutoGearCraft, GearSkill, StaticGearCraft as _StaticGearCraft
 from ..gears.gearbox import GearedGaggle, GearBox as _GearBox
 from ..gears.mechanics import MechanizedBase
 
@@ -252,8 +252,8 @@ class gear(CarefulGearCraft, _gear):
 	# 		pass
 
 
-# class StaticGearCraft(Gapped, _StaticGearCraft): # TODO: only change is gives()
-# 	pass
+class StaticGearCraft(Gapped, _StaticGearCraft): # TODO: only change is gives()
+	pass
 
 
 

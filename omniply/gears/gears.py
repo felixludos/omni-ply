@@ -2,7 +2,7 @@ from .imports import *
 from omnibelt.crafts import AbstractCraft
 from .abstract import AbstractGear, AbstractGeared, AbstractMechanical, AbstractMechanics
 from .errors import MissingMechanicsError, GearFailed, GearGrabError
-from ..core import AbstractGame
+from ..core import AbstractGame, Context
 from ..core.gadgets import GadgetFailed, SingleGadgetBase
 from ..core.genetics import AutoFunctionGadget, FunctionGadget
 from ..core.tools import AbstractCrafty, AbstractSkill, SkillBase, CraftBase#, ToolDecoratorBase, MIMOToolDecorator, AutoToolDecorator
@@ -144,25 +144,25 @@ class GearDecorator(AutoGearCraft):
 
 
 
-# class StaticGearSkill(GearSkillBase, AbstractGear):
-# 	def __init__(self, gizmo: str, value: Any, **kwargs):
-# 		super().__init__(gizmo=gizmo, **kwargs)
-# 		self._value = value
-#
-# 	def _grab_from(self, ctx: 'AbstractGame') -> Any:
-# 		return self._value
-#
-#
-#
-# class StaticGearCraft(GearCraftBase):
-# 	def __init__(self, gizmo: str, value: Any, **kwargs):
-# 		super().__init__(gizmo=gizmo, **kwargs)
-# 		self._value = value
-#
-#
-# 	_no_value = object()
-# 	_GearSkill = StaticGearSkill
-# 	def as_skill(self, owner: 'AbstractCrafty', value: Any = _no_value, **kwargs) -> StaticGearSkill:
-# 		return super().as_skill(owner, value=self._value if value is self._no_value else value, **kwargs)
+class StaticGearSkill(GearSkill, AbstractGear):
+	def __init__(self, gizmo: str, value: Any, **kwargs):
+		super().__init__(gizmo=gizmo, unbound_fn=None, **kwargs)
+		self._value = value
+
+	def _grab_from(self, ctx: 'AbstractGame') -> Any:
+		return self._value
+
+
+
+class StaticGearCraft(GearCraftBase):
+	def __init__(self, gizmo: str, value: Any, **kwargs):
+		super().__init__(gizmo=gizmo, **kwargs)
+		self._value = value
+
+
+	_no_value = object()
+	_GearSkill = StaticGearSkill
+	def as_skill(self, owner: 'AbstractCrafty', value: Any = _no_value, **kwargs) -> StaticGearSkill:
+		return super().as_skill(owner, value=self._value if value is self._no_value else value, **kwargs)
 
 # endregion

@@ -1,4 +1,4 @@
-from typing import Iterable, Callable
+from typing import Iterable, Callable, Any
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGang
 from .errors import GadgetFailed, MissingGadget
 from .tools import ToolCraftBase, AutoToolCraft, MIMOToolDecorator, AutoToolDecorator
@@ -63,7 +63,6 @@ class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle):
 		self.extend(gadgets) # note that you can add tools before crafts, but only if they are passed here!
 		self._process_crafts()
 
-
 class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggle, GeneticGaggle, AbstractGame):
 	"""
 	The Context class is a subclass of GateCache, LoopyGaggle, MutableGaggle, and AbstractGame. It provides methods to handle
@@ -95,6 +94,10 @@ class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggl
 		new = self.__class__(*args, **kwargs)
 		new.extend(self.vendors())
 		return new
+
+
+	def get(self, key: str, default: Any = None) -> Any:
+		return self.grab(key, default=default)
 
 
 	def __getitem__(self, item):
