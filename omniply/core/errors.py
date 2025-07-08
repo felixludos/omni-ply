@@ -45,7 +45,7 @@ class AssemblyError(GadgetFailed):
 class GadgetError(AbstractGadgetError):
 	'''
 	this error means something that should've worked didn't,
-	so no automatic recovery (by trying the remaining gadgets)
+	so no automatic recovery (by trying the remaining gadgets or backtracking)
 	'''
 	def __init__(self, message: Optional[str] = None):
 		super().__init__(message)

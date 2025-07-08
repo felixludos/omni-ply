@@ -1,4 +1,7 @@
+from typing import Iterator
+
 from .op import tool, ToolKit, Context, Mechanism, Gate
+from .. import GadgetFailed
 
 
 def test_tool():
@@ -888,6 +891,29 @@ def test_parents():
 	assert not ctx.is_cached('b')
 	assert ctx['b'] == 20
 
+
+from .errors import GadgetFailed
+
+def test_backtrack():
+
+	class Kit1(ToolKit):
+		@tool('a')
+		def f(self):
+			return 1
+		@tool('b')
+		def g(self, a):
+			if a == 1:
+				raise GadgetFailed
+			return 'worked'
+
+	class Kit2(ToolKit):
+		@tool('a')
+		def f(self):
+			return 2
+
+	ctx = Context(Kit1(), Kit2())
+
+	assert ctx['b'] == 'worked'
 
 
 

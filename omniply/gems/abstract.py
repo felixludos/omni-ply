@@ -1,5 +1,6 @@
 from typing import Type, Optional, Any, TypeVar, Union, Iterable, Iterator, Dict, List, Tuple, Callable, Self
 from omnibelt import unspecified_argument
+from omnibelt.crafts import InheritableCrafty
 
 T = TypeVar('T')
 
@@ -16,13 +17,12 @@ class AbstractGem:
 		raise NotImplementedError
 
 
-
 class AbstractGeode(AbstractGem):
 	pass
 
 
 
-class AbstractGeologist:
+class AbstractGeologist(InheritableCrafty):
 	pass
 
 

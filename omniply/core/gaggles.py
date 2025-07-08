@@ -214,6 +214,40 @@ class LoopyGaggle(GaggleBase):
 			raise self._AssemblyFailedError(failures)
 		raise self._MissingGadgetError(gizmo)
 
+from itertools import tee
+
+class BacktrackingGaggle(GaggleBase):
+	_grab_trace: Optional[list[str]]
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._grab_trace = None
+
+	def _backtrack(self, ctx: 'AbstractGame', gizmo: str) -> Any:
+
+	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
+		if self._grab_trace is None:
+			self._grab_trace = [gizmo]
+		else:
+			self._grab_trace.append(gizmo)
+
+		try:
+			out = super().grab_from(ctx, gizmo)
+		except self._AssemblyFailedError as e:
+
+			# attempt to backtrack
+			no_value = object()
+			# try:
+				# out =
+
+			pass
+		else:
+			if self._grab_trace[0] == gizmo:
+				self._grab_trace = None
+			return out
+
+
+
 class MutableGaggle(GaggleBase, AbstractMutable):
 	"""
 	The MutableGaggle class is a mix-in for custom gaggles to dynamically add and remove subgadgets.

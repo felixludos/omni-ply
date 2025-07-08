@@ -1,4 +1,4 @@
-from .abstract import AbstractGem
+from .abstract import AbstractGem, AbstractGeologist
 from .imports import *
 from omnibelt import unspecified_argument
 from omnibelt.crafts import InheritableCrafty, AbstractCraft, NestableCraft
@@ -41,7 +41,7 @@ class CachableGem(GemBase):
 		super().__init__(default=default, **kwargs)
 		self._cache = cache
 
-	def resolve(self, instance: InheritableCrafty):
+	def resolve(self, instance: AbstractGeologist):
 		val = instance.__dict__.get(self._name, self._no_value)
 		if val is self._no_value:
 			val = self.realize(instance)
@@ -50,7 +50,7 @@ class CachableGem(GemBase):
 				instance.__dict__[self._name] = val
 		return val
 
-	def realize(self, instance: InheritableCrafty):
+	def realize(self, instance: AbstractGeologist):
 		if self._default is self._no_value:
 			return self._fn(instance)
 		return self._default
@@ -85,15 +85,41 @@ class InheritableGem(GemBase):
 
 
 class GeodeBase(GemBase):
-	def init(self, fn: Callable[[Any], Any]):
-		pass
+	_build_fn = None
+	def build(self, fn: Callable[[Any], Any]) -> Self:
+		return self
 
-	def build(self, fn: Callable[[Any], Any]):
-		pass
+	_init_fn = None
+	def init(self, fn: Callable[[Any], Any]) -> Self:
+		return self
 
-	def stage(self, fn: Callable[[Any], Any]):
-		pass
-
+	_stage_fn = None
+	def stage(self, fn: Callable[[Any], Any]) -> Self:
+		return self
 	pass
+
+
+class SimpleGeode(CachableGem, GeodeBase):
+	def realize(self, instance: AbstractGeologist):
+		raw = super().realize(instance)
+		value = self.rebuild(instance, raw)
+		return value
+
+	def rebuild(self, instance: AbstractGeologist, value: Any = None):
+
+
+
+		pass
+
+	def relink(self, instance: AbstractGeologist):
+
+
+
+		pass
+
+
+
+
+
 
 

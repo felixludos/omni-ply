@@ -1,5 +1,34 @@
 from .imports import *
+# from inspect import getattr_static
 from .op import Geologist, gem
+
+
+def test_get_order():
+	class dec:
+		def __init__(self, fn=None):
+			pass
+		def __call__(self, fn):
+			return self
+		def __set_name__(self, owner, name):
+			self._name = name
+		def __get__(self, instance, owner):
+			val = instance.__dict__.get(self._name,0) + 1
+			instance.__dict__[self._name] = val
+			return val
+		def __set__(self, instance, value):
+			instance.__dict__[self._name] = 2*value
+
+	class A:
+		@dec()
+		def f(self, x=1):
+			return x
+
+	a = A()
+
+	assert a.f == 1
+	a.f = 5
+	assert a.f == 11
+
 
 
 def test_gem():
