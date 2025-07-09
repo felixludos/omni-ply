@@ -96,7 +96,7 @@ class GeodeBase(GemBase):
 	_stage_fn = None
 	def stage(self, fn: Callable[[Any], Any]) -> Self:
 		return self
-	pass
+
 
 
 class SimpleGeode(CachableGem, GeodeBase):

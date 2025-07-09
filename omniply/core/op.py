@@ -3,8 +3,9 @@ from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGang
 from .errors import GadgetFailed, MissingGadget
 from .tools import ToolCraftBase, AutoToolCraft, MIMOToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
-from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle, MutableCrafty, BacktrackingGaggle
-from .games import CacheGame, GatedCache, TraceGame, RollingGame, ConsistentGame, BacktrackingCache
+from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle, MutableCrafty
+from .games import CacheGame, GatedCache, TraceGame, RollingGame, ConsistentGame
+from .graces import BacktrackingGaggle, BacktrackingCache
 from .gangs import CachableMechanism, GateBase
 from .genetics import GeneticGaggle
 
@@ -40,7 +41,7 @@ class tool(AutoToolDecorator):
 
 
 
-class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle): # TODO: replace loopy with backtracking gaggle
+class ToolKit(BacktrackingGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle): # TODO: replace loopy with backtracking gaggle
 	"""
 	The ToolKit class is a subclass of LoopyGaggle, MutableGaggle, and CraftyGaggle. It provides methods to handle
 	tools in a kit.

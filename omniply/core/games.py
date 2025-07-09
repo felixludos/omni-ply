@@ -6,7 +6,7 @@ from .abstract import (AbstractGadget, AbstractGaggle, AbstractGame, AbstractGan
 					   AbstractConsistentGame)
 from .errors import GadgetFailed, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
-from .gaggles import GaggleBase, MutableGaggle, MultiGadgetBase, BacktrackingGaggle
+from .gaggles import GaggleBase, MutableGaggle, MultiGadgetBase
 
 Self = TypeVar('Self')
 
@@ -195,14 +195,6 @@ class CacheGame(GameBase, UserDict):
 		val = self._cache_miss(ctx, gizmo)
 		self[gizmo] = val  # cache packaged val
 		return val
-
-
-class BacktrackingCache(CacheGame, BacktrackingGaggle):
-	def _attempt_backtrack(self, ctx: 'AbstractGame', gizmo: str, path: list[str]):
-		for dep in path:
-			if dep in self.data:
-				del self.data[dep]
-		return super()._attempt_backtrack(ctx, gizmo, path)
 
 
 class GatedCache(CacheGame): # TODO: rename to GangCache

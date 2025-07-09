@@ -1,5 +1,5 @@
 from typing import Optional, Any, Iterator, TypeVar, Generic, Union, Callable, Iterable, Mapping, Sequence
-from itertools import chain, tee
+from itertools import chain
 from collections import OrderedDict
 
 from omnibelt import filter_duplicates
@@ -169,7 +169,6 @@ class LoopyGaggle(GaggleBase):
 	"""
 	_grabber_stack: dict[str, Iterator[AbstractGadget]]
 	_grab_query: Optional[str]
-	_no_grab_flag = object()
 
 	def __init__(self, *args, **kwargs):
 		"""
@@ -202,7 +201,6 @@ class LoopyGaggle(GaggleBase):
 			self._grab_query = gizmo
 		failures = {}
 		itr = self._grabber_stack.setdefault(gizmo, self._gadgets(gizmo))
-		out = self._no_grab_flag
 		for gadget in itr:
 			try:
 				out = gadget.grab_from(ctx, gizmo)
@@ -212,76 +210,13 @@ class LoopyGaggle(GaggleBase):
 				logger.debug(f'{gadget!r} failed while trying to produce {gizmo!r}')
 				raise
 			else:
-				break
-		# if gizmo in self._grabber_stack: # TODO: why is this if needed?
-		# 	self._grabber_stack.pop(gizmo)
-		if out is self._no_grab_flag:
-			if failures:
-				raise self._AssemblyFailedError(failures)
-			raise self._MissingGadgetError(gizmo)
-		if gizmo == self._grab_query:
-			# self._grab_query = None
-			self._grabber_stack.clear()
-		return out
-
-class BacktrackingGaggle(LoopyGaggle):
-	_grab_tree: Optional[dict[str, set[str]]]
-	_grab_trace: Optional[list[str]]
-
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self._grab_tree = {}
-		self._grab_trace = []
-
-
-	def _find_backtrack(self, ctx: 'AbstractGame', gizmo: str) -> Optional[list[str]]:
-		itr = self._grabber_stack.get(gizmo)
-		if itr is not None:
-			peek, remaining = tee(itr)
-			try:
-				next(peek)
-			except StopIteration:
-				# no alternative found for candidate
-				self._grabber_stack.pop(gizmo, None)
-				# keep looking
-			else:
-				# candidate confirmed, try backtracking
-				self._grabber_stack[gizmo] = remaining
-				self._grab_tree.pop(gizmo, None)
-				return [gizmo]
-		
-		for dependency in self._grab_tree.get(gizmo, []):
-			path = self._find_backtrack(ctx, dependency)
-			if path is not None:
-				self._grab_tree.pop(gizmo, None)
-				path.append(gizmo)
-				return path
-			
-	def _attempt_backtrack(self, ctx: 'AbstractGame', gizmo: str, path: list[str]):
-		return self.grab_from(ctx, gizmo)
-
-
-	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
-		if len(self._grab_trace):
-			self._grab_tree.setdefault(self._grab_trace[-1], set()).add(gizmo)
-		self._grab_trace.append(gizmo)
-
-		try:
-			out = super().grab_from(ctx, gizmo)
-		except self._AssemblyFailedError as e:
-			path = self._find_backtrack(ctx, gizmo)
-			if path is None:
-				raise
-			return self._attempt_backtrack(ctx, gizmo, path)
-		except self._MissingGadgetError:
-			self._grab_trace.pop()
-			raise
-		assert self._grab_trace[-1] == gizmo, f'Expected {gizmo!r} to be the last in the trace, but got {self._grab_trace[-1]!r}'
-		self._grab_trace.pop()
-		if len(self._grab_trace) == 0:
-			self._grab_tree.clear()
-			# self._grab_trace.clear()
-		return out
+				if gizmo == self._grab_query:
+					# self._grab_query = None
+					self._grabber_stack.clear()
+				return out
+		if failures:
+			raise self._AssemblyFailedError(failures)
+		raise self._MissingGadgetError(gizmo)
 
 
 
