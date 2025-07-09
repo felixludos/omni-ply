@@ -3,8 +3,8 @@ from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGang
 from .errors import GadgetFailed, MissingGadget
 from .tools import ToolCraftBase, AutoToolCraft, MIMOToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
-from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle, MutableCrafty
-from .games import CacheGame, GatedCache, TraceGame, RollingGame, ConsistentGame
+from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle, MutableCrafty, BacktrackingGaggle
+from .games import CacheGame, GatedCache, TraceGame, RollingGame, ConsistentGame, BacktrackingCache
 from .gangs import CachableMechanism, GateBase
 from .genetics import GeneticGaggle
 
@@ -40,7 +40,7 @@ class tool(AutoToolDecorator):
 
 
 
-class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle):
+class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle): # TODO: replace loopy with backtracking gaggle
 	"""
 	The ToolKit class is a subclass of LoopyGaggle, MutableGaggle, and CraftyGaggle. It provides methods to handle
 	tools in a kit.
@@ -63,7 +63,8 @@ class ToolKit(LoopyGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle):
 		self.extend(gadgets) # note that you can add tools before crafts, but only if they are passed here!
 		self._process_crafts()
 
-class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggle, GeneticGaggle, AbstractGame):
+# class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggle, GeneticGaggle, AbstractGame):
+class Context(GatedCache, ConsistentGame, RollingGame, BacktrackingCache, MutableGaggle, GeneticGaggle, AbstractGame):
 	"""
 	The Context class is a subclass of GateCache, LoopyGaggle, MutableGaggle, and AbstractGame. It provides methods to handle
 	gadgets in a context.

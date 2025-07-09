@@ -47,54 +47,16 @@ def test_tool():
 
 
 def test_context():
-	"""
-	This function tests the functionality of the 'tool' decorator, the 'Context' class, and the 'include' method.
-
-	The 'tool' decorator is used to define three functions, 'f', 'g', and 'f2', with 'y', 'z', and 'y' as their respective gizmos.
-	The 'Context' class is used to create a context with the functions 'f' and 'g'.
-	The 'include' method is then used to add the function 'f2' to the context.
-
-	The function asserts that the context correctly maps 'x' to 'y' and that it updates correctly when the context's cache is cleared and 'f2' is included.
-	"""
-
 	@tool('y')  # The 'tool' decorator is used to define a function 'f' with 'y' as its gizmo.
 	def f(x):
-		"""
-		This function takes an integer as input and returns the integer incremented by 1.
-
-		Args:
-			x (int): The input integer.
-
-		Returns:
-			int: The input integer incremented by 1.
-		"""
 		return x + 1
 
 	@tool('z')  # The 'tool' decorator is used to define a function 'g' with 'z' as its gizmo.
 	def g(x, y):
-		"""
-		This function takes two integers as input and returns their sum.
-
-		Args:
-			x (int): The first input integer.
-			y (int): The second input integer.
-
-		Returns:
-			int: The sum of the input integers.
-		"""
 		return x + y
 
 	@tool('y')  # The 'tool' decorator is used to define a function 'f2' with 'y' as its gizmo.
 	def f2(y):
-		"""
-		This function takes an integer as input and returns the integer negated.
-
-		Args:
-			y (int): The input integer.
-
-		Returns:
-			int: The input integer negated.
-		"""
 		return -y
 
 	ctx = Context(f, g)  # The 'Context' class is used to create a context with the functions 'f' and 'g'.

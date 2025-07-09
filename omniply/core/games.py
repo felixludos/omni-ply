@@ -6,7 +6,7 @@ from .abstract import (AbstractGadget, AbstractGaggle, AbstractGame, AbstractGan
 					   AbstractConsistentGame)
 from .errors import GadgetFailed, MissingGadget, AssemblyError, GrabError
 from .gadgets import GadgetBase
-from .gaggles import GaggleBase, MutableGaggle, MultiGadgetBase
+from .gaggles import GaggleBase, MutableGaggle, MultiGadgetBase, BacktrackingGaggle
 
 Self = TypeVar('Self')
 
@@ -195,6 +195,26 @@ class CacheGame(GameBase, UserDict):
 		val = self._cache_miss(ctx, gizmo)
 		self[gizmo] = val  # cache packaged val
 		return val
+
+
+class BacktrackingCache(CacheGame, BacktrackingGaggle):
+	def _backtrack(self, ctx: AbstractGame, gizmo: str) -> Optional[list[str]]:
+		"""
+		Backtracks through the cache to find a path to the requested gizmo.
+
+		Args:
+			ctx (AbstractGame): The context from which to backtrack.
+			gizmo (str): The name of the gizmo to backtrack.
+
+		Returns:
+			Optional[list[str]]: A list of gizmos leading to the requested gizmo, or None if not found.
+		"""
+		path = super()._backtrack(ctx, gizmo)
+		if path is not None:
+			for gizmo in path:
+				if gizmo in self.data:
+					del self.data[gizmo]
+		return path
 
 
 
