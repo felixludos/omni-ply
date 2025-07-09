@@ -234,7 +234,7 @@ class BacktrackingGaggle(LoopyGaggle):
 		self._grab_trace = []
 
 
-	def _backtrack(self, ctx: 'AbstractGame', gizmo: str) -> Optional[list[str]]:
+	def _find_backtrack(self, ctx: 'AbstractGame', gizmo: str) -> Optional[list[str]]:
 		itr = self._grabber_stack.get(gizmo)
 		if itr is not None:
 			peek, remaining = tee(itr)
@@ -251,11 +251,14 @@ class BacktrackingGaggle(LoopyGaggle):
 				return [gizmo]
 		
 		for dependency in self._grab_tree.get(gizmo, []):
-			path = self._backtrack(ctx, dependency)
+			path = self._find_backtrack(ctx, dependency)
 			if path is not None:
 				self._grab_tree.pop(gizmo, None)
 				path.append(gizmo)
 				return path
+			
+	def _attempt_backtrack(self, ctx: 'AbstractGame', gizmo: str, path: list[str]):
+		return self.grab_from(ctx, gizmo)
 
 
 	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
@@ -266,11 +269,10 @@ class BacktrackingGaggle(LoopyGaggle):
 		try:
 			out = super().grab_from(ctx, gizmo)
 		except self._AssemblyFailedError as e:
-			path = self._backtrack(ctx, gizmo)
+			path = self._find_backtrack(ctx, gizmo)
 			if path is None:
 				raise
-			# prepare to backtrack (e.g. store failed trace)
-			return self.grab_from(ctx, gizmo)
+			return self._attempt_backtrack(ctx, gizmo, path)
 		except self._MissingGadgetError:
 			self._grab_trace.pop()
 			raise

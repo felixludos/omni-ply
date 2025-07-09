@@ -198,24 +198,11 @@ class CacheGame(GameBase, UserDict):
 
 
 class BacktrackingCache(CacheGame, BacktrackingGaggle):
-	def _backtrack(self, ctx: AbstractGame, gizmo: str) -> Optional[list[str]]:
-		"""
-		Backtracks through the cache to find a path to the requested gizmo.
-
-		Args:
-			ctx (AbstractGame): The context from which to backtrack.
-			gizmo (str): The name of the gizmo to backtrack.
-
-		Returns:
-			Optional[list[str]]: A list of gizmos leading to the requested gizmo, or None if not found.
-		"""
-		path = super()._backtrack(ctx, gizmo)
-		if path is not None:
-			for gizmo in path:
-				if gizmo in self.data:
-					del self.data[gizmo]
-		return path
-
+	def _attempt_backtrack(self, ctx: 'AbstractGame', gizmo: str, path: list[str]):
+		for dep in path:
+			if dep in self.data:
+				del self.data[dep]
+		return super()._attempt_backtrack(ctx, gizmo, path)
 
 
 class GatedCache(CacheGame): # TODO: rename to GangCache
