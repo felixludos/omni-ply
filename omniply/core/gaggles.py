@@ -1,6 +1,7 @@
 from typing import Optional, Any, Iterator, TypeVar, Generic, Union, Callable, Iterable, Mapping, Sequence
-from itertools import chain
+from itertools import chain, tee
 from collections import OrderedDict
+
 from omnibelt import filter_duplicates
 from omnibelt.crafts import InheritableCrafty, AbstractSkill
 
@@ -222,8 +223,6 @@ class LoopyGaggle(GaggleBase):
 			# self._grab_query = None
 			self._grabber_stack.clear()
 		return out
-
-from itertools import tee
 
 class BacktrackingGaggle(LoopyGaggle):
 	_grab_tree: Optional[dict[str, set[str]]]
