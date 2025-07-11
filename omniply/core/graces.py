@@ -1,55 +1,83 @@
-from typing import Any, Optional, Iterator, Union, Tuple
+from typing import Any, Optional, Iterator, Union, Tuple, Iterable, Reversible
 from .errors import GrabError
 from .abstract import AbstractGame, AbstractGadget
-from .gaggles import LoopyGaggle
+from .gaggles import GaggleBase, LoopyGaggle
 from .games import CacheGame
 
 from itertools import tee, chain
-
-
-
-class AbstractGrace:
-	def grace_grab(self, error: GrabError, ctx: AbstractGame, gizmo: str) -> Any:
-		raise NotImplementedError
+from functools import partial
 
 
 
 class AbstractGraceful(AbstractGadget):
-	def grace(self, gizmo: str) -> Optional[AbstractGrace]:
+	def grace(self, ctx: AbstractGame, gizmo: str, error: GrabError) -> Optional[AbstractGadget]:
 		raise NotImplementedError
 
 
 
-class GracefulGaggle(LoopyGaggle):
+class GracefulRepeater(AbstractGraceful):
+	def __init__(self, repeat: int = 0, payload: Optional[AbstractGadget] = None, **kwargs):
+		"""
+		Initializes a GracefulRepeater gadget that repeats the grace grab a specified number of times.
+
+		Args:
+			repeat (int): The number of times to repeat the grace grab.
+			**kwargs: Arbitrary keyword arguments for superclasses.
+		"""
+		super().__init__(**kwargs)
+		self.repeat = repeat
+		self._payload = payload
+
+	def grace(self, ctx: AbstractGame, gizmo: str, error: GrabError) -> Optional[AbstractGadget]:
+		if self.repeat > 0:
+			return GracefulRepeater(self.repeat - 1, self._payload or self)
+		# elif self._payload is not None and self._payload.repeat > 0:
+		# 	raise NotImplementedError(f'should return a simple gadget that raises an error that all repeats failed')
+
+
+
+class GracefulGaggle(GaggleBase):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._grab_tree = {}
 		self._grab_trace = []
-		self._grab_gadgets = {} # need to track which gadgets were already used for potential graces (when backtracking)
 
-	def _ask_for_grace(self, gadget: Union[AbstractGadget, AbstractGrace], gizmo: str) \
-			-> Optional[Tuple[AbstractGrace, list[str]]]:
+	def _ask_for_grace(self, ctx: AbstractGame, error: GrabError, gadget: AbstractGadget, keys: Reversible[str]) \
+			-> Optional[list[Tuple[str, AbstractGadget]]]:
+		gizmo = next(reversed(keys))
 		if isinstance(gadget, AbstractGraceful):
-			grace = gadget.grace(gizmo)
+			grace = gadget.grace(ctx, gizmo, error)
 			if grace is not None:
-				return grace, [gizmo]
+				self._grab_tree.pop(tuple(keys), None)  # remove the current keys from the grab tree
+				return [(gizmo, grace)]
 
-		for dependency in self._grab_tree.get(gizmo, []):
-			option = self._ask_for_grace(ctx, dependency, None, e)
-			if option is not None:
-				grace, path = option
-				self._grab_tree.pop(gizmo, None)
-				path.append(gizmo)
-				return grace, path
+		path = None
+		for parent, parent_gadget in self._grab_tree.get(tuple(keys), []):
+			path = self._ask_for_grace(ctx, error, parent_gadget, (*keys, parent))
+			if path is not None:
+				break
+		self._grab_tree.pop(tuple(keys), None)
+		path.append((gizmo, gadget))
+		return path
 
-	def _graceful_grab(self, error: GrabError, ctx: AbstractGame, grace: AbstractGrace, path: list[str]) -> Any:
-		# (clear cache as necessary based on path)
 
-		# curry the error into the grace grab, and then chain the grace with the current grabber_stack[path[0]]
-		# clear the grabber stack for the current path[1:]
+	def _graceful_grab(self, path: list[Tuple[str, AbstractGadget]],
+					   error: GrabError, ctx: AbstractGame, gizmo: str) -> Any:
+		# # (clear cache as necessary based on path)
+		# base_gizmo, grace = path[0][1]
+		# assert isinstance(grace, AbstractGrace), f'Expected grace to be an instance of AbstractGrace, but got {grace!r}'
+		# # curry the error into the grace grab, and then chain the grace with the current grabber_stack[path[0]]
+		# gadget = partial(grace.grace_grab, error)
+		#
+		# path[0] = (base_gizmo, gadget)  # replace the gadget with the curried grace in the path
+
+		# now prepend the successful gadgets into the grabber stack
+		for target, gadget in path:
+			assert target in self._grabber_stack, f'Expected {target!r} to be in the grabber stack, but got {self._grabber_stack!r}'
+			self._grabber_stack[target] = chain([gadget], self._grabber_stack.get(target, []))
+
 		# then return self.grab_from(ctx, path[-1])
-		raise NotImplementedError
-
+		return self.grab_from(ctx, gizmo)
 
 
 	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
@@ -67,50 +95,55 @@ class GracefulGaggle(LoopyGaggle):
 			AssemblyFailedError: If all gadgets fail to produce the gizmo.
 			MissingGadgetError: If no gadget can produce the gizmo.
 		"""
-		if len(self._grabber_stack) == 0:
+		if len(self._grab_trace) == 0:
 			self._grab_query = gizmo
+			self._grab_tree.clear()
+			self._grabber_stack.clear()
+		self._grab_trace.append(gizmo)
 
-		if gizmo in self._grab_graces:
-			itr = self._grab_graces[gizmo]
-
-			try:
-				gadget = next(itr)
-			except StopIteration:
-				raise
-
-		else:
-			itr = self._grabber_stack.setdefault(gizmo, self._gadgets(gizmo))
-
-			try:
-				gadget = next(itr)
-			except StopIteration:
-				raise self._MissingGadgetError(gizmo)
+		itr = self._grabber_stack.setdefault(gizmo, self._gadgets(gizmo))
 
 		try:
-			out = gadget.grab_from(ctx, gizmo)
-		except self._GadgetFailure as e:
-			return self._ask_for_grace(ctx, gizmo, gadget, e)
-		except:
-			logger.debug(f'{gadget!r} failed while trying to produce {gizmo!r}')
-			raise
+			gadget = next(itr)
+		except StopIteration:
+			self._grab_trace.pop() # failed to grab the gizmo, so pop it from the trace
+			raise self._MissingGadgetError(gizmo)
 
-		if gizmo == self._grab_query:
-			# self._grab_query = None
-			self._grabber_stack.clear()
-		return out
+		try:
+			result = gadget.grab_from(ctx, gizmo)
+
+		except self._GadgetFailure as error:
+			# attempt backtracking
+			grace_path = self._ask_for_grace(ctx, error, gadget, tuple(self._grab_trace))
+			if grace_path is None:
+				self._grab_trace.pop() # failed to grab the gizmo, so pop it from the trace
+				raise error
+			result = self._graceful_grab(grace_path, error, ctx, gizmo)
+
+		# except:
+		# 	logger.debug(f'{gadget!r} failed while trying to produce {gizmo!r}')
+		# 	raise
+
+		assert self._grab_trace[-1] == gizmo, (f'Expected {gizmo!r} to be the last in the trace, '
+											   f'but got {self._grab_trace[-1]!r}')
+		self._grab_trace.pop() # completed gizmo, so pop it from the trace
+		self._grab_tree.setdefault(tuple(self._grab_trace), []).append((gizmo, gadget)) # update grab tree
+
+		# if len(self._grab_trace) == 0:
+		# 	self._grab_tree.clear()
+		# 	self._grabber_stack.clear()
+		return result
 
 
 
 class BacktrackingGaggle(LoopyGaggle):
 	_grab_tree: Optional[dict[str, set[str]]]
 	_grab_trace: Optional[list[str]]
-	_grab_graces: Optional[dict[str, Iterator[AbstractGadget]]]
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._grab_tree = {}
 		self._grab_trace = []
-		self._grab_graces = {}
 
 
 	def _find_backtrack(self, ctx: 'AbstractGame', gizmo: str) -> Optional[list[str]]:
