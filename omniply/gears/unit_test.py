@@ -1,7 +1,7 @@
 from .imports import *
 from .op import Context, ToolKit, Structured, gear, Mechanics, Mechanized, Mechanism, Gate
 from .. import GrabError, tool
-from .errors import GearFailed
+from .errors import SkipGadget
 
 
 def test_gears():
@@ -220,7 +220,7 @@ def test_gear_failed():
 	class Tester(Structured):
 		@gear('a')
 		def defer(self):
-			raise GearFailed
+			raise SkipGadget
 
 		@gear('c')
 		def something_else_else(self, a, outside):

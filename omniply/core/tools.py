@@ -2,6 +2,7 @@ from typing import Iterator, Optional, Any, Iterable, Callable
 from omnibelt.crafts import AbstractSkill, AbstractCraft, AbstractCrafty, NestableCraft
 
 from .abstract import AbstractGadget, AbstractGaggle, AbstractGame
+from .graces import GracefulRepeater
 from .gadgets import GadgetBase, FunctionGadget
 from .genetics import AutoMIMOFunctionGadget, MIMOGadgetBase, Parentable, AbstractGenetic, Gene, ParentedSkill
 
@@ -66,7 +67,7 @@ class ToolCraftBase(FunctionGadget, CraftBase):
 	"""
 
 	_ToolSkill = None
-	def as_skill(self, owner: AbstractCrafty) -> SkillBase:
+	def as_skill(self, owner: AbstractCrafty, **kwargs) -> SkillBase:
 		"""
 		When an AbstractCrafty is instantiated (i.e., `owner`), any crafts accessible by the class (including inherited ones) can be converted to skills.
 
@@ -78,11 +79,19 @@ class ToolCraftBase(FunctionGadget, CraftBase):
 		"""
 		unbound_fn = self._wrapped_content_leaf()
 		fn = unbound_fn.__get__(owner, type(owner))
-		return self._ToolSkill(fn=fn, gizmo=self._gizmo, unbound_fn=unbound_fn, base=self)
+		return self._ToolSkill(fn=fn, gizmo=self._gizmo, unbound_fn=unbound_fn, base=self, **kwargs)
 
 
 
-class ToolSkill(ParentedSkill, MIMOGadgetBase, SkillBase):
+class GracefulCraft(GracefulRepeater, ToolCraftBase):
+	def as_skill(self, owner: AbstractCrafty, repeat=None, **kwargs) -> SkillBase:
+		if repeat is None:
+			repeat = self.repeat
+		return super().as_skill(owner, repeat=repeat, **kwargs)
+
+
+
+class ToolSkill(GracefulRepeater, ParentedSkill, MIMOGadgetBase, SkillBase):
 	"""
 	The _ToolSkill class is a nested class that inherits from FunctionGadget and ToolSkill.
 	"""
@@ -98,13 +107,13 @@ class ToolSkill(ParentedSkill, MIMOGadgetBase, SkillBase):
 
 
 
-class ToolCraft(Parentable, ToolCraftBase, MIMOGadgetBase):
-	_ToolSkill = ToolSkill
+class ToolCraft(GracefulCraft, Parentable, ToolCraftBase, MIMOGadgetBase):
+	class _ToolSkill(ToolSkill):
+		pass
 
 
-
-class AutoToolCraft(AutoMIMOFunctionGadget, ToolCraftBase):
-	class _ToolSkill(AutoMIMOFunctionGadget, SkillBase):
+class AutoToolCraft(GracefulCraft, AutoMIMOFunctionGadget, ToolCraftBase):
+	class _ToolSkill(GracefulRepeater, AutoMIMOFunctionGadget, SkillBase):
 		pass
 
 
@@ -199,7 +208,17 @@ class ToolDecoratorBase: # GadgetBase
 
 
 
-class MIMOToolDecorator(ToolDecoratorBase):
+class GracefulToolDecorator(ToolDecoratorBase):
+	def __init__(self, gizmo: str, repeat: Optional[int] = 0, **kwargs):
+		super().__init__(gizmo=gizmo, **kwargs)
+		self._repeat = repeat
+
+	def _actualize_tool(self, fn: Callable, **kwargs):
+		return super()._actualize_tool(fn, repeat=self._repeat, **kwargs)
+
+
+
+class MIMOToolDecorator(GracefulToolDecorator):
 	_ToolCraft = ToolCraft
 
 	def __init__(self, *gizmos: str, **kwargs):

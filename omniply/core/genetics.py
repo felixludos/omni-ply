@@ -282,8 +282,8 @@ class Parentable(NestableCraft):
 		self._parents_fn = fn
 		return fn
 
-	def as_skill(self, owner: AbstractCrafty):
-		skill: ParentedSkill = super().as_skill(owner)
+	def as_skill(self, owner: AbstractCrafty, **kwargs):
+		skill: ParentedSkill = super().as_skill(owner, **kwargs)
 		skill._set_parents(self._parents)
 		if self._parents_fn is not None:
 			fn = self._parents_fn.__get__(owner, type(owner))

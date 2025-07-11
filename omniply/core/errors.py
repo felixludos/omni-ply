@@ -65,6 +65,10 @@ class GadgetError(AbstractGadgetError):
 
 
 
+class SkipGadget(GadgetError):
+	pass
+
+
 class GrabError(GadgetError):
 	def __init__(self, gizmo: str, error: AbstractGadgetError, *, message: Optional[str] = None):
 		if message is None:

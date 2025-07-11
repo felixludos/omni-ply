@@ -1,7 +1,7 @@
 from .imports import *
 from omnibelt.crafts import AbstractCraft
 from .abstract import AbstractGear, AbstractGeared, AbstractMechanical, AbstractMechanics
-from .errors import MissingMechanicsError, GearFailed, GearGrabError
+from .errors import MissingMechanicsError, GearFailed, GearGrabError, SkipGear
 from ..core import AbstractGame, Context
 from ..core.gadgets import GadgetFailed, SingleGadgetBase
 from ..core.genetics import AutoFunctionGadget, FunctionGadget
@@ -50,7 +50,7 @@ class GearSkill(FunctionGadget, SkillBase, AbstractGear):
 		if self._cached is not self._no_value:
 			return self._cached
 		if self._fn is None:  # for "ghost" gears
-			raise GearFailed
+			raise SkipGear
 		return super()._grab_from(ctx)
 
 

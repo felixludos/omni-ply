@@ -5,7 +5,7 @@ from .recording import Context, Mechanism
 def test_recording():
 
 	from ..gaps import tool, ToolKit
-	from ...core import GadgetFailed, MissingGadget, GrabError
+	from ...core import GadgetFailed, MissingGadget, SkipGadget, GrabError
 
 	class Tester(ToolKit):
 		@tool('a')
@@ -22,7 +22,7 @@ def test_recording():
 
 	@tool('b')
 	def i():
-		raise GadgetFailed
+		raise SkipGadget
 
 	ctx = Context(i, Tester(gap={'a': 'x'}))
 
