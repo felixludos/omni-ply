@@ -877,6 +877,44 @@ def test_backtrack():
 
 
 
+# def test_guard():
+# 	@tool('x')
+# 	def get_x(self):
+# 		return 5
+#
+# 	class Kit1(ToolKit):
+# 		@tool('a')
+# 		def f(self, x, y=10):
+# 			return x + y
+# 		@f.guard
+# 		def f_cond(self, b=0):
+# 			return b > 0
+# 		@f_cond.effect
+# 		def f_complex(self, x):
+# 			return x * 2
+#
+# 	class Kit2(ToolKit):
+# 		@tool('a')
+# 		def f(self, x, y=10):
+# 			return x + y
+# 		@f.guard(lambda b=0: b > 0)
+# 		def f_complex(self, x):
+# 			return x * 2
+#
+# 	ctx = Context(get_x, Kit1())
+#
+# 	assert ctx['a'] == 15
+# 	ctx.clear_cache()
+#
+# 	ctx['b'] = 1
+# 	assert ctx['a'] == 10
+#
+# 	ctx = Context(get_x, Kit2())
+#
+# 	assert ctx['a'] == 15
+# 	ctx.clear_cache()
+# 	ctx['b'] = 1
+# 	assert ctx['a'] == 10
 
 
 

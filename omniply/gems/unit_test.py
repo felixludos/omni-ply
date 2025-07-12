@@ -61,9 +61,28 @@ def test_gem():
 
 # def test_geode():
 #
-# 	class M(Geologist):
-# 		sub1 = geode()(input='x', output='z')
-# 		sub2 = geode(None)(input='z', target='y', output='loss')
+# 	class Pipeline(Geologist):
+# 		model = geode()(input='x', output='z')
+# 		criterion = geode(None)(input='z', target='y', output='loss')
+#
+# 	@tool('output')
+# 	def f(input):
+# 		return input * 2 - 1
+# 	@tool('output')
+# 	def squared_error(input, target):
+# 		return (input - target) ** 2
+# 	@tool('x', 'y')
+# 	def data_source():
+# 		return 5, 10
+#
+# 	p = Pipeline(model=f)
+#
+# 	ctx = Context(p, data_source)
+# 	assert ctx['z'] == 9
+#
+# 	p.criterion = squared_error
+# 	ctx = Context(p, data_source)
+# 	assert ctx['loss'] == 1
 
 
 
