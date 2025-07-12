@@ -858,25 +858,6 @@ from .errors import GadgetFailed
 
 def test_backtrack():
 
-	# class Kit1(ToolKit):
-	# 	@tool('a')
-	# 	def f(self):
-	# 		return 1
-	# 	@tool('b')
-	# 	def g(self, a):
-	# 		if a == 1:
-	# 			raise GadgetFailed
-	# 		return 'worked'
-	#
-	# class Kit2(ToolKit):
-	# 	@tool('a')
-	# 	def f(self):
-	# 		return 2
-	#
-	# ctx = Context(Kit1(), Kit2())
-	#
-	# assert ctx['b'] == 'worked'
-
 	count = 0
 	class Kit1(ToolKit):
 		@tool('a', repeat=1)
@@ -887,7 +868,7 @@ def test_backtrack():
 		@tool('b')
 		def g(self, a):
 			if a == 1:
-				raise GadgetFailed
+				raise GadgetFailed # forces backtrack
 			return 'worked'
 
 	ctx = Context(Kit1())
