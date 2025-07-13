@@ -20,7 +20,7 @@ class GemBase(NestableCraft, AbstractGem):
 		self._fn = None
 		self._build_fn = None
 
-	def __call__(self, fn: Optional[Union['GemBase', Callable]] = None, **content: str):
+	def __call__(self, fn: Optional[Union['GemBase', Callable]] = None):
 		self._fn = fn
 		return self
 
@@ -154,7 +154,96 @@ class GeodeBase(GemBase):
 			yield value
 
 
+from ..core import Gate, Mechanism
 
+class MechanismGeode(GeodeBase):
+	_Gate = Gate
+	_Mechanism = Mechanism
+
+	def __init__(self, *args, exclusive: bool = None, insulated: bool = None, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._exclusive = exclusive
+		self._insulated = insulated
+		self._first_group = None
+		self._second_group = None
+
+	def __call__(self, *args, **kwargs):
+		if len(args) and isinstance(args[0], Callable):
+			assert not len(args) > 1, f'{self.__class__.__name__} can only take one function'
+			assert not len(kwargs), f'{self.__class__.__name__} can only take one function'
+			self._fn = args[0]
+		elif self._first_group is None:
+			self._first_group = args if len(args) else None, kwargs
+		elif self._second_group is None:
+			if len(args) or self._first_group[0] is not None:
+				raise TypeError(f'{self.__class__.__name__} require a single group, '
+									f'for example `{self.__class__.__name__}(...)(*args, **kwargs)`')
+			self._second_group = kwargs
+		else:
+			raise TypeError(f'{self.__class__.__name__} can only take two groups of arguments')
+		return self
+
+	def _build_gadget(self, gadget: AbstractGadget) -> AbstractGadget:
+		if self._first_group is not None:
+			if self._second_group is None:
+				select, gate = self._first_group
+				return self._Gate(gadget, select=select, gate=gate,
+								  exclusive=self._exclusive, insulated=self._insulated)
+			external, internal = self._first_group[1], self._second_group
+			return self._Mechanism(gadget, external=external, internal=internal,
+									exclusive=self._exclusive, insulated=self._insulated)
+
+	def relink(self, instance: AbstractGeologist) -> Iterator[AbstractGadget]:
+		for gadget in super().relink(instance):
+			yield self._build_gadget(gadget)
+
+
+import omnifig as fig
+
+class ConfigGem(GemBase):
+	"""
+	A gem that can be configured with a function to build its value.
+	"""
+	def __init__(self, *args, alias: Iterable[str] = None, eager: bool = True, silent: bool = None, **kwargs):
+		if alias is None:
+			alias = []
+		if isinstance(alias, str):
+			alias = [alias]
+		super().__init__(*args, **kwargs)
+		self._eager = eager
+		self._silent = silent
+		self._aliases = tuple(alias)
+
+	def _from_config(self, instance: fig.Configurable, default: Any = GemBase._no_value) -> Any:
+		cfg = instance._my_config
+
+		# if default is self._no_value:
+		# 	if self._fn is None:
+		# 		default = self._default
+		# 	else:
+		# 		default = self._fn.__get__(instance, instance.__class__)()
+		#
+		# elif default is self._no_value:
+		# 	if default is self._no_value:
+		# 		if self._fn is None:
+		# 			return cfg.pulls(*self._aliases, self._name, silent=self._silent)
+		# 		else:
+		# 			default = self._fn.__get__(instance, instance.__class__)()
+		if default is self._no_value:
+			return cfg.pulls(*self._aliases, self._name, silent=self._silent)
+		return cfg.pulls(*self._aliases, self._name, default=default, silent=self._silent)
+
+	def revitalize(self, instance: fig.Configurable):
+		"""
+		Called after construction to enable eager resolution.
+		"""
+		if self._eager and isinstance(instance, fig.Configurable):
+
+			self.revise()
+			
+
+			raise NotImplementedError
+		
 
 
 
