@@ -215,35 +215,26 @@ class ConfigGem(GemBase):
 		self._aliases = tuple(alias)
 
 	def _from_config(self, instance: fig.Configurable, default: Any = GemBase._no_value) -> Any:
-		cfg = instance._my_config
-
-		# if default is self._no_value:
-		# 	if self._fn is None:
-		# 		default = self._default
-		# 	else:
-		# 		default = self._fn.__get__(instance, instance.__class__)()
-		#
-		# elif default is self._no_value:
-		# 	if default is self._no_value:
-		# 		if self._fn is None:
-		# 			return cfg.pulls(*self._aliases, self._name, silent=self._silent)
-		# 		else:
-		# 			default = self._fn.__get__(instance, instance.__class__)()
-		if default is self._no_value:
-			return cfg.pulls(*self._aliases, self._name, silent=self._silent)
-		return cfg.pulls(*self._aliases, self._name, default=default, silent=self._silent)
+		cfg = getattr(instance, '_my_config', None)
+		if cfg is not None:
+			if default is self._no_value:
+				return cfg.pulls(*self._aliases, self._name, silent=self._silent)
+			return cfg.pulls(*self._aliases, self._name, default=default, silent=self._silent)
+		return default
 
 	def revitalize(self, instance: fig.Configurable):
-		"""
-		Called after construction to enable eager resolution.
-		"""
 		if self._eager and isinstance(instance, fig.Configurable):
+			self.resolve(instance)
 
-			self.revise()
-			
+	def realize(self, instance: AbstractGeologist):
+		default = self._default
+		if self._fn is not None:
+			default = self._fn.__get__(instance, instance.__class__)()
 
-			raise NotImplementedError
-		
+		val = self._from_config(instance, default)
+		if val is self._no_value:
+			raise self._NoValueError(self._name)
+		return self.rebuild(instance, val)
 
 
 
