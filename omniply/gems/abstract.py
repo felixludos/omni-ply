@@ -1,6 +1,7 @@
-from typing import Type, Optional, Any, TypeVar, Union, Iterable, Iterator, Dict, List, Tuple, Callable, Self
+from typing import Type, Optional, Any, TypeVar, Union, Iterable, Iterator, Dict, List, Tuple, Callable, Self, Mapping
 from omnibelt import unspecified_argument
 from omnibelt.crafts import InheritableCrafty
+
 
 T = TypeVar('T')
 
@@ -9,16 +10,34 @@ class AbstractGem:
 	@property
 	def inherit(self):
 		raise NotImplementedError
+	
+	def reconstruct(self, instance):
+		"""called in __init__ of the geologist to set up the gem"""
+		pass
+	
+	def revitalize(self, instance):
+		"""after construction, this is called if no value is provided to enable eager resolution"""
+		pass
 
 	def resolve(self, instance):
 		raise NotImplementedError
 
 	def revise(self, instance, value):
 		raise NotImplementedError
+	
+	def remove(self, instance):
+		"""called when the gem is removed from the geologist"""
+		pass
 
 
 class AbstractGeode(AbstractGem):
-	pass
+	def restage(self, instance, scape: Mapping[str, Any] = None):
+		"""called during stage() the geologist in case the underlying geode needs to be staged"""
+		return None
+	
+	
+	def relink(self, instance: 'AbstractGeologist') -> Iterator['AbstractGadget']:
+		raise NotImplementedError
 
 
 

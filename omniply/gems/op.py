@@ -1,7 +1,7 @@
 from .imports import *
 from ..gears.op import Structured
 from .geology import GeologistBase
-from .gems import InheritableGem, FinalizedGem, CachableGem
+from .gems import InheritableGem, FinalizedGem, CachableGem, GeodeBase
 
 
 
@@ -20,9 +20,11 @@ class gem(InheritableGem, FinalizedGem, CachableGem):
 
 
 	def __delete__(self, instance):
-		raise NotImplementedError
+		return self.remove(instance)
 
 
 
+class geode(GeodeBase, gem):
+	pass
 
 
