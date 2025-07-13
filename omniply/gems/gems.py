@@ -154,7 +154,21 @@ class GeodeBase(GemBase):
 			yield value
 
 
+import omnifig as fig
 
+class ConfigGem(GemBase):
+	"""
+	A gem that can be configured with a function to build its value.
+	"""
+	def revitalize(self, instance: fig.Configurable):
+		"""
+		Called after construction to enable eager resolution.
+		"""
+		if isinstance(instance, fig.Configurable):
+			
+
+			raise NotImplementedError
+		
 
 
 
