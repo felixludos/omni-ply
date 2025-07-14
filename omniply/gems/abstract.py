@@ -42,7 +42,8 @@ class AbstractGeode(AbstractGem):
 
 
 class AbstractGeologist(InheritableCrafty):
-	pass
+	def refresh_geodes(self, *names: str):
+		pass
 
 
 

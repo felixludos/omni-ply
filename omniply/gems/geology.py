@@ -55,13 +55,27 @@ class EagerGeologist(GemlogistBase):
 		return values, remaining
 
 
-class GeologistBase(EagerGeologist, MutableGaggle, Staged):
+class GeologistBase(MutableGaggle, EagerGeologist, Staged):
+	_geode_gadgets: dict[str, Tuple[AbstractGadget, ...]]
+
 	def _process_gems(self, values: dict[str, Any] = None):
 		super()._process_gems(values)
-		for key in self._gems:
+		self.refresh_geodes()
+
+	def refresh_geodes(self, *names: str):
+		if getattr(self, '_geode_gadgets', None) is None:
+			self._geode_gadgets = {}
+		if names is None:
+			names = self._gems
+		for key in names:
+			for gadget in self._geode_gadgets.pop(key, []):
+				self.exclude(gadget)
 			gem = self._get_gem(key)
 			if isinstance(gem, AbstractGeode):
-				self.extend(gem.relink(self))
+				self._geode_gadgets[key] = tuple(gem.relink(self))
+				if len(self._geode_gadgets[key]):
+					self.extend(self._geode_gadgets[key])
+
 
 	def _stage(self, scape: Mapping[str, Any] = None) -> Optional[AbstractGeode]:
 		"""
@@ -72,4 +86,6 @@ class GeologistBase(EagerGeologist, MutableGaggle, Staged):
 			if isinstance(gem, AbstractGeode):
 				gem.restage(self, scape)
 		return super()._stage(scape)
-	
+
+
+# TODO: simple decorator to explicitly define what gems should be inherited

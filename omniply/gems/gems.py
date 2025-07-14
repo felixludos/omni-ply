@@ -1,5 +1,5 @@
 from .imports import *
-from .abstract import AbstractGem, AbstractGeologist
+from .abstract import AbstractGem, AbstractGeologist, AbstractGeode
 from .errors import NoValueError, ResolutionLoopError, NoNameError, RevisionsNotAllowedError
 from omnibelt import unspecified_argument, AbstractStaged
 from omnibelt.crafts import InheritableCrafty, AbstractCraft, NestableCraft
@@ -142,7 +142,7 @@ class InheritableGem(GemBase):
 		return self._inherit
 
 
-class GeodeBase(GemBase):
+class GeodeBase(GemBase, AbstractGeode):
 	def restage(self, instance: AbstractGeologist, scape: Mapping[str, Any] = None):
 		value = self.resolve(instance)
 		if isinstance(value, AbstractStaged):
@@ -196,6 +196,10 @@ class MechanismGeode(GeodeBase):
 	def relink(self, instance: AbstractGeologist) -> Iterator[AbstractGadget]:
 		for gadget in super().relink(instance):
 			yield self._build_gadget(gadget)
+
+	def revise(self, instance: AbstractGeologist, value: Any):
+		super().revise(instance, value)
+		instance.refresh_geodes(self._name)
 
 
 import omnifig as fig

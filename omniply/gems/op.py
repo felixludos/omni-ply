@@ -1,7 +1,7 @@
 from .imports import *
 from ..gears.op import Structured
 from .geology import GeologistBase
-from .gems import InheritableGem, FinalizedGem, CachableGem, GeodeBase
+from .gems import InheritableGem, FinalizedGem, CachableGem, GeodeBase, ConfigGem, MechanismGeode
 
 
 
@@ -24,7 +24,7 @@ class gem(InheritableGem, FinalizedGem, CachableGem):
 
 
 
-class geode(GeodeBase, gem):
+class geode(ConfigGem, MechanismGeode, gem):
 	pass
 
 
