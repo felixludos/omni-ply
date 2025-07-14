@@ -59,12 +59,12 @@ class GeologistBase(MutableGaggle, EagerGeologist, Staged):
 	_geode_gadgets: dict[str, Tuple[AbstractGadget, ...]]
 
 	def _process_gems(self, values: dict[str, Any] = None):
+		if getattr(self, '_geode_gadgets', None) is None:
+			self._geode_gadgets = {}
 		super()._process_gems(values)
 		self.refresh_geodes()
 
 	def refresh_geodes(self, *names: str):
-		if getattr(self, '_geode_gadgets', None) is None:
-			self._geode_gadgets = {}
 		if names is None:
 			names = self._gems
 		for key in names:
