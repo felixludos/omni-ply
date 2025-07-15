@@ -159,10 +159,11 @@ def test_mech_geode():
 
 	@fig.component('mech')
 	class Mech(fig.Configurable, Mechanism):
-		def __init__(self, content: Union[AbstractGadget, Iterable[AbstractGadget]] = (), **kwargs):
+		def __init__(self, content: Union[AbstractGadget, Iterable[AbstractGadget]] = (),
+					 external: Optional[dict[str,str]] = None, internal: Optional[dict[str,str]] = None, **kwargs):
 			if isinstance(content, AbstractGadget):
 				content = (content,)
-			super().__init__(*content, **kwargs)
+			super().__init__(*content, external=external, internal=internal, **kwargs)
 
 	@fig.component('mod1')
 	class Mod1(fig.Configurable, Geologist, ToolKit):
@@ -181,9 +182,21 @@ def test_mech_geode():
 
 		@tool('result')
 		def __call__(self, initial):
-			return initial * b
-		
-	
+			return initial * self.b
+
+
+	cfg = fig.create_config(_type='mod1', sub=dict(_type='mech', content=dict(_type='mod2', b=3),
+														external=dict(result='output'), internal=dict(initial='input')))
+
+	m = cfg.create()
+	assert m.a == 10
+	# assert m.sub.b == 3
+	# assert m.sub(100) == 300
+
+	ctx = Context(m)
+	ctx['x'] = 5
+	assert ctx['y'] == 15
+
 
 
 def test_config_geode_build():
@@ -216,14 +229,14 @@ def test_gem_loop():
 		def b(self):
 			return self.a - 1
 
-	# m = Mod1()
-	#
-	# try:
-	# 	m.a
-	# except ResolutionLoopError:
-	# 	pass
-	# else:
-	# 	assert False, f'shouldve raised a loop error'
+	m = Mod1()
+
+	try:
+		m.a
+	except ResolutionLoopError:
+		pass
+	else:
+		assert False, f'shouldve raised a loop error'
 
 	class Mod2(Geologist):
 		a = gem(1)
