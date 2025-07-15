@@ -65,7 +65,7 @@ class GeologistBase(MutableGaggle, EagerGeologist, Staged):
 		self.refresh_geodes()
 
 	def refresh_geodes(self, *names: str):
-		if names is None:
+		if len(names) == 0:
 			names = self._gems
 		for key in names:
 			for gadget in self._geode_gadgets.pop(key, []):

@@ -46,7 +46,7 @@ class GemBase(NestableCraft, AbstractGem):
 	
 	def build(self, fn: Callable[[Any], Any]) -> Self:
 		self._build_fn = fn
-		return self
+		return fn
 
 	def rebuild(self, instance: AbstractGeologist, value: Any):
 		if self._build_fn is None:
@@ -95,27 +95,29 @@ class LoopyGem(CachableGem):
 	_realizing_flag = object()
 	_ResolutionLoopError = ResolutionLoopError
 
+	def realize(self, instance: AbstractGeologist):
+		try:
+			return super().realize(instance)
+		except self._ResolutionLoopError:
+			if self._fn is not None and self._default is not self._no_value:
+				fn = self._fn
+				self._fn = None
+				val = super().realize(instance)
+				self._fn = fn
+				return val
+			raise
+
 	def resolve(self, instance: AbstractGeologist):
 		val = instance.__dict__.get(self._name, self._no_value)
 		if val is self._realizing_flag:
-			fn = self._fn
-			self._fn = None
-			del instance.__dict__[self._name]# = self._no_value
-			try:
-				val = super().resolve(instance)
-			except self._NoValueError as e:
-				raise self._ResolutionLoopError(f'Gem {self._name} is in a resolution loop with {e}')
-			else:
-				self._fn = fn
-		elif val is self._no_value and self._fn is not None:
+			raise self._ResolutionLoopError(f'{self._name}')
+		elif val is self._no_value:
 			instance.__dict__[self._name] = self._realizing_flag
 			val = self.realize(instance)
 			if self._cache:
 				if self._name is None:
 					raise NoNameError(f'Gem {self.__class__.__name__} has no name')
 				instance.__dict__[self._name] = val
-		else:
-			val = super().resolve(instance)
 		return val
 	
 
@@ -160,7 +162,7 @@ class MechanismGeode(GeodeBase):
 	_Gate = Gate
 	_Mechanism = Mechanism
 
-	def __init__(self, *args, exclusive: bool = None, insulated: bool = None, **kwargs):
+	def __init__(self, *args, exclusive: bool = True, insulated: bool = None, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._exclusive = exclusive
 		self._insulated = insulated

@@ -88,8 +88,153 @@ def test_geode():
 
 
 
-# def test_config_geode():
-# 	raise NotImplementedError
+def test_config_geode():
+	import omnifig as fig
+	from ..core import Mechanism
+
+	@fig.component('mod1')
+	class Mod1(fig.Configurable, Geologist, ToolKit):
+		def __init__(self, a = 10, **kwargs):
+			super().__init__(**kwargs)
+			self.a = a
+
+		b = gem(100)
+		sub = geode(None)(output='x')(input='obs')
+
+		@tool('y')
+		def compute_y(self, x):
+			return x + self.a
+		
+		@tool('y2')
+		def compute_y2(self, x, other=-1):
+			return x + other + self.b
+		
+	
+	@fig.component('mod2')
+	class Mod2(fig.Configurable, Geologist, ToolKit):
+		b = gem(0)
+
+		@tool('other')
+		def compute_other(self, something):
+			return something + 10
+
+		@tool('output')
+		def compute_fn(self, input):
+			return input * self.b
+
+
+	cfg = fig.create_config(_type='mod1')
+	m = cfg.create()
+	assert m.a == 10
+
+	cfg = fig.create_config(_type='mod1', a=2, b=30)
+	m = cfg.create()
+	assert m.a == 2
+	assert m.b == 30
+	assert m.compute_y(5) == 7
+
+	ctx = Context(m)
+	ctx['x'] = 3
+	assert ctx['y'] == 5
+
+	cfg = fig.create_config(_type='mod1', b=40, sub=dict(_type='mod2'))
+
+	m = cfg.create()
+	assert m.sub.b == 40
+	assert m.b == 40
+	assert m.sub.compute_fn(5) == 200
+
+	ctx = Context(m)
+	assert list(ctx.gizmos()) == ['x', 'y', 'y2']
+	ctx['obs'] = 2
+	assert ctx['y'] == 90
+	assert ctx['y2'] == 119
+		
 
 
 
+def test_mech_geode():
+	import omnifig as fig
+	from ..core import Mechanism
+
+	@fig.component('mech')
+	class Mech(fig.Configurable, Mechanism):
+		def __init__(self, content: Union[AbstractGadget, Iterable[AbstractGadget]] = (), **kwargs):
+			if isinstance(content, AbstractGadget):
+				content = (content,)
+			super().__init__(*content, **kwargs)
+
+	@fig.component('mod1')
+	class Mod1(fig.Configurable, Geologist, ToolKit):
+		a = gem(10)
+
+		@geode()(output='y', input='x')
+		def sub(self):
+			@tool('output')
+			def default_fn(input):
+				return input + self.a
+			return default_fn
+
+	@fig.component('mod2')
+	class Mod2(fig.Configurable, Geologist, ToolKit):
+		b = gem(0)
+
+		@tool('result')
+		def __call__(self, initial):
+			return initial * b
+		
+	
+
+
+def test_config_geode_build():
+	import omnifig as fig
+
+	@fig.component('mod1')
+	class Mod1(fig.Configurable, Geologist, ToolKit):
+		b = gem()
+		@b.build
+		def fix_b(self, base):
+			assert base == 3
+			return base * 2
+		
+	cfg = fig.create_config(_type='mod1', b=3)
+
+	m = cfg.create()
+	assert m.b == 6
+
+
+
+
+def test_gem_loop():
+	from .errors import ResolutionLoopError
+
+	class Mod1(Geologist):
+		@gem()
+		def a(self):
+			return self.b * 2
+		@gem()
+		def b(self):
+			return self.a - 1
+
+	# m = Mod1()
+	#
+	# try:
+	# 	m.a
+	# except ResolutionLoopError:
+	# 	pass
+	# else:
+	# 	assert False, f'shouldve raised a loop error'
+
+	class Mod2(Geologist):
+		a = gem(1)
+		@gem(10)
+		def b(self):
+			return self.c * 2
+		@gem()
+		def c(self):
+			return self.a + self.b
+	
+	m = Mod2()
+	assert m.c == 11
+	assert m.b == 10
+	assert m.a == 1
