@@ -186,7 +186,7 @@ def test_mech_geode():
 
 
 	cfg = fig.create_config(_type='mod1', sub=dict(_type='mech', content=dict(_type='mod2', b=3),
-														external=dict(result='output'), internal=dict(initial='input')))
+									external=dict(result='output'), internal=dict(initial='input')))
 
 	m = cfg.create()
 	assert m.a == 10
