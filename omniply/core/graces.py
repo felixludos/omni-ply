@@ -75,44 +75,6 @@ class GracefulRepeater(AbstractGraceful):
 	def grace(self, gizmo: str) -> Optional[AbstractGrace]:
 		if self.repeat > 0:
 			return self._Grace(self, self.repeat - 1)
-		# elif self._payload is not None and self._payload.repeat > 0:
-		# 	raise NotImplementedError(f'should return a simple gadget that raises an error that all repeats failed')
-
-
-# class SimpleRepeater(AbstractGraceful):
-# 	def __init__(self, repeat: int = 0, payload: Optional[AbstractGadget] = None, **kwargs):
-# 		"""
-# 		Initializes a GracefulRepeater gadget that repeats the grace grab a specified number of times.
-#
-# 		Args:
-# 			repeat (int): The number of times to repeat the grace grab.
-# 			**kwargs: Arbitrary keyword arguments for superclasses.
-# 		"""
-# 		super().__init__(**kwargs)
-# 		self.repeat = repeat
-# 		self._payload = payload
-#
-# 	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
-# 		if self._payload is None:
-# 			return super().grab_from(ctx, gizmo)
-# 		return self._payload.grab_from(ctx, gizmo)
-#
-# 	def gives(self, gizmo: str) -> bool:
-# 		if self._payload is not None:
-# 			return self._payload.gives(gizmo)
-# 		return super().gives(gizmo)
-#
-# 	def gizmos(self) -> Iterator[str]:
-# 		if self._payload is not None:
-# 			yield from self._payload.gizmos()
-# 		else:
-# 			yield from super().gizmos()
-#
-# 	def grace(self, gizmo: str) -> Optional[AbstractGrace]:
-# 		if self.repeat > 0:
-# 			return IgnorantGrace(SimpleRepeater(self.repeat - 1, self._payload or self))
-# 		# elif self._payload is not None and self._payload.repeat > 0:
-# 		# 	raise NotImplementedError(f'should return a simple gadget that raises an error that all repeats failed')
 
 
 
