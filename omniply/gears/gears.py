@@ -5,6 +5,7 @@ from .errors import MissingMechanicsError, GearFailed, GearGrabError, SkipGear
 from ..core import AbstractGame, Context
 from ..core.gadgets import GadgetFailed, SingleGadgetBase
 from ..core.genetics import AutoFunctionGadget, FunctionGadget
+from ..core.graces import AutoSkipGraceful
 from ..core.tools import AbstractCrafty, AbstractSkill, SkillBase, CraftBase#, ToolDecoratorBase, MIMOToolDecorator, AutoToolDecorator
 
 
@@ -33,7 +34,7 @@ class GearContext(Context):
 
 
 
-class GearSkill(FunctionGadget, SkillBase, AbstractGear):
+class GearSkill(AutoSkipGraceful, FunctionGadget, SkillBase, AbstractGear):
 	_no_value = object()
 
 	def __init__(self, *, base: Optional[AbstractCraft] = None, value: Optional[Any] = _no_value, **kwargs):

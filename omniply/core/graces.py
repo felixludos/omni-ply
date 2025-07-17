@@ -8,47 +8,111 @@ from itertools import tee, chain
 from functools import partial
 
 
+class AbstractGrace(AbstractGadget):
+	def attach_error(self, error: GrabError) -> AbstractGadget:
+		return self
+
+
 
 class AbstractGraceful(AbstractGadget):
-	def grace(self, ctx: AbstractGame, gizmo: str, error: GrabError) -> Optional[AbstractGadget]:
+	def grace(self, gizmo: str) -> Optional[AbstractGrace]:
 		raise NotImplementedError
 
 
 
-class GracefulRepeater(AbstractGraceful):
-	def __init__(self, repeat: int = 0, payload: Optional[AbstractGadget] = None, **kwargs):
-		"""
-		Initializes a GracefulRepeater gadget that repeats the grace grab a specified number of times.
-
-		Args:
-			repeat (int): The number of times to repeat the grace grab.
-			**kwargs: Arbitrary keyword arguments for superclasses.
-		"""
+class IgnorantGrace(AbstractGrace):
+	def __init__(self, gadget: AbstractGadget, **kwargs):
 		super().__init__(**kwargs)
-		self.repeat = repeat
-		self._payload = payload
+		self._gadget = gadget
 
 	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
-		if self._payload is None:
-			return super().grab_from(ctx, gizmo)
-		return self._payload.grab_from(ctx, gizmo)
+		return self._gadget.grab_from(ctx, gizmo)
 
-	def gives(self, gizmo: str) -> bool:
-		if self._payload is not None:
-			return self._payload.gives(gizmo)
-		return super().gives(gizmo)
 
-	def gizmos(self) -> Iterator[str]:
-		if self._payload is not None:
-			yield from self._payload.gizmos()
-		else:
-			yield from super().gizmos()
 
-	def grace(self, ctx: AbstractGame, gizmo: str, error: GrabError) -> Optional[AbstractGadget]:
+class AutoSkipGraceful(AbstractGraceful):
+	class _Grace(AbstractGrace):
+		def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
+			raise SkipGadget
+
+	def grace(self, gizmo: str) -> Optional[AbstractGrace]:
+		return self._Grace()
+
+
+
+class GracefulRepeater(AbstractGraceful):
+	class _Grace(IgnorantGrace, AbstractGraceful):
+		def __init__(self, gadget: AbstractGadget, repeat: int = 0, **kwargs):
+			"""
+			Initializes a SimpleRepeater gadget that repeats the grace grab.
+
+			Args:
+				gadget (AbstractGadget): The gadget to repeat.
+				**kwargs: Arbitrary keyword arguments for superclasses.
+			"""
+			super().__init__(gadget, **kwargs)
+			self.repeat = repeat
+
+		def gives(self, gizmo: str) -> bool:
+			if self._gadget is not None:
+				return self._gadget.gives(gizmo)
+			return super().gives(gizmo)
+
+		def gizmos(self) -> Iterator[str]:
+			if self._gadget is not None:
+				yield from self._gadget.gizmos()
+			else:
+				yield from super().gizmos()
+
+		def grace(self, gizmo: str, **kwargs) -> Optional[AbstractGrace]:
+			if self.repeat > 0:
+				return self.__class__(self._gadget, repeat=self.repeat - 1, **kwargs)
+
+	def __init__(self, *, repeat: int = 0, **kwargs):
+		super().__init__(**kwargs)
+		self.repeat = repeat
+
+	def grace(self, gizmo: str) -> Optional[AbstractGrace]:
 		if self.repeat > 0:
-			return GracefulRepeater(self.repeat - 1, self._payload or self)
+			return self._Grace(self, self.repeat - 1)
 		# elif self._payload is not None and self._payload.repeat > 0:
 		# 	raise NotImplementedError(f'should return a simple gadget that raises an error that all repeats failed')
+
+
+# class SimpleRepeater(AbstractGraceful):
+# 	def __init__(self, repeat: int = 0, payload: Optional[AbstractGadget] = None, **kwargs):
+# 		"""
+# 		Initializes a GracefulRepeater gadget that repeats the grace grab a specified number of times.
+#
+# 		Args:
+# 			repeat (int): The number of times to repeat the grace grab.
+# 			**kwargs: Arbitrary keyword arguments for superclasses.
+# 		"""
+# 		super().__init__(**kwargs)
+# 		self.repeat = repeat
+# 		self._payload = payload
+#
+# 	def grab_from(self, ctx: 'AbstractGame', gizmo: str) -> Any:
+# 		if self._payload is None:
+# 			return super().grab_from(ctx, gizmo)
+# 		return self._payload.grab_from(ctx, gizmo)
+#
+# 	def gives(self, gizmo: str) -> bool:
+# 		if self._payload is not None:
+# 			return self._payload.gives(gizmo)
+# 		return super().gives(gizmo)
+#
+# 	def gizmos(self) -> Iterator[str]:
+# 		if self._payload is not None:
+# 			yield from self._payload.gizmos()
+# 		else:
+# 			yield from super().gizmos()
+#
+# 	def grace(self, gizmo: str) -> Optional[AbstractGrace]:
+# 		if self.repeat > 0:
+# 			return IgnorantGrace(SimpleRepeater(self.repeat - 1, self._payload or self))
+# 		# elif self._payload is not None and self._payload.repeat > 0:
+# 		# 	raise NotImplementedError(f'should return a simple gadget that raises an error that all repeats failed')
 
 
 
@@ -64,10 +128,12 @@ class GracefulGaggle(GaggleBase):
 			-> Optional[list[Tuple[str, AbstractGadget]]]:
 		gizmo = next(reversed(keys))
 		if isinstance(gadget, AbstractGraceful):
-			grace = gadget.grace(ctx, gizmo, error)
+			grace = gadget.grace(gizmo)
 			if grace is not None:
+				# curry the error into the grace grab, and then chain the grace with the current grabber_stack[path[0]]
+				gadget = grace.attach_error(error)
 				self._grab_tree.pop(tuple(keys), None)  # remove the current keys from the grab tree
-				return [(gizmo, grace)]
+				return [(gizmo, gadget)]
 
 		for parent, parent_gadget in self._grab_tree.get(tuple(keys), []):
 			path = self._ask_for_grace(ctx, error, parent_gadget, (*keys, parent))
