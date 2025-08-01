@@ -31,10 +31,9 @@ class AbstractGem:
 
 
 class AbstractGeode(AbstractGem):
-	def restage(self, instance, scape: Mapping[str, Any] = None):
+	def restage(self, instance: 'AbstractGeologist', scape: Mapping[str, Any] = None):
 		"""called during stage() the geologist in case the underlying geode needs to be staged"""
 		return None
-	
 	
 	def relink(self, instance: 'AbstractGeologist') -> Iterator['AbstractGadget']:
 		raise NotImplementedError

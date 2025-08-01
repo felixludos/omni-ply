@@ -133,6 +133,22 @@ class FinalizedGem(CachableGem):
 		return super().revise(instance, value)
 
 
+class LockableGem(CachableGem):
+	def __init__(self, default: Optional[Any] = GemBase._no_value, *, lock: bool = False, **kwargs):
+		super().__init__(default=default, **kwargs)
+		self._lock = lock
+
+	def lock(self, set_to: bool = True):
+		self._lock = set_to
+
+	def unlock(self):
+		self._lock = False
+
+	def revise(self, instance: AbstractStaged, value):
+		if self._lock and isinstance(instance, AbstractStaged) and instance.is_staged:
+			raise RevisionsNotAllowedError(self._name)
+		return super().revise(instance, value)
+
 
 class InheritableGem(GemBase):
 	def __init__(self, default: Optional[Any] = GemBase._no_value, *, inherit: bool = True, **kwargs):

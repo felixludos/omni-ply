@@ -1,6 +1,6 @@
 from .imports import *
 import inspect
-from omnibelt import AbstractStaged, Staged
+from omnibelt import AbstractStaged, Staged, Stateful, JSONLIKEOBJ
 from .abstract import AbstractGeologist, AbstractGeode, AbstractGem
 from ..core.gaggles import CraftyGaggle, MutableGaggle
 # from omnibelt.crafts import InheritableCrafty, AbstractSkill
@@ -86,6 +86,22 @@ class GeologistBase(MutableGaggle, EagerGeologist):#, Staged):
 			gem = self._get_gem(key)
 			if isinstance(gem, AbstractGeode):
 				gem.restage(self, scape)
+
+
+class StatefulGeologist(GeologistBase, Stateful):
+	"""
+	A geologist that can be serialized and deserialized.
+	"""
+	def settings(self) -> JSONLIKEOBJ:
+		"""
+		Returns the settings of the geologist as a JSON object.
+		"""
+		try:
+			settings = super().settings()
+		except NotImplementedError:
+			settings = {}
+		settings.update({name: getattr(self, name) for name in self._gems})
+		return settings
 
 
 # TODO: simple decorator to explicitly define what gems should be inherited

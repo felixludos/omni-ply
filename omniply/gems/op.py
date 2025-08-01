@@ -1,11 +1,11 @@
 from .imports import *
 from ..gears.op import Structured
-from .geology import GeologistBase
+from .geology import GeologistBase, StatefulGeologist
 from .gems import InheritableGem, FinalizedGem, LoopyGem, GeodeBase, ConfigGem, MechanismGeode
 
 
 
-class Geologist(GeologistBase):
+class Geologist(StatefulGeologist):
 	pass
 
 
