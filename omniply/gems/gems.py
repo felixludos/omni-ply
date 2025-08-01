@@ -44,7 +44,7 @@ class GemBase(NestableCraft, AbstractGem):
 				instance.__dict__[self._name] = val
 		return val
 	
-	def build(self, fn: Callable[[Any], Any]) -> Self:
+	def build(self, fn: Callable[[Any], Any]) -> 'Self':
 		self._build_fn = fn
 		return fn
 

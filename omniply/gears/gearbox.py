@@ -19,11 +19,11 @@ class GearBox(ToolKit, AbstractGearbox):
 
 class MutableMechanics(MutableGaggle, AbstractMechanics):
 	'''A mutable gaggle that includes gearboxes from included gadgets that are geared'''
-	def extend(self, gadgets: Iterable[AbstractGadget]) -> Self:
+	def extend(self, gadgets: Iterable[AbstractGadget]) -> 'Self':
 		return super().extend(gadget.gearbox() for gadget in gadgets if isinstance(gadget, AbstractGeared))
 
 
-	def exclude(self, *gadgets: AbstractGadget) -> Self:
+	def exclude(self, *gadgets: AbstractGadget) -> 'Self':
 		raise NotImplemented('not supported yet') # TODO
 
 

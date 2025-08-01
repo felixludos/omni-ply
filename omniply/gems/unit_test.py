@@ -251,3 +251,41 @@ def test_gem_loop():
 	assert m.c == 11
 	assert m.b == 10
 	assert m.a == 1
+
+
+
+def test_geology_settings():
+	class Mod1(Geologist):
+		a = gem(1)
+		b = gem(2)
+
+		@gem()
+		def c(self):
+			return self.a + self.b
+
+	m1 = Mod1()
+
+	settings = m1.settings()
+
+	assert settings['a'] == 1
+	assert list(settings.keys()) == ['a', 'b', 'c']
+	assert settings == {'a': 1, 'b': 2, 'c': 3}
+
+	class Mod2(Geologist):
+		x = gem()
+		y = gem('test')
+
+		sub = geode(None)
+
+	m2 = Mod2(sub=m1, x=10)
+
+	settings = m2.settings()
+
+	assert settings['x'] == 10
+	assert settings['y'] == 'test'
+	assert settings['sub'] is m1
+
+	json = m2.json()
+	assert json == {'x': 10, 'y': 'test', 'sub': {'a': 1, 'b': 2, 'c': 3}}
+
+

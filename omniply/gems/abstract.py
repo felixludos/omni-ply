@@ -1,4 +1,4 @@
-from typing import Type, Optional, Any, TypeVar, Union, Iterable, Iterator, Dict, List, Tuple, Callable, Self, Mapping
+from typing import Type, Optional, Any, TypeVar, Union, Iterable, Iterator, Dict, List, Tuple, Callable, Mapping
 from omnibelt import unspecified_argument
 from omnibelt.crafts import InheritableCrafty
 

@@ -16,7 +16,7 @@ class GemlogistBase(CraftyGaggle, AbstractGeologist):
 		for current, key, craft in cls._emit_all_craft_items():
 			if isinstance(craft, AbstractGem) and (current == cls or getattr(craft, 'inherit', False)):
 				gems.append(key)
-		cls._gems = tuple(gems)
+		cls._gems = tuple(reversed(gems))
 
 	def _get_gem(self, key: str) -> AbstractGem:
 		return inspect.getattr_static(self, key)
@@ -73,7 +73,8 @@ class GeologistBase(MutableGaggle, EagerGeologist):#, Staged):
 				self.exclude(gadget)
 			gem = self._get_gem(key)
 			if isinstance(gem, AbstractGeode):
-				self._geode_gadgets[key] = tuple(gem.relink(self))
+				self._geode_gadgets[key] = tuple(value for value in gem.relink(self)
+												 if isinstance(value, AbstractGadget))
 				if len(self._geode_gadgets[key]):
 					self.extend(self._geode_gadgets[key])
 
