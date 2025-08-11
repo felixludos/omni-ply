@@ -4,6 +4,8 @@ from .errors import NoValueError, ResolutionLoopError, NoNameError, RevisionsNot
 from omnibelt import unspecified_argument, AbstractStaged
 from omnibelt.crafts import InheritableCrafty, AbstractCraft, NestableCraft
 
+
+
 class GemBase(NestableCraft, AbstractGem):
 	_no_value = object()
 	def __init__(self, default: Optional[Any] = _no_value, *, final: bool = None, **kwargs):
@@ -258,6 +260,58 @@ class ConfigGem(GemBase):
 			raise self._NoValueError(self._name)
 		return self.rebuild(instance, val)
 
+
+from ..gears.gears import AutoGearCraft, GearSkill, AbstractGeared, SkipGear
+
+
+class GearGem(AutoGearCraft, CachableGem):
+	# TODO: add feature to eagerly grab + cache all geargems in stage()
+	class _GearSkill(AutoGearCraft._GearSkill):
+		def __init__(self, *, owner: 'AbstractCrafty' = None, cache: bool = True, **kwargs):
+			super().__init__(**kwargs)
+			self._owner = owner
+			self._auto_cache = cache
+			self._cached = False
+
+		def update_cache(self, value: Any):
+			self._cached = True
+			self._base.revise(self._owner, value)
+
+		def _grab_from(self, ctx: 'AbstractMechanics') -> Any:
+			if self._fn is None or (self._cached and self._auto_cache):  # for "ghost" gears
+				try:
+					return self._base.resolve(self._owner)
+				except self._NoValueError:
+					if self._fn is None:
+						raise SkipGear
+			value = super(GearSkill, self)._grab_from(ctx)
+			self.update_cache(value)
+			return value
+
+
+	def __init__(self, gizmo: str, *, default: Optional[Any] = GemBase._no_value, auto_cache: bool = True, 
+			  fn: Callable = None, **kwargs):
+		super().__init__(gizmo=gizmo, default=default, fn=None, **kwargs)
+		self._auto_cache = auto_cache
+		self._gear_fn = fn
+
+	def _wrapped_content(self):
+		return self._gear_fn
+	
+	def __call__(self, fn: Callable):
+		self._gear_fn = fn
+		return self
+
+	def as_skill(self, owner: 'AbstractCrafty', 
+			  fn: Callable = None, unbound_fn: Callable = None, **kwargs) -> GearSkill:
+		if not isinstance(owner, AbstractGeared):
+			print(f'WARNING: {owner} is not an geared, so gears may not work')
+		if unbound_fn is None:
+			unbound_fn = self._wrapped_content_leaf()
+		if fn is None:
+			fn = None if unbound_fn is None else unbound_fn.__get__(owner, type(owner))
+		return self._GearSkill(gizmo=self._gizmo, base=self, owner=owner, fn=fn, unbound_fn=unbound_fn,
+						 cache=self._auto_cache, **kwargs)
 
 
 

@@ -1,1 +1,1 @@
-from .op import Geologist, gem, geode
+from .op import Geologist, gem, geode, geargem, Structured

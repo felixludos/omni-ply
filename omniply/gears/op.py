@@ -28,7 +28,7 @@ class ToolKit(CraftyGearedGaggle, _ToolKit): # no caching of gears and only loca
 
 
 
-class Structured(AutoMechanized, MutableMechanized, ToolKit):
+class MechKit(AutoMechanized, MutableMechanized, ToolKit):
 	pass
 
 

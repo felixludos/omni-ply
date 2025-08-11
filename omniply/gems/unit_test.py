@@ -1,7 +1,7 @@
 from .imports import *
 # from inspect import getattr_static
 from ..core import Context, tool, ToolKit
-from .op import Geologist, gem, geode
+from .op import Structured, Geologist, gem, geode, geargem
 
 
 def test_get_order():
@@ -287,5 +287,35 @@ def test_geology_settings():
 
 	json = m2.json()
 	assert json == {'x': 10, 'y': 'test', 'sub': {'a': 1, 'b': 2, 'c': 3}}
+
+
+
+def test_gem_gear():
+	from ..gears import gear, Mechanics
+	
+	class Mod1(Structured):
+		@geargem('a')
+		def a1(self, x):
+			return 2*x
+		
+		b1 = gear('b')
+
+	class Mod2(Structured):
+		@gear('b')
+		def b_is(self):
+			return 2
+		
+	m = Mod1()
+
+	mech = Mechanics(m, Mod2())
+
+	m.mechanize(mech)
+
+	mech['x'] = 5
+
+	assert mech['a'] == 10
+	assert m.a1 == 10
+	assert m.b1 == 2
+
 
 

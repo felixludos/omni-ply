@@ -1,11 +1,16 @@
 from .imports import *
-from ..gears.op import Structured
+from ..gears.op import MechKit
 from .geology import GeologistBase, StatefulGeologist
-from .gems import InheritableGem, FinalizedGem, LoopyGem, GeodeBase, ConfigGem, MechanismGeode
+from .gems import InheritableGem, FinalizedGem, LoopyGem, GeodeBase, ConfigGem, MechanismGeode, GearGem
 
 
 
 class Geologist(StatefulGeologist):
+	pass
+
+
+
+class Structured(MechKit, Geologist):
 	pass
 
 
@@ -27,6 +32,11 @@ class gem(LoopyGem, ConfigGem, InheritableGem, FinalizedGem):
 		if instance is None:
 			raise ValueError("instance must be not None")
 		return self.remove(instance)
+
+
+
+class geargem(GearGem, gem):
+	pass
 
 
 

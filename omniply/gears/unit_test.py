@@ -1,5 +1,5 @@
 from .imports import *
-from .op import Context, ToolKit, Structured, gear, Mechanics, Mechanized, Mechanism, Gate
+from .op import Context, ToolKit, MechKit, gear, Mechanics, Mechanized, Mechanism, Gate
 from .. import GrabError, tool
 from .errors import SkipGadget
 
@@ -29,7 +29,7 @@ def test_gears():
 def test_auto_mechanized(): # subclassing Mechanized automatically mechanizes
 	class Flag(Exception): pass
 
-	class Tester(Mechanized, Structured):
+	class Tester(Mechanized, MechKit):
 		allow_a_once = True
 		allow_b_once = True
 
@@ -72,7 +72,7 @@ def test_auto_mechanized(): # subclassing Mechanized automatically mechanizes
 def test_manual_mechanized():
 	class Flag(Exception): pass
 
-	class Tester(Structured):
+	class Tester(MechKit):
 		allow_a_once = True
 		allow_b_once = True
 
@@ -145,7 +145,7 @@ def test_ref():
 		def something(self):
 			return 10
 
-	class Tester2(Structured):
+	class Tester2(MechKit):
 		ref = gear('a')
 
 		@gear('b')
@@ -184,7 +184,7 @@ def test_ref():
 def test_mechanized_context():
 	from .. import tool
 
-	class Tester(Structured):
+	class Tester(MechKit):
 		@gear('a')
 		def something(self):
 			return 10
@@ -197,7 +197,7 @@ def test_mechanized_context():
 		def f(self):
 			return -10
 
-	class Tester2(Structured):
+	class Tester2(MechKit):
 		@gear('outside')
 		def other(self):
 			return 100
@@ -217,7 +217,7 @@ def test_mechanized_context():
 
 
 def test_gear_failed():
-	class Tester(Structured):
+	class Tester(MechKit):
 		@gear('a')
 		def defer(self):
 			raise SkipGadget
@@ -227,7 +227,7 @@ def test_gear_failed():
 			return a + outside
 
 
-	class Tester2(Structured):
+	class Tester2(MechKit):
 		@gear('a')
 		def something(self):
 			return 10
@@ -259,7 +259,7 @@ def test_gear_failed():
 
 
 def test_gang_gears():
-	class Tester(Structured):
+	class Tester(MechKit):
 		@tool('out')
 		def f(self, in1, in2):
 			return in1 - in2
@@ -280,7 +280,7 @@ def test_gang_gears():
 		def j(self):
 			return 4
 
-	class Tester2(Structured):
+	class Tester2(MechKit):
 		@gear('a')
 		def f(self, y):
 			return y + -100
