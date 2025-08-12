@@ -45,11 +45,11 @@ class GearedGaggle(AbstractGeared, AbstractGaggle):
 
 class CraftyGearedGaggle(CraftyGaggle, GearedGaggle):
 	'''gaggle which can contain gears and produces a gearbox'''
-	_gears_list: list[AbstractGear] = None
+	_gears_list: list[AbstractGear] = ()
 
 
 	def _process_crafts(self):
-		if self._gears_list is None:
+		if self._gears_list == ():
 			self._gears_list = []
 		super()._process_crafts()
 

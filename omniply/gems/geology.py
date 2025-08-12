@@ -44,7 +44,8 @@ class EagerGeologist(GemlogistBase):
 		for key in self._gems:
 			gem = self._get_gem(key)
 			if key in values:
-				setattr(self, key, values[key])
+				gem.revise(self, values[key])
+				# setattr(self, key, values[key])
 			else:
 				gem.revitalize(self)
 

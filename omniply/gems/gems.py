@@ -27,24 +27,17 @@ class GemBase(NestableCraft, AbstractGem):
 		return self
 
 	_NoValueError = NoValueError
-	def realize(self, instance: AbstractGeologist):
+	def realize(self, instance: AbstractGeologist, **kwargs):
 		if self._fn is None:
 			if self._default is self._no_value:
 				raise self._NoValueError(self._name)
 			val = self._default
 		else:
 			val = self._fn.__get__(instance, instance.__class__)()
-		return self.rebuild(instance, val)
-
-	def resolve(self, instance: AbstractGeologist):
-		val = instance.__dict__.get(self._name, self._no_value)
-		if val is self._no_value:
-			val = self.realize(instance)
-			if self._cache:
-				if self._name is None:
-					raise NoNameError(f'Gem {self.__class__.__name__} has no name')
-				instance.__dict__[self._name] = val
 		return val
+
+	def resolve(self, instance: AbstractGeologist, **kwargs):
+		return self.rebuild(instance, self.realize(instance, **kwargs))
 	
 	def build(self, fn: Callable[[Any], Any]) -> 'Self':
 		self._build_fn = fn
@@ -76,10 +69,10 @@ class CachableGem(GemBase):
 		super().__init__(default=default, **kwargs)
 		self._cache = cache
 
-	def resolve(self, instance: AbstractGeologist):
+	def resolve(self, instance: AbstractGeologist, **kwargs):
 		val = instance.__dict__.get(self._name, self._no_value)
 		if val is self._no_value:
-			val = self.realize(instance)
+			val = super().resolve(instance, **kwargs)
 			if self._cache:
 				if self._name is None:
 					raise NoNameError(f'Gem {self.__class__.__name__} has no name')
@@ -97,25 +90,26 @@ class LoopyGem(CachableGem):
 	_realizing_flag = object()
 	_ResolutionLoopError = ResolutionLoopError
 
-	def realize(self, instance: AbstractGeologist):
+	def realize(self, instance: AbstractGeologist, **kwargs):
 		try:
-			return super().realize(instance)
+			return super().realize(instance, **kwargs)
 		except self._ResolutionLoopError:
 			if self._fn is not None and self._default is not self._no_value:
 				fn = self._fn
 				self._fn = None
-				val = super().realize(instance)
+				val = super().realize(instance, **kwargs)
 				self._fn = fn
 				return val
 			raise
 
-	def resolve(self, instance: AbstractGeologist):
+	def resolve(self, instance: AbstractGeologist, **kwargs):
 		val = instance.__dict__.get(self._name, self._no_value)
 		if val is self._realizing_flag:
 			raise self._ResolutionLoopError(f'{self._name}')
 		elif val is self._no_value:
 			instance.__dict__[self._name] = self._realizing_flag
-			val = self.realize(instance)
+			# val = self.realize(instance)
+			val = self.rebuild(instance, self.realize(instance, **kwargs))
 			if self._cache:
 				if self._name is None:
 					raise NoNameError(f'Gem {self.__class__.__name__} has no name')
@@ -124,7 +118,7 @@ class LoopyGem(CachableGem):
 	
 
 
-class FinalizedGem(CachableGem):
+class FinalizedGem(GemBase):
 	def __init__(self, default: Optional[Any] = GemBase._no_value, *, final: bool = False, **kwargs):
 		super().__init__(default=default, **kwargs)
 		self._final = final
@@ -135,16 +129,15 @@ class FinalizedGem(CachableGem):
 		return super().revise(instance, value)
 
 
-class LockableGem(CachableGem):
+class LockableGem(GemBase):
+	"""Locks prevent changes to the gem's value after it has been staged."""
 	def __init__(self, default: Optional[Any] = GemBase._no_value, *, lock: bool = False, **kwargs):
 		super().__init__(default=default, **kwargs)
 		self._lock = lock
 
-	def lock(self, set_to: bool = True):
-		self._lock = set_to
-
-	def unlock(self):
-		self._lock = False
+	@property
+	def locked(self):
+		return self._lock
 
 	def revise(self, instance: AbstractStaged, value):
 		if self._lock and isinstance(instance, AbstractStaged) and instance.is_staged:
@@ -224,17 +217,19 @@ class MechanismGeode(GeodeBase):
 
 import omnifig as fig
 
-class ConfigGem(GemBase):
+class ConfigGem(CachableGem):
 	"""
 	A gem that can be configured with a function to build its value.
 	"""
-	def __init__(self, *args, alias: Iterable[str] = None, eager: bool = True, silent: bool = None, **kwargs):
+	def __init__(self, *args, alias: Iterable[str] = None, eager: bool = True, required: bool = True,
+				 silent: bool = None, **kwargs):
 		if alias is None:
 			alias = []
 		if isinstance(alias, str):
 			alias = [alias]
 		super().__init__(*args, **kwargs)
 		self._eager = eager
+		self._required = required
 		self._silent = silent
 		self._aliases = tuple(alias)
 
@@ -246,63 +241,115 @@ class ConfigGem(GemBase):
 			return cfg.pulls(*self._aliases, self._name, default=default, silent=self._silent)
 		return default
 
+	def _in_config(self, instance: fig.Configurable) -> Optional[bool]:
+		"""
+		True -> yes
+		False -> no
+		None -> no config
+		"""
+		cfg = getattr(instance, '_my_config', None)
+		if cfg is not None:
+			return cfg.peeks(*self._aliases, self._name, default=self._no_value,
+							 silent=True) is not self._no_value
+
 	def revitalize(self, instance: fig.Configurable):
 		if self._eager and isinstance(instance, fig.Configurable):
-			self.resolve(instance)
+			try:
+				self.resolve(instance)
+			except self._NoValueError:
+				if self._required:
+					raise
 
-	def realize(self, instance: AbstractGeologist):
-		default = self._default
-		if self._fn is not None:
-			default = self._fn.__get__(instance, instance.__class__)()
+	def realize(self, instance: AbstractGeologist, **kwargs):
+		try:
+			default = super().realize(instance, **kwargs)
+		except self._NoValueError:
+			default = self._no_value
 
-		val = self._from_config(instance, default)
+		val = self._from_config(instance, default) if self._required or self._in_config(instance) else default
 		if val is self._no_value:
 			raise self._NoValueError(self._name)
-		return self.rebuild(instance, val)
+		return val
 
 
 from ..gears.gears import AutoGearCraft, GearSkill, AbstractGeared, SkipGear
 
 
-class GearGem(AutoGearCraft, CachableGem):
+class GearGem(CachableGem, AutoGearCraft):
 	# TODO: add feature to eagerly grab + cache all geargems in stage()
 	class _GearSkill(AutoGearCraft._GearSkill):
-		def __init__(self, *, owner: 'AbstractCrafty' = None, cache: bool = True, **kwargs):
+		def __init__(self, *, owner: 'AbstractCrafty' = None, **kwargs):
 			super().__init__(**kwargs)
 			self._owner = owner
-			self._auto_cache = cache
-			self._cached = False
 
-		def update_cache(self, value: Any):
-			self._cached = True
-			self._base.revise(self._owner, value)
+		# def grab_as_gear(self, ctx: 'AbstractMechanics') -> Any:
+		# 	if self._fn is None:
+		# 		raise SkipGear
+		# 	return super(GearSkill, self)._grab_from(ctx)
 
 		def _grab_from(self, ctx: 'AbstractMechanics') -> Any:
-			if self._fn is None or (self._cached and self._auto_cache):  # for "ghost" gears
+			# hijacks gear grab to check with gem first
+			# return self._base.resolve_grab(self._owner, self, ctx)
+			if self._fn is None or self._base.is_cached(self._owner):
 				try:
 					return self._base.resolve(self._owner)
 				except self._NoValueError:
 					if self._fn is None:
 						raise SkipGear
-			value = super(GearSkill, self)._grab_from(ctx)
-			self.update_cache(value)
+			value = super()._grab_from(ctx)
+			# value = self._base.rebuild(self._owner, value)
 			return value
 
 
-	def __init__(self, gizmo: str, *, default: Optional[Any] = GemBase._no_value, auto_cache: bool = True, 
-			  fn: Callable = None, **kwargs):
-		super().__init__(gizmo=gizmo, default=default, fn=None, **kwargs)
-		self._auto_cache = auto_cache
+	def __init__(self, gizmo: str, default: Optional[Any] = GemBase._no_value, *, fn: Callable = None, **kwargs):
+		super().__init__(gizmo=gizmo, default=default, fn=fn, **kwargs)
 		self._gear_fn = fn
 
-	def _wrapped_content(self):
-		return self._gear_fn
-	
 	def __call__(self, fn: Callable):
 		self._gear_fn = fn
 		return self
 
-	def as_skill(self, owner: 'AbstractCrafty', 
+	def fallback(self, fn: Callable):
+		self._fn = fn
+		return self
+
+	def _wrapped_content(self):
+		return self._gear_fn
+
+	def is_cached(self, instance: AbstractGeologist) -> bool:
+		if self._name is None:
+			raise NoNameError(f'{self.__class__.__name__} has no name')
+		return instance.__dict__.get(self._name, self._no_value) is not self._no_value
+
+	# def resolve_grab(self, instance: AbstractGeologist, skill: GearSkill, ctx: 'AbstractMechanics') -> Any:
+	# 	return super().resolve(instance, skill=skill, ctx=ctx)
+
+	def realize_grab(self, instance: AbstractGeologist) -> Any:
+		ctx = self._find_context(instance)
+		return ctx.grab(self._gizmo)
+
+	# def realize(self, instance: AbstractGeologist, skill: _GearSkill = None, ctx = None, **kwargs):
+	# 	# if skill is not None:
+	# 	# 	return skill.grab_as_gear(ctx)
+	# 	if self._gear_fn is not None:
+	# 		return self.realize_grab(instance)
+	# 	try:
+	# 		default = super().realize(instance)
+	# 	except self._NoValueError:
+	# 		default = self._no_value
+	#
+	# 	val = self._from_config(instance, default)
+	# 	if val is self._no_value:
+	# 		raise self._NoValueError(self._name)
+	# 	return val
+
+	def realize(self, instance: AbstractGeologist):
+		try:
+			return self.realize_grab(instance)
+		except GrabError:
+			return super().realize(instance)
+
+	def as_skill(self, owner: 'AbstractCrafty',
 			  fn: Callable = None, unbound_fn: Callable = None, **kwargs) -> GearSkill:
 		if not isinstance(owner, AbstractGeared):
 			print(f'WARNING: {owner} is not an geared, so gears may not work')
@@ -310,8 +357,7 @@ class GearGem(AutoGearCraft, CachableGem):
 			unbound_fn = self._wrapped_content_leaf()
 		if fn is None:
 			fn = None if unbound_fn is None else unbound_fn.__get__(owner, type(owner))
-		return self._GearSkill(gizmo=self._gizmo, base=self, owner=owner, fn=fn, unbound_fn=unbound_fn,
-						 cache=self._auto_cache, **kwargs)
+		return self._GearSkill(gizmo=self._gizmo, base=self, owner=owner, fn=fn, unbound_fn=unbound_fn, **kwargs)
 
 
 
