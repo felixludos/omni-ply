@@ -27,7 +27,7 @@ class GemBase(NestableCraft, AbstractGem):
 		return self
 
 	_NoValueError = NoValueError
-	def realize(self, instance: AbstractGeologist, **kwargs):
+	def realize(self, instance: AbstractGeologist):
 		if self._fn is None:
 			if self._default is self._no_value:
 				raise self._NoValueError(self._name)
@@ -36,8 +36,8 @@ class GemBase(NestableCraft, AbstractGem):
 			val = self._fn.__get__(instance, instance.__class__)()
 		return val
 
-	def resolve(self, instance: AbstractGeologist, **kwargs):
-		return self.rebuild(instance, self.realize(instance, **kwargs))
+	def resolve(self, instance: AbstractGeologist):
+		return self.rebuild(instance, self.realize(instance))
 	
 	def build(self, fn: Callable[[Any], Any]) -> 'Self':
 		self._build_fn = fn
@@ -69,10 +69,10 @@ class CachableGem(GemBase):
 		super().__init__(default=default, **kwargs)
 		self._cache = cache
 
-	def resolve(self, instance: AbstractGeologist, **kwargs):
+	def resolve(self, instance: AbstractGeologist):
 		val = instance.__dict__.get(self._name, self._no_value)
 		if val is self._no_value:
-			val = super().resolve(instance, **kwargs)
+			val = super().resolve(instance)
 			if self._cache:
 				if self._name is None:
 					raise NoNameError(f'Gem {self.__class__.__name__} has no name')
@@ -260,9 +260,9 @@ class ConfigGem(CachableGem):
 				if self._required:
 					raise
 
-	def realize(self, instance: AbstractGeologist, **kwargs):
+	def realize(self, instance: AbstractGeologist):
 		try:
-			default = super().realize(instance, **kwargs)
+			default = super().realize(instance)
 		except self._NoValueError:
 			default = self._no_value
 
