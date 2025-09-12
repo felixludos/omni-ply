@@ -4,7 +4,7 @@ from functools import cache, cached_property
 from omnibelt import extract_missing_args
 from omnibelt.crafts import NestableCraft, AbstractCrafty
 
-from .errors import GrabError
+from .errors import GrabError, MissingGadget
 from .abstract import AbstractConsistentGame, AbstractGame, AbstractGadget, AbstractGaggle
 from .gadgets import FunctionGadget, GadgetBase
 from .gaggles import GaggleBase
@@ -137,7 +137,10 @@ class GeneticGaggle(GaggleBase, AbstractGenetic):
 	def genes(self, gizmo: str = None) -> Iterator[AbstractGene]:
 		if gizmo is None:
 			for gizmo in self.gizmos():
-				yield from self.genes(gizmo)
+				try:
+					yield from self.genes(gizmo)
+				except MissingGadget:
+					pass
 		else:
 			for vendor in self._gadgets(gizmo):
 				if isinstance(vendor, AbstractGenetic):
