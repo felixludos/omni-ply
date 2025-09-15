@@ -18,6 +18,9 @@ from .util import report_time, SPECIAL_CHARACTER
 
 
 class AbstractRecorder:
+	def relabel(self, external: str, internal: str, typ: str = ''):
+		raise NotImplementedError
+	
 	def attempt(self, gizmo: str, gadget: 'AbstractGadget'):
 		raise NotImplementedError
 
@@ -31,6 +34,9 @@ class AbstractRecorder:
 		raise NotImplementedError
 
 	def missing(self, gizmo: str):
+		raise NotImplementedError
+
+	def report(self, owner: 'AbstractRecordable', **kwargs):
 		raise NotImplementedError
 
 
@@ -47,7 +53,7 @@ class AbstractRecordable:
 
 
 
-class RecorderBase:
+class RecorderBase(AbstractRecorder):
 	def __init__(self):
 		self._log = []
 
@@ -151,7 +157,7 @@ class RecordingGaggle(GracefulGaggle, RecordableBase):
 				self._active_recording.missing(gizmo)
 			self._grab_trace.pop()  # failed to grab the gizmo, so pop it from the trace
 			raise self._MissingGadgetError(gizmo)
-
+ 
 		if self._active_recording:
 			self._active_recording.attempt(gizmo, gadget)
 
@@ -210,6 +216,35 @@ class RecordingCached(CacheGame, RecordableBase):
 		val = self._cache_miss(ctx, gizmo)
 		self[gizmo] = val  # cache packaged val
 		return val
+
+from ...core.op import CachableMechanism, MutableGaggle, AbstractGang
+
+class _Mechanism(CachableMechanism, MutableGaggle, AbstractGang):
+	def __init__(self, *gadgets: AbstractGadget, **kwargs):
+		"""
+		Initializes a new instance of the Gang class.
+
+		This method initializes the superclass with the provided arguments and includes the provided gadgets in the gang.
+
+		Args:
+			gadgets (AbstractGadget): The gadgets to be included in the gang.
+			kwargs: Arbitrary keyword arguments.
+		"""
+		super().__init__(**kwargs)
+		self.extend(gadgets)
+
+	def __getitem__(self, item):
+		"""
+		Returns the grabbed item from the context.
+
+		Args:
+			item: The item to be grabbed from the context.
+
+		Returns:
+			Any: The grabbed item from the context.
+		"""
+		return self.grab(item)
+
 
 
 class Mechanism(_Mechanism, RecordingGaggle):
@@ -680,6 +715,48 @@ class EventRecorder(RecorderBase):
 
 
 from ...core.errors import AbstractGadgetError, GrabError
+from ...core.op import ConsistentGame, RollingGame, GracefulCache, MutableGaggle, GeneticGaggle
+
+class _Context(GatedCache, ConsistentGame, RollingGame, GracefulCache, MutableGaggle, GeneticGaggle, AbstractGame):
+
+	def __init__(self, *gadgets: AbstractGadget, **kwargs):
+		"""
+		Initializes a new instance of the Context class.
+
+		This method initializes the superclass with the provided arguments and includes the provided gadgets in the context.
+
+		Args:
+			gadgets (AbstractGadget): The gadgets to be included in the context.
+			kwargs: Arbitrary keyword arguments.
+		"""
+		super().__init__(**kwargs)
+		self.extend(gadgets)
+
+
+	def gabel(self, *args, **kwargs):
+		'''effectively a shallow copy, excluding the cache'''
+		new = self.__class__(*args, **kwargs)
+		new.extend(self.vendors())
+		return new
+
+
+	def get(self, key: str, default: Any = None) -> Any:
+		return self.grab(key, default=default)
+
+
+	def __getitem__(self, item):
+		"""
+		Returns the grabbed item from the context.
+
+		Args:
+			item: The item to be grabbed from the context.
+
+		Returns:
+			Any: The grabbed item from the context.
+		"""
+		return self.grab(item)
+
+
 
 class Context(_Context, RecordingCached, GameBase, RecordingGaggle):
 	_Recorder = EventRecorder

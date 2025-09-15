@@ -1,11 +1,12 @@
-from .recording import Context, Mechanism
-
+# from .recording import Context, Mechanism
+from ..core import Context, Mechanism
+from .trace import TraceRecorder
 
 
 def test_recording():
 
-	from ..gaps import tool, ToolKit
-	from ...core import GadgetFailed, MissingGadget, SkipGadget, GrabError
+	from ..apps.gaps import tool, ToolKit
+	from ..core import GadgetFailed, MissingGadget, SkipGadget, GrabError
 
 	class Tester(ToolKit):
 		@tool('a')
@@ -28,7 +29,7 @@ def test_recording():
 
 	ctx['d'] = 5
 
-	ctx.record()
+	ctx.record(TraceRecorder())
 
 	assert ctx.grab('c') == 15
 
@@ -55,7 +56,7 @@ def test_recording():
 
 
 def test_loopy():
-	from ...core import tool, ToolKit
+	from ..core import tool, ToolKit
 
 	@tool('a')
 	def i():
@@ -67,7 +68,7 @@ def test_loopy():
 
 	ctx = Context(j, i)
 
-	ctx.record()
+	ctx.record(TraceRecorder())
 
 	assert ctx.grab('a') == 4
 
@@ -83,8 +84,8 @@ def test_loopy():
 
 def test_gang_recording():
 
-	from ...core import tool, ToolKit
-	from ...core import GadgetFailed, MissingGadget, GrabError
+	from ..core import tool, ToolKit
+	from ..core import GadgetFailed, MissingGadget, GrabError
 
 	class Tester(ToolKit):
 		@tool('a')
@@ -104,7 +105,7 @@ def test_gang_recording():
 	ctx = Context(src, mech)
 
 	print()
-	ctx.record()
+	ctx.record(TraceRecorder())
 
 	assert ctx.grab('c') == 4
 
@@ -112,7 +113,7 @@ def test_gang_recording():
 
 	ctx.clear_cache()
 	print()
-	ctx.record()
+	ctx.record(TraceRecorder())
 
 	assert ctx.grab('d') == 0
 
@@ -121,8 +122,7 @@ def test_gang_recording():
 
 
 def test_double_gang_recording():
-	from ...core import tool, ToolKit
-	from ..simple import DictGadget
+	from ..core import tool, ToolKit
 
 	class Tester1(ToolKit):
 		@tool('hidden')
@@ -147,7 +147,7 @@ def test_double_gang_recording():
 	ctx = Context(mech1, mech2)
 
 	print()
-	ctx.record()
+	ctx.record(TraceRecorder())
 
 	assert list(ctx.gizmos()) == ['b', 'y', 'out']
 

@@ -3,10 +3,11 @@ from .abstract import AbstractGadget, AbstractGaggle, AbstractGame, AbstractGang
 from .errors import GadgetFailed, MissingGadget
 from .tools import ToolCraftBase, AutoToolCraft, MIMOToolDecorator, AutoToolDecorator
 from .gizmos import DashGizmo
-from .gaggles import MutableGaggle, LoopyGaggle, CraftyGaggle, MutableCrafty
+from .gaggles import MutableGaggle, CraftyGaggle, MutableCrafty, LoopyGaggle
 from .games import CacheGame, GatedCache, TraceGame, RollingGame, ConsistentGame
 from .graces import BacktrackingGaggle, BacktrackingCache, GracefulRepeater, GracefulGaggle, GracefulCache
 from .gangs import CachableMechanism, GateBase
+from .recording import RecordableGaggle, RecordableMechanism, RecordableCached
 from .genetics import GeneticGaggle
 
 
@@ -67,7 +68,8 @@ class ToolKit(GracefulGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle): # TOD
 
 # class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggle, GeneticGaggle, AbstractGame):
 # class Context(GatedCache, ConsistentGame, RollingGame, BacktrackingCache, MutableGaggle, GeneticGaggle, AbstractGame):
-class Context(GatedCache, ConsistentGame, RollingGame, GracefulCache, MutableGaggle, GeneticGaggle, AbstractGame):
+# class Context(GatedCache, ConsistentGame, RollingGame, GracefulCache, MutableGaggle, GeneticGaggle, AbstractGame):
+class Context(GatedCache, ConsistentGame, RollingGame, RecordableCached, GracefulCache, RecordableGaggle, MutableGaggle, GeneticGaggle, AbstractGame):
 	"""
 	The Context class is a subclass of GateCache, LoopyGaggle, MutableGaggle, and AbstractGame. It provides methods to handle
 	gadgets in a context.
@@ -118,7 +120,7 @@ class Context(GatedCache, ConsistentGame, RollingGame, GracefulCache, MutableGag
 
 
 
-class Mechanism(CachableMechanism, LoopyGaggle, MutableGaggle, AbstractGang):
+class Mechanism(RecordableMechanism, MutableGaggle, AbstractGang):
 	"""
 	The Gang class is a subclass of CachableGang, LoopyGaggle, and MutableGaggle.
 

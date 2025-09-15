@@ -304,3 +304,41 @@ class AbstractMutable:
 
 
 
+class AbstractRecorder:
+	def relabel(self, external: str, internal: str, typ: str = ''):
+		raise NotImplementedError
+	
+	def attempt(self, gizmo: str, gadget: 'AbstractGadget'):
+		raise NotImplementedError
+
+	def cached(self, gizmo: str, value: Any):
+		raise NotImplementedError
+
+	def success(self, gizmo: str, gadget: 'AbstractGadget', value: Any):
+		raise NotImplementedError
+
+	def failure(self, gizmo: str, gadget: 'AbstractGadget', error: Exception):
+		raise NotImplementedError
+
+	def missing(self, gizmo: str):
+		raise NotImplementedError
+
+	def prepare(self, owner: 'AbstractRecordable', **kwargs) -> 'AbstractRecorder':
+		raise NotImplementedError
+
+	def report(self, owner: 'AbstractRecordable', **kwargs) -> Any:
+		raise NotImplementedError
+
+
+
+class AbstractRecordable:
+	def record(self, recorder: AbstractRecorder) -> 'Self':
+		raise NotImplementedError
+
+	def report(self):
+		raise NotImplementedError
+
+	# def reset(self):
+	# 	raise NotImplementedError
+
+
