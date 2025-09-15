@@ -151,7 +151,7 @@ class RecordableGame(GameBase, RecordableBase):
 
 
 
-class RecordableCached(CacheGame, RecordableGame):
+class RecordableCached(CacheGame, RecordableGame, RecordableGaggle):
 	def grab_from(self, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
 		"""
 		Tries to grab a gizmo from the context.

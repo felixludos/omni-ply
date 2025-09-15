@@ -374,39 +374,6 @@ class TraceRecorder(RecorderBase):
 		return tabulate(table, tablefmt='plain').replace(SPECIAL_CHARACTER, ' ')
 
 
-# from ..core.errors import AbstractGadgetError, GrabError
-
-# class Context(_Context, RecordingCached, GameBase, RecordingGaggle):
-# 	_Recorder = EventRecorder
-#
-#
-# 	def _grab_from_fallback(self, error: Exception, ctx: Optional['AbstractGame'], gizmo: str) -> Any:
-# 		"""
-# 		Handles a GadgetFailure when trying to grab a gizmo from the context.
-#
-# 		Args:
-# 			error (Exception): The exception that occurred during the grab operation.
-# 			ctx (Optional[AbstractGame]): The context from which to grab the gizmo.
-# 			gizmo (str): The name of the gizmo to grab.
-#
-# 		Returns:
-# 			Any: The result of the fallback operation.
-#
-# 		Raises:
-# 			_GrabError: If the error is a GrabError or if the context is None or self.
-# 			error: If the error is not a GrabError.
-# 		"""
-# 		if isinstance(error, AbstractGadgetError):
-# 			if isinstance(error, GrabError) or ctx is None or ctx is self:
-# 				if self._active_recording:
-# 					self._active_recording.failure(gizmo, None, error)
-# 				raise self._GrabError(gizmo, error) from error
-# 			else:
-# 				return ctx.grab(gizmo)
-# 		raise error from error
-
-
-
 
 
 

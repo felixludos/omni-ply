@@ -69,7 +69,7 @@ class ToolKit(GracefulGaggle, MutableGaggle, CraftyGaggle, GeneticGaggle): # TOD
 # class Context(GatedCache, ConsistentGame, RollingGame, LoopyGaggle, MutableGaggle, GeneticGaggle, AbstractGame):
 # class Context(GatedCache, ConsistentGame, RollingGame, BacktrackingCache, MutableGaggle, GeneticGaggle, AbstractGame):
 # class Context(GatedCache, ConsistentGame, RollingGame, GracefulCache, MutableGaggle, GeneticGaggle, AbstractGame):
-class Context(GatedCache, ConsistentGame, RollingGame, RecordableCached, GracefulCache, RecordableGaggle, MutableGaggle, GeneticGaggle, AbstractGame):
+class Context(GatedCache, ConsistentGame, RollingGame, RecordableCached, GracefulCache, GracefulGaggle, MutableGaggle, GeneticGaggle, AbstractGame):
 	"""
 	The Context class is a subclass of GateCache, LoopyGaggle, MutableGaggle, and AbstractGame. It provides methods to handle
 	gadgets in a context.
